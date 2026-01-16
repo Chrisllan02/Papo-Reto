@@ -1,0 +1,172 @@
+
+<script type="importmap">
+{
+  "imports": {
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>PapoReto - Transparência Política</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              // PALETA MP076
+              // Backgrounds & Neutrals
+              // Praxeti White (#F6F7ED) -> Gray 50
+              // Midnight Mirage (#001F3F) -> Gray 900 / Blue 900
+              gray: {
+                50: '#F6F7ED', 
+                100: '#E8EAD6',
+                200: '#D1D6B8',
+                300: '#C0C6AC',
+                400: '#ABB392',
+                500: '#96A078',
+                600: '#707A5A',
+                700: '#545C38',
+                800: '#25291E',
+                900: '#001F3F', 
+                950: '#001025',
+              },
+              // Green Scale
+              // Mantis (#74C365) -> Green 400
+              // Picture Book Green (#00804C) -> Green 600
+              green: {
+                50: '#F4FBF2',
+                100: '#E3F6DE',
+                200: '#C2EBC9',
+                300: '#A1E0B4',
+                400: '#74C365', 
+                500: '#3AA259',
+                600: '#00804C', 
+                700: '#00663D',
+                800: '#004D2E',
+                900: '#00331F',
+              },
+              // Yellow Scale
+              // First Colors of Spring (#DBE64C) -> Yellow 400
+              yellow: {
+                50: '#FEFEEE',
+                100: '#FCFCD6',
+                200: '#F9F9A9',
+                300: '#F5F57C',
+                400: '#DBE64C', 
+                500: '#BCC730',
+                600: '#99A226',
+                700: '#737A1C',
+                800: '#4B500B',
+                900: '#262805',
+              },
+              // Blue Scale
+              // Nuit Blanche (#1E488F) -> Blue 600
+              // Midnight Mirage (#001F3F) -> Blue 900
+              blue: {
+                50: '#EDF2FA',
+                100: '#D3E0F4',
+                200: '#A6C2EA',
+                300: '#7AA3DF',
+                400: '#4D85D5',
+                500: '#2167CB',
+                600: '#1E488F', 
+                700: '#16366B',
+                800: '#0E2447',
+                900: '#001F3F', 
+              },
+              // Mapping Red to Blue/Dark tones or keeping standard red for errors
+              red: {
+                50: '#FEF2F2',
+                100: '#FEE2E2',
+                200: '#FECACA',
+                500: '#EF4444', 
+                600: '#DC2626',
+                700: '#B91C1C',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+       /* Custom Scrollbar Hide */
+       .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      
+      /* Custom Thin Scrollbar for Timeline */
+      .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 20px;
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(75, 85, 99, 0.5);
+      }
+      
+      /* Animation Utilities */
+      @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+      }
+      .animate-blob {
+        animation: blob 7s infinite;
+      }
+      .animation-delay-2000 {
+        animation-delay: 2s;
+      }
+      .animation-delay-4000 {
+        animation-delay: 4s;
+      }
+      
+      /* Safe Area for Mobile */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      
+      /* Liquid Gradient Animation */
+      @keyframes gradient-xy {
+          0%, 100% {
+              background-position: 0% 50%;
+          }
+          50% {
+              background-position: 100% 50%;
+          }
+      }
+      .animate-gradient-xy {
+          background-size: 200% 200%;
+          animation: gradient-xy 15s ease infinite;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 overflow-hidden selection:bg-green-200 dark:selection:bg-green-900 text-gray-900 dark:text-white">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
