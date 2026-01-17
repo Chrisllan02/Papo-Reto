@@ -20,21 +20,17 @@ import {
   MapPin,
   Sparkles,
   Loader2,
-  X,
-  ScrollText,
-  Megaphone,
-  Globe
+  X
 } from 'lucide-react';
 import { Politician, FeedItem, LegislativeEvent } from '../types';
-import { SkeletonFeedItem, Skeleton } from '../components/Skeleton';
-import { fetchAgendaCamara } from '../services/camaraApi';
+import { SkeletonFeedItem } from '../components/Skeleton';
+import { EDUCATION_CAROUSEL } from '../constants';
+import { fetchAgendaCamara, formatPartyName } from '../services/camaraApi';
 import { getSearchContext } from '../services/ai';
 
 interface FeedViewProps {
   politicians: Politician[];
   feedItems: FeedItem[];
-  educationItems: any[]; // Itens dinâmicos
-  loadingEducation: boolean;
   onSelectCandidate: (pol: Politician) => void;
   onEducationClick: (id: number) => void;
   onSeeMore: () => void;
@@ -46,9 +42,6 @@ interface CardProps {
   candidate?: Politician | null;
   onSelectCandidate: (p: Politician) => void;
 }
-
-// ... (ExplainModal, DashboardHeader, ReactionBar, VoteCard, ExpenseCard, GenericCard permanecem iguais ao código anterior - omitidos para brevidade se não houve alteração interna)
-// Vou reincluir as constantes e componentes auxiliares que não mudaram para garantir que o arquivo esteja completo.
 
 // --- MODAL DE EXPLICAÇÃO DA IA ---
 const ExplainModal = ({ title, onClose }: { title: string, onClose: () => void }) => {
@@ -98,6 +91,7 @@ const ExplainModal = ({ title, onClose }: { title: string, onClose: () => void }
     );
 };
 
+// --- HEADER INSTITUCIONAL ---
 const DashboardHeader = () => {
     const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
     
@@ -120,6 +114,7 @@ const DashboardHeader = () => {
     );
 };
 
+// --- REACTION BAR ---
 const ReactionBar = ({ item }: { item: FeedItem }) => {
     const [counts, setCounts] = useState(item.reactions || { support: 0, angry: 0, clown: 0 });
     const [active, setActive] = useState<string | null>(null);
@@ -168,6 +163,7 @@ const ReactionBar = ({ item }: { item: FeedItem }) => {
     );
 };
 
+// --- VOTE CARD ---
 const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) => {
     const [showExplain, setShowExplain] = useState(false);
     const isApproved = item.status === 'Aprovado';
@@ -178,7 +174,10 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
 
     return (
         <div className={`bg-white dark:bg-gray-900 rounded-[2.5rem] border ${borderColor} p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden flex flex-col h-full`}>
+            
             {showExplain && <ExplainModal title={item.description || item.title} onClose={() => setShowExplain(false)} />}
+
+            {/* Header */}
             <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400">
@@ -200,6 +199,8 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
                     <span className="text-xs font-medium text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-full">{item.date}</span>
                 </div>
             </div>
+
+            {/* Content */}
             <div className="mb-6 flex-1">
                 <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white leading-tight mb-3 group-hover:text-blue-600 transition-colors cursor-pointer line-clamp-3">
                     {item.title}
@@ -208,6 +209,8 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
                     {item.description}
                 </p>
             </div>
+
+            {/* Status */}
             {item.status && (
                 <div className="mb-6">
                     <span className={`${statusColor} text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 shadow-md`}>
@@ -216,6 +219,8 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
                     </span>
                 </div>
             )}
+
+            {/* Footer */}
             <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
                 <div 
                     className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" 
@@ -226,7 +231,7 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
                             <img src={candidate.photo} className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm" alt=""/>
                             <div>
                                 <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">{candidate.name}</p>
-                                <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{candidate.party} • {candidate.state}</p>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{formatPartyName(candidate.party)} • {candidate.state}</p>
                             </div>
                         </>
                     ) : (
@@ -237,15 +242,18 @@ const VoteCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) =
                     )}
                 </div>
             </div>
+
             <ReactionBar item={item} />
         </div>
     );
 };
 
+// --- EXPENSE CARD ---
 const ExpenseCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }) => {
     return (
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-200 dark:border-gray-800 p-0 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden flex flex-col h-full">
             <div className="h-1.5 bg-blue-600 w-full"></div>
+            
             <div className="p-6 md:p-8 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-6">
                     <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-600">
@@ -256,6 +264,7 @@ const ExpenseCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }
                         <span className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">{item.amount}</span>
                     </div>
                 </div>
+
                 <div className="mb-6">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Descrição do Gasto</p>
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 leading-tight border-l-2 border-gray-200 dark:border-gray-700 pl-4 py-1">
@@ -270,6 +279,7 @@ const ExpenseCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }
                         </div>
                     )}
                 </div>
+
                 <div className="mt-auto flex items-center gap-3 cursor-pointer p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onClick={() => candidate && onSelectCandidate(candidate)}>
                     {candidate ? (
                         <>
@@ -284,6 +294,7 @@ const ExpenseCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }
                     )}
                 </div>
             </div>
+
             <div className="px-6 md:px-8 pb-6">
                 <ReactionBar item={item} />
             </div>
@@ -291,6 +302,7 @@ const ExpenseCard: React.FC<CardProps> = ({ item, candidate, onSelectCandidate }
     );
 };
 
+// --- GENERIC CARD ---
 const GenericCard: React.FC<{ item: FeedItem }> = ({ item }) => (
     <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-200 dark:border-gray-800 p-6 md:p-8 shadow-sm hover:shadow-lg transition-all">
         <div className="flex items-center gap-2 mb-4 text-gray-400">
@@ -303,11 +315,12 @@ const GenericCard: React.FC<{ item: FeedItem }> = ({ item }) => (
     </div>
 );
 
-const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, educationItems, loadingEducation, onSelectCandidate, onEducationClick, onSeeMore, followingIds = [] }) => {
+const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCandidate, onEducationClick, onSeeMore, followingIds = [] }) => {
   const [activeFilter, setActiveFilter] = useState<'todos' | 'voto' | 'despesa' | 'seguindo'>('todos');
   const [eduIndex, setEduIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   
+  // State Agenda
   const [agenda, setAgenda] = useState<LegislativeEvent[]>([]);
 
   useEffect(() => {
@@ -322,25 +335,27 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, educationIt
 
   // Lógica do Carrossel Automático
   useEffect(() => {
-    if (paused || !educationItems.length) return;
+    if (paused) return;
     const timer = setInterval(() => {
-        setEduIndex((prev) => (prev + 1) % educationItems.length);
+        setEduIndex((prev) => (prev + 1) % EDUCATION_CAROUSEL.length);
     }, 6000); 
     return () => clearInterval(timer);
-  }, [paused, educationItems]);
+  }, [paused]);
 
   const nextSlide = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setEduIndex((prev) => (prev + 1) % educationItems.length);
+      setEduIndex((prev) => (prev + 1) % EDUCATION_CAROUSEL.length);
   };
 
   const prevSlide = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setEduIndex((prev) => (prev - 1 + educationItems.length) % educationItems.length);
+      setEduIndex((prev) => (prev - 1 + EDUCATION_CAROUSEL.length) % EDUCATION_CAROUSEL.length);
   };
 
   const filteredItems = useMemo(() => {
       let items = feedItems;
+      
+      // Filtro Seguindo
       if (activeFilter === 'seguindo') {
           if (followingIds.length === 0) return [];
           items = items.filter(item => item.candidateId && followingIds.includes(item.candidateId));
@@ -348,17 +363,19 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, educationIt
       else if (activeFilter !== 'todos') {
           items = items.filter(item => item.type === activeFilter);
       }
+
       return items.slice(0, MAX_INITIAL_ITEMS);
   }, [feedItems, activeFilter, followingIds]);
 
-  const currentEdu = educationItems[eduIndex];
+  const currentEdu = EDUCATION_CAROUSEL[eduIndex];
   
-  // Helper para ícones dinâmicos
-  const renderEduIcon = (iconName: string, size: number, className: string) => {
-      const icons: any = { Banknote, ScrollText, Megaphone, Globe, Lightbulb };
-      const IconComp = icons[iconName] || Lightbulb;
-      return <IconComp size={size} className={className}/>;
+  const getEduTheme = (idx: number) => {
+      if (idx % 3 === 0) return { from: 'from-green-700', to: 'to-green-900', shadow: 'shadow-green-900/20' }; 
+      if (idx % 3 === 1) return { from: 'from-blue-700', to: 'to-blue-900', shadow: 'shadow-blue-900/20' }; 
+      return { from: 'from-gray-900', to: 'to-black', shadow: 'shadow-black/20' }; 
   };
+  
+  const eduTheme = getEduTheme(eduIndex);
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto scrollbar-hide pb-32">
@@ -421,64 +438,50 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, educationIt
                 </div>
             )}
 
-            {/* DYNAMIC CAROUSEL (IA GENERATED) */}
+            {/* CAROUSEL */}
             {(activeFilter === 'todos') && (
                 <div className="relative">
                     <div className="flex items-center justify-between mb-4 px-2">
                         <h3 className="font-black text-xl text-gray-900 dark:text-white flex items-center gap-2">
-                            <Sparkles className="text-yellow-500 fill-current" size={20}/> Em Alta na Política
+                            <Lightbulb className="text-yellow-500 fill-current" size={20}/> Entenda a Política
                         </h3>
-                        {/* Indicators */}
-                        {!loadingEducation && educationItems.length > 0 && (
-                            <div className="flex gap-1.5">
-                                {educationItems.map((_, i) => (
-                                    <button 
-                                        key={i} 
-                                        onClick={() => setEduIndex(i)}
-                                        className={`h-1.5 rounded-full transition-all duration-300 ${i === eduIndex ? 'w-8 bg-gray-900 dark:bg-white' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`}
-                                    ></button>
-                                ))}
-                            </div>
-                        )}
+                        <div className="flex gap-1.5">
+                            {EDUCATION_CAROUSEL.map((_, i) => (
+                                <button 
+                                    key={i} 
+                                    onClick={() => setEduIndex(i)}
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${i === eduIndex ? 'w-8 bg-gray-900 dark:bg-white' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`}
+                                ></button>
+                            ))}
+                        </div>
                     </div>
 
-                    {loadingEducation ? (
-                        <div className="w-full h-64 bg-gray-200 dark:bg-gray-800 rounded-[2.5rem] animate-pulse flex items-center justify-center">
-                            <div className="flex flex-col items-center gap-3 text-gray-400">
-                                <Sparkles size={32} className="animate-spin text-purple-500"/>
-                                <span className="font-bold text-xs uppercase tracking-widest">A IA está analisando o Congresso...</span>
-                            </div>
+                    <div 
+                        className={`aspect-[2.2/1] md:aspect-[3.5/1] bg-gradient-to-br ${eduTheme.from} ${eduTheme.to} rounded-[2.5rem] p-8 md:p-12 text-white shadow-xl ${eduTheme.shadow} relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.005]`}
+                        onMouseEnter={() => setPaused(true)}
+                        onMouseLeave={() => setPaused(false)}
+                        onClick={() => onEducationClick(currentEdu.id)}
+                    >
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+                        <div className="absolute top-0 right-0 p-12 opacity-10">
+                            <Lightbulb size={200} className="text-white"/>
                         </div>
-                    ) : currentEdu ? (
-                        <div 
-                            className={`aspect-[2.2/1] md:aspect-[3.5/1] bg-gradient-to-br ${currentEdu.colorFrom} ${currentEdu.colorTo} rounded-[2.5rem] p-8 md:p-12 text-white shadow-xl relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.005]`}
-                            onMouseEnter={() => setPaused(true)}
-                            onMouseLeave={() => setPaused(false)}
-                            onClick={() => onEducationClick(currentEdu.id)}
-                        >
-                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 p-12 opacity-10">
-                                {renderEduIcon(currentEdu.icon, 200, "text-white")}
-                            </div>
-                            <div className="absolute inset-y-0 left-0 w-1/6 z-20 cursor-w-resize hover:bg-black/5 transition-colors" onClick={prevSlide}></div>
-                            <div className="absolute inset-y-0 right-0 w-1/6 z-20 cursor-e-resize hover:bg-black/5 transition-colors" onClick={nextSlide}></div>
+                        <div className="absolute inset-y-0 left-0 w-1/6 z-20 cursor-w-resize hover:bg-black/5 transition-colors" onClick={prevSlide}></div>
+                        <div className="absolute inset-y-0 right-0 w-1/6 z-20 cursor-e-resize hover:bg-black/5 transition-colors" onClick={nextSlide}></div>
 
-                            <div className="relative z-10 flex flex-col justify-center h-full max-w-3xl">
-                                <span className="bg-white/20 w-fit px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-white/20 backdrop-blur-sm flex items-center gap-2">
-                                    <Sparkles size={12}/> Semana em Foco • {eduIndex + 1}
-                                </span>
-                                <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight tracking-tight drop-shadow-sm line-clamp-2">
-                                    {currentEdu.title}
-                                </h2>
-                                <p className="text-white/90 text-base md:text-xl font-medium leading-relaxed line-clamp-2 md:line-clamp-3">
-                                    {currentEdu.text}
-                                </p>
-                                <div className="mt-8 inline-flex items-center gap-3 text-sm font-bold bg-white text-black px-6 py-3 rounded-full uppercase tracking-wider hover:bg-gray-100 transition-colors w-fit shadow-lg">
-                                    Entender o Impacto <ArrowRight size={16}/>
-                                </div>
+                        <div className="relative z-10 flex flex-col justify-center h-full max-w-3xl">
+                            <span className="bg-white/20 w-fit px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-white/20 backdrop-blur-sm">
+                                Guia Cidadão • Tópico {eduIndex + 1}
+                            </span>
+                            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight tracking-tight drop-shadow-sm">{currentEdu.title}</h2>
+                            <p className="text-white/90 text-base md:text-xl font-medium leading-relaxed line-clamp-3">
+                                {currentEdu.text}
+                            </p>
+                            <div className="mt-8 inline-flex items-center gap-3 text-sm font-bold bg-white text-black px-6 py-3 rounded-full uppercase tracking-wider hover:bg-gray-100 transition-colors w-fit shadow-lg">
+                                Ler artigo completo <ArrowRight size={16}/>
                             </div>
                         </div>
-                    ) : null}
+                    </div>
                 </div>
             )}
             

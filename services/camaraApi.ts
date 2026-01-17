@@ -1,5 +1,6 @@
 
-import { Politician, Speech, Front, FeedItem, ExpenseCategory, TimelineItem, ExpenseHistoryItem, Asset, Donor, QuizQuestion, YearStats, LegislativeVote, Relatoria, Bill, Role, Occupation, LegislativeEvent } from '../types';
+
+import { Politician, Speech, Front, FeedItem, ExpenseCategory, TimelineItem, ExpenseHistoryItem, Asset, Donor, QuizQuestion, YearStats, LegislativeVote, Relatoria, Bill, Role, Occupation, LegislativeEvent, Party } from '../types';
 import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG } from '../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
@@ -16,10 +17,49 @@ const GENDER_CORRECTIONS: Record<number, string> = {
     220645: 'F'  
 };
 
+// Mapa de Ideologia Simplificado para fins didáticos (Geração Z)
+export const IDEOLOGY_MAP: Record<string, 'Esquerda' | 'Centro' | 'Direita'> = {
+    'PT': 'Esquerda', 'PSOL': 'Esquerda', 'PCDOB': 'Esquerda', 'PSB': 'Esquerda', 'REDE': 'Esquerda', 'PV': 'Esquerda', 'PDT': 'Esquerda', 'UP': 'Esquerda', 'PCO': 'Esquerda',
+    'MDB': 'Centro', 'PSD': 'Centro', 'PSDB': 'Centro', 'CIDADANIA': 'Centro', 'SOLIDARIEDADE': 'Centro', 'PODE': 'Centro', 'AVANTE': 'Centro', 'PP': 'Centro', 'AGIR': 'Centro', 'PMB': 'Centro',
+    'PL': 'Direita', 'REPUBLICANOS': 'Direita', 'UNIÃO': 'Direita', 'UNIAO': 'Direita', 'NOVO': 'Direita', 'PATRIOTA': 'Direita', 'PRTB': 'Direita', 'PSC': 'Direita', 'PRD': 'Direita', 'DC': 'Direita'
+};
+
+export const getIdeology = (partySigla: string): 'Esquerda' | 'Centro' | 'Direita' => {
+    return IDEOLOGY_MAP[partySigla.toUpperCase()] || 'Centro';
+};
+
 const forceArray = (data: any): any[] => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
     return [data];
+};
+
+export const formatPartyName = (party?: string) => {
+    if (!party) return "";
+    const p = party.trim().toUpperCase();
+
+    const map: Record<string, string> = {
+        'REPUBLICANOS': 'REP',
+        'SOLIDARIEDADE': 'SD',
+        'CIDADANIA': 'CID',
+        'PODEMOS': 'PODE',
+        'PATRIOTA': 'PATRI',
+        'AVANTE': 'AVANT',
+        'UNIÃO': 'UNIÃO',
+        'UNIAO': 'UNIÃO',
+        'PROGRESSISTAS': 'PP',
+        'DEMOCRACIA CRISTÃ': 'DC',
+        'AGIR': 'AGIR'
+    };
+    
+    if (map[p]) return map[p];
+    
+    // Se for maior que 5 caracteres e não estiver no mapa, trunca
+    if (p.length > 5) {
+        return p.substring(0, 3);
+    }
+    
+    return party; 
 };
 
 export const getGenderedRole = (role: string, sex?: string) => {
@@ -32,6 +72,8 @@ export const getGenderedRole = (role: string, sex?: string) => {
 
     if (r.includes('deputad')) return s === 'F' ? 'Deputada Federal' : 'Deputado Federal';
     if (r.includes('senad')) return s === 'F' ? 'Senadora' : 'Senador';
+    if (r.includes('governado')) return s === 'F' ? 'Governadora' : 'Governador';
+    if (r.includes('president')) return s === 'F' ? 'Presidenta' : 'Presidente';
     
     return role;
 };
@@ -164,6 +206,22 @@ const fetchAPI = async (url: string, retries = 2, useCache = true, silent = fals
 let GLOBAL_VOTE_CACHE: Record<number, Record<number, string>> | null = null;
 let DYNAMIC_VOTE_CACHE: Record<string, Record<number, string>> = {}; 
 
+// --- FETCH PARTIES ---
+export const fetchPartidos = async (): Promise<Party[]> => {
+    return fetchWithCache('lista_partidos', async () => {
+        const data = await fetchAPI(`${BASE_URL_CAMARA}/partidos?itens=100&ordem=ASC&ordenarPor=sigla`, 2, true);
+        if (!data || !data.dados) return [];
+        return data.dados.map((p: any) => ({
+            id: p.id,
+            sigla: p.sigla,
+            nome: p.nome,
+            uri: p.uri,
+            urlLogo: p.urlLogo, // Logo oficial
+            ideology: getIdeology(p.sigla) // Classificação
+        }));
+    }, TTL_STATIC);
+};
+
 export const fetchDeputados = async (): Promise<Politician[]> => {
   return fetchWithCache('lista_deputados', async () => {
       const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?pagina=1&itens=600`, 2, false); 
@@ -179,7 +237,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             sex: correctedSex, 
             state: dep.siglaUf,
             party: dep.siglaPartido,
-            partyShort: dep.siglaPartido,
+            partyShort: formatPartyName(dep.siglaPartido),
             photo: dep.urlFoto,
             email: dep.email,
             matchScore: 0, 
@@ -213,7 +271,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 sex: correctedSex, 
                 state: sen.MandatoAtual?.UfParlamentar || 'BR',
                 party: sen.IdentificacaoParlamentar.SiglaPartidoParlamentar,
-                partyShort: sen.IdentificacaoParlamentar.SiglaPartidoParlamentar,
+                partyShort: formatPartyName(sen.IdentificacaoParlamentar.SiglaPartidoParlamentar),
                 photo: sen.IdentificacaoParlamentar.UrlFotoParlamentar,
                 email: sen.IdentificacaoParlamentar.EmailParlamentar,
                 matchScore: 0,
@@ -226,6 +284,22 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
             };
         });
     }, TTL_STATIC);
+};
+
+export const fetchExecutivo = async (): Promise<Politician[]> => {
+    const proxy = (url: string) => `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&fit=cover`;
+    return [
+        { id: 9001, name: "Luiz Inácio Lula da Silva", role: "Presidente", sex: "M", party: "PT", partyShort: "PT", state: "BR", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/8/8e/Lula_oficial.jpg"), matchScore: 0, bio: "Presidente da República.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.gov.br/planalto", hasApiIntegration: false },
+        { id: 9002, name: "Geraldo Alckmin", role: "Vice-Presidente", sex: "M", party: "PSB", partyShort: "PSB", state: "BR", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/6/6e/Geraldo_Alckmin_oficial_2023.jpg"), matchScore: 0, bio: "Vice-Presidente.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.gov.br/planalto", hasApiIntegration: false },
+        { id: 9003, name: "Tarcísio de Freitas", role: "Governador", sex: "M", party: "REP", partyShort: "REP", state: "SP", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/1/14/Tarcisio_Gomes_de_Freitas_(2023).jpg"), matchScore: 0, bio: "Governador SP.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.saopaulo.sp.gov.br/", hasApiIntegration: false },
+        { id: 9004, name: "Cláudio Castro", role: "Governador", sex: "M", party: "PL", partyShort: "PL", state: "RJ", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/8/87/Cláudio_Castro_em_outubro_de_2022.jpg"), matchScore: 0, bio: "Governador RJ.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.rj.gov.br/", hasApiIntegration: false },
+        { id: 9005, name: "Romeu Zema", role: "Governador", sex: "M", party: "NOVO", partyShort: "NOVO", state: "MG", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/3/30/Romeu_Zema_em_2022.jpg"), matchScore: 0, bio: "Governador MG.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.mg.gov.br/", hasApiIntegration: false },
+        { id: 9006, name: "Eduardo Leite", role: "Governador", sex: "M", party: "PSDB", partyShort: "PSDB", state: "RS", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/5/52/Eduardo_Leite_em_2023.jpg"), matchScore: 0, bio: "Governador RS.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.rs.gov.br/", hasApiIntegration: false },
+        { id: 9007, name: "Ratinho Júnior", role: "Governador", sex: "M", party: "PSD", partyShort: "PSD", state: "PR", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/c/c2/Ratinho_Júnior_em_2023.jpg"), matchScore: 0, bio: "Governador PR.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.pr.gov.br/", hasApiIntegration: false },
+        { id: 9008, name: "Jerônimo Rodrigues", role: "Governador", sex: "M", party: "PT", partyShort: "PT", state: "BA", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/4/4c/Jerônimo_Rodrigues_em_2023.jpg"), matchScore: 0, bio: "Governador BA.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.ba.gov.br/", hasApiIntegration: false },
+        { id: 9009, name: "Elmano de Freitas", role: "Governador", sex: "M", party: "PT", partyShort: "PT", state: "CE", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/7/7d/Elmano_de_Freitas_em_2023.jpg"), matchScore: 0, bio: "Governador CE.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.ce.gov.br/", hasApiIntegration: false },
+        { id: 9010, name: "Raquel Lyra", role: "Governador", sex: "F", party: "PSDB", partyShort: "PSDB", state: "PE", photo: proxy("https://upload.wikimedia.org/wikipedia/commons/3/36/Raquel_Lyra_em_2023.jpg"), matchScore: 0, bio: "Governadora PE.", mandate: { start: "01/01/2023", end: "01/01/2027" }, stats: { attendancePct: 100, totalSessions: 0, presentSessions: 0, absentSessions: 0, projects: 0, spending: 0 }, votes: {}, bills: [], speeches: [], fronts: [], timeline: [], externalLink: "https://www.pe.gov.br/", hasApiIntegration: false }
+    ]; 
 };
 
 export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {

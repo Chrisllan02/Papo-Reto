@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { RefreshCw, Share2, Shield, User, ChevronRight, Download, Zap, Loader2, Check } from 'lucide-react';
 import { Politician } from '../types';
 import html2canvas from 'html2canvas';
+import { formatPartyName } from '../services/camaraApi';
 
 interface MatchResultsViewProps {
   results: Politician[];
@@ -162,7 +163,7 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
                                 <div className="text-center bg-gray-800/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 -mt-2">
                                     <h3 className="text-white font-black text-sm leading-tight whitespace-nowrap">{topMatch.name.split(' ')[0]}</h3>
                                     <span className={`text-[9px] font-bold uppercase bg-gradient-to-r ${archetype.color} bg-clip-text text-transparent`}>
-                                        {topMatch.party} • {topMatch.state}
+                                        {formatPartyName(topMatch.party)} • {topMatch.state}
                                     </span>
                                 </div>
                             </div>
@@ -191,37 +192,8 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
                     onClick={() => onSelectProfile(topMatch)} 
                     className="w-full bg-white/10 text-white border border-white/20 py-4 rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                    Ver Perfil Completo <ChevronRight size={16}/>
+                    Ver Perfil <ChevronRight size={16}/>
                 </button>
-            </div>
-
-            {/* Other Matches */}
-            <div className="mt-8 bg-white/5 backdrop-blur-md rounded-[2.5rem] p-6 border border-white/5">
-                <h3 className="text-white/50 font-bold uppercase text-xs tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <Shield size={12}/> Alternativas
-                </h3>
-                <div className="space-y-4">
-                    {results.slice(1, 4).map((pol, idx) => (
-                         <div 
-                            key={pol.id} 
-                            onClick={() => onSelectProfile(pol)}
-                            className="flex items-center gap-4 group cursor-pointer"
-                         >
-                             <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden shrink-0 border-2 border-transparent group-hover:border-white/50 transition-colors">
-                                 <img src={pol.photo} className="w-full h-full object-cover" alt=""/>
-                             </div>
-                             <div className="flex-1 min-w-0 border-b border-white/10 pb-4 group-last:border-0 group-last:pb-0">
-                                 <div className="flex justify-between items-center mb-0.5">
-                                     <h4 className="text-white font-bold text-sm truncate">{pol.name}</h4>
-                                     <span className={`text-xs font-black ${pol.matchScore > 60 ? 'text-green-400' : 'text-yellow-400'}`}>
-                                         {pol.matchScore}%
-                                     </span>
-                                 </div>
-                                 <p className="text-white/40 text-xs font-medium">{pol.party} • {pol.state}</p>
-                             </div>
-                         </div>
-                    ))}
-                </div>
             </div>
         </div>
     </div>

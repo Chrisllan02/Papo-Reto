@@ -1,4 +1,5 @@
 
+
 export interface Mandate {
   start: string;
   end: string;
@@ -134,6 +135,16 @@ export interface TimelineItem {
   status?: string; // Para votos (Sim/Não) ou Projetos (Aprovado)
   icon?: any; // Metadado interno
   link?: string;
+}
+
+export interface Party {
+  id: number;
+  sigla: string;
+  nome: string;
+  uri: string;
+  urlLogo?: string;
+  totalMembers?: number; // Calculado no frontend
+  ideology?: 'Esquerda' | 'Centro' | 'Direita'; // Calculado no frontend
 }
 
 export interface Politician {

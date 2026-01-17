@@ -1,13 +1,14 @@
 
+
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, Users, ChevronLeft, MapPin, Building2, Crown, Heart, ChevronRight, LayoutGrid } from 'lucide-react';
-import { Politician } from '../types';
-import { getGenderedRole } from '../services/camaraApi';
+import { Search, Users, ChevronLeft, MapPin, Building2, Crown, Heart, ChevronRight, LayoutGrid, Compass, Filter } from 'lucide-react';
+import { Politician, Party } from '../types';
+import { getGenderedRole, formatPartyName, getIdeology } from '../services/camaraApi';
 
 interface ExploreViewProps {
   politicians: Politician[];
+  parties?: Party[]; // Agora opcional/obrigatório dependendo do carregamento
   onSelectCandidate: (pol: Politician) => void;
-  initialViewMode?: 'grid' | 'parties';
   followingIds?: number[]; 
 }
 
@@ -15,11 +16,14 @@ const ESTADOS_BRASIL = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidate, followingIds = [] }) => {
+type IdeologyFilter = 'Todos' | 'Esquerda' | 'Centro' | 'Direita';
+
+const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], onSelectCandidate, followingIds = [] }) => {
     const [search, setSearch] = useState("");
     const deferredSearch = useDeferredValue(search);
     
     const [selectedUF, setSelectedUF] = useState("");
+    const [selectedIdeology, setSelectedIdeology] = useState<IdeologyFilter>('Todos');
     
     // Novo Estado: Partido Selecionado (Drill-down)
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
@@ -32,31 +36,53 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidat
         });
     }, [politicians, selectedUF]);
 
-    // 2. Agrupamento por Partidos
+    // 2. Agrupamento por Partidos (Combinando dados da API oficial de Partidos com a contagem de Políticos)
     const partiesData = useMemo(() => {
-        const groups: Record<string, Politician[]> = {};
+        // Mapa base com membros
+        const groups: Record<string, { members: Politician[], officialData?: Party }> = {};
         
         baseFilteredList.forEach(p => {
-            if (!groups[p.party]) groups[p.party] = [];
-            groups[p.party].push(p);
+            if (!groups[p.party]) groups[p.party] = { members: [] };
+            groups[p.party].members.push(p);
         });
 
-        // Transforma em array e filtra pela busca (Search)
+        // Enriquecer com dados oficiais da API de Partidos (Logos, Nomes, etc)
+        // Se a API de Partidos não retornou nada, usamos o fallback do grupo.
+        Object.keys(groups).forEach(partySigla => {
+            const official = parties.find(p => p.sigla === partySigla);
+            if (official) {
+                groups[partySigla].officialData = official;
+            }
+        });
+
+        // Transforma em array e filtra pela busca (Search) e Ideologia
         return Object.entries(groups)
-            .map(([name, members]) => {
-                // Se houver busca, verifica se o partido tem membros que dão match OU se o nome do partido dá match
+            .map(([name, data]) => {
+                const officialName = data.officialData?.nome || name;
+                const ideology = data.officialData?.ideology || getIdeology(name); // Use helper fallback
+                
                 const searchLower = deferredSearch.toLowerCase();
                 const matchesSearch = !searchLower 
                     ? true 
                     : name.toLowerCase().includes(searchLower) || 
-                      members.some(m => m.name.toLowerCase().includes(searchLower));
+                      officialName.toLowerCase().includes(searchLower) ||
+                      data.members.some(m => m.name.toLowerCase().includes(searchLower));
                 
-                return { name, members, visible: matchesSearch };
+                const matchesIdeology = selectedIdeology === 'Todos' || ideology === selectedIdeology;
+
+                return { 
+                    name, 
+                    officialName,
+                    members: data.members, 
+                    logo: data.officialData?.urlLogo,
+                    ideology,
+                    visible: matchesSearch && matchesIdeology
+                };
             })
             .filter(g => g.visible)
             .sort((a, b) => b.members.length - a.members.length); // Maiores bancadas primeiro
 
-    }, [baseFilteredList, deferredSearch]);
+    }, [baseFilteredList, deferredSearch, parties, selectedIdeology]);
 
     // 3. Lista de Políticos do Partido Selecionado (Filtrada pela busca interna também)
     const currentPartyMembers = useMemo(() => {
@@ -72,30 +98,11 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidat
     }, [partiesData, selectedParty, deferredSearch]);
 
     // Helper para cor do partido (Visual)
-    const getPartyColor = (party: string) => {
-        const p = party.toUpperCase();
-        if (['PT', 'PCdoB', 'PSOL', 'PSB'].includes(p)) return 'from-red-500 to-red-700';
-        if (['PL', 'PP', 'REPUBLICANOS'].includes(p)) return 'from-blue-600 to-blue-800';
-        if (['MDB', 'PSD', 'PSDB', 'UNIÃO'].includes(p)) return 'from-yellow-500 to-orange-600';
-        if (['NOVO'].includes(p)) return 'from-orange-500 to-orange-700';
+    const getPartyColor = (ideology: string) => {
+        if (ideology === 'Esquerda') return 'from-red-500 to-red-700';
+        if (ideology === 'Direita') return 'from-blue-600 to-blue-800';
+        if (ideology === 'Centro') return 'from-yellow-500 to-orange-600';
         return 'from-gray-500 to-gray-700'; // Default
-    };
-
-    // Helper para abreviação do partido no Badge
-    const getPartyBadgeLabel = (party: string) => {
-        const map: Record<string, string> = {
-            'REPUBLICANOS': 'REP',
-            'SOLIDARIEDADE': 'SD',
-            'CIDADANIA': 'CID',
-            'PODEMOS': 'PODE',
-            'PATRIOTA': 'PATRI',
-            'AVANTE': 'AVANT',
-            'UNIÃO': 'UNIÃO'
-        };
-        const p = party.toUpperCase();
-        if (map[p]) return map[p];
-        // Se maior que 5 caracteres, trunca
-        return p.length > 5 ? p.substring(0, 3) : p;
     };
 
     return (
@@ -140,33 +147,60 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidat
                          </div>
                     </div>
 
-                    {/* STATE GRID SELECTOR (Oculto se estiver dentro de um partido para limpar a tela) */}
+                    {/* FILTROS (Oculto se estiver dentro de um partido) */}
                     {!selectedParty && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center px-2">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                    <MapPin size={12}/> Filtrar por Estado
+                        <div className="space-y-4">
+                            
+                            {/* Filtro de Espectro Político */}
+                            <div className="flex flex-wrap gap-2 items-center justify-center md:justify-start">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 mr-2">
+                                    <Compass size={12}/> Espectro:
                                 </span>
-                                {selectedUF && (
-                                    <button onClick={() => setSelectedUF("")} className="text-[10px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold hover:bg-red-200 transition-colors">
-                                        Limpar Filtro ({selectedUF})
-                                    </button>
-                                )}
-                            </div>
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                {ESTADOS_BRASIL.map(uf => (
-                                    <button 
-                                        key={uf} 
-                                        onClick={() => setSelectedUF(selectedUF === uf ? "" : uf)}
-                                        className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                                            selectedUF === uf 
-                                            ? 'bg-green-600 text-white shadow-lg shadow-green-500/40 scale-110' 
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => (
+                                    <button
+                                        key={ideology}
+                                        onClick={() => setSelectedIdeology(ideology)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                            selectedIdeology === ideology 
+                                            ? ideology === 'Esquerda' ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' :
+                                              ideology === 'Centro' ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/30' :
+                                              ideology === 'Direita' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' :
+                                              'bg-black text-white dark:bg-white dark:text-black'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
                                         }`}
                                     >
-                                        {uf}
+                                        {ideology}
                                     </button>
                                 ))}
+                            </div>
+
+                            {/* Filtro de Estado (UF) */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center px-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                        <MapPin size={12}/> Filtrar por Estado
+                                    </span>
+                                    {selectedUF && (
+                                        <button onClick={() => setSelectedUF("")} className="text-[10px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold hover:bg-red-200 transition-colors">
+                                            Limpar Filtro ({selectedUF})
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {ESTADOS_BRASIL.map(uf => (
+                                        <button 
+                                            key={uf} 
+                                            onClick={() => setSelectedUF(selectedUF === uf ? "" : uf)}
+                                            className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                                                selectedUF === uf 
+                                                ? 'bg-green-600 text-white shadow-lg shadow-green-500/40 scale-110' 
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            }`}
+                                        >
+                                            {uf}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -181,10 +215,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidat
                     <div className="mb-6 px-2 flex items-center gap-2">
                         <Building2 size={24} className="text-blue-500"/>
                         <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-                            {selectedParty ? `Bancada do ${selectedParty}` : `Legislativo ${selectedUF ? `• ${selectedUF}` : '• Federal'}`}
+                            {selectedParty ? `Bancada do ${formatPartyName(selectedParty)}` : `Legislativo ${selectedUF ? `• ${selectedUF}` : '• Federal'}`}
                         </h2>
                         <span className="text-xs font-bold text-gray-400 ml-2 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
-                            {selectedParty ? currentPartyMembers.length : partiesData.length} {selectedParty ? 'membros' : 'partidos'} encontrados
+                            {selectedParty ? currentPartyMembers.length : partiesData.length} {selectedParty ? 'membros' : 'partidos'}
                         </span>
                     </div>
 
@@ -200,40 +234,57 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, onSelectCandidat
                                 </div>
                             ) : (
                                 partiesData.map((group) => {
-                                    const gradient = getPartyColor(group.name);
+                                    const gradient = getPartyColor(group.ideology || 'Centro');
                                     // Pega fotos dos primeiros 3 membros para preview
                                     const previewMembers = group.members.slice(0, 3);
-                                    const badgeLabel = getPartyBadgeLabel(group.name);
+                                    const badgeLabel = formatPartyName(group.name);
 
                                     return (
                                         <button 
                                             key={group.name} 
                                             onClick={() => setSelectedParty(group.name)}
-                                            className="group relative bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 text-left border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden"
+                                            className="group relative bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 text-left border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden flex flex-col justify-between min-h-[220px]"
                                         >
                                             {/* Background Gradient on Hover */}
                                             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
 
-                                            <div className="flex justify-between items-start mb-6 relative z-10">
-                                                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black shadow-lg group-hover:scale-110 transition-transform ${badgeLabel.length > 4 ? 'text-xs tracking-tighter' : 'text-lg'}`}>
-                                                    {badgeLabel}
+                                            <div>
+                                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                                    {group.logo ? (
+                                                        <div className="w-14 h-14 bg-white rounded-2xl p-1 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
+                                                            <img src={group.logo} alt={group.name} className="w-full h-full object-contain" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black shadow-lg group-hover:scale-110 transition-transform ${badgeLabel.length > 4 ? 'text-xs tracking-tighter' : 'text-lg'}`}>
+                                                            {badgeLabel}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Ideology Tag */}
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full border ${
+                                                        group.ideology === 'Esquerda' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                        group.ideology === 'Direita' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                        'bg-yellow-50 text-yellow-600 border-yellow-100'
+                                                    }`}>
+                                                        {group.ideology}
+                                                    </span>
                                                 </div>
-                                                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full text-gray-400 group-hover:bg-white dark:group-hover:bg-gray-700 group-hover:text-black dark:group-hover:text-white transition-colors">
-                                                    <ChevronRight size={20} />
-                                                </div>
-                                            </div>
 
-                                            <div className="relative z-10">
-                                                <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-1 truncate" title={group.name}>
-                                                    {group.name}
-                                                </h3>
-                                                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">
-                                                    {group.members.length} {group.members.length === 1 ? 'Membro' : 'Membros'}
-                                                </p>
+                                                <div className="relative z-10">
+                                                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-1 truncate" title={group.officialName}>
+                                                        {group.name}
+                                                    </h3>
+                                                    <p className="text-xs font-medium text-gray-400 line-clamp-1 mb-4">
+                                                        {group.officialName}
+                                                    </p>
+                                                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">
+                                                        {group.members.length} {group.members.length === 1 ? 'Membro' : 'Membros'}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             {/* Avatar Preview */}
-                                            <div className="mt-6 flex -space-x-3 relative z-10">
+                                            <div className="mt-4 flex -space-x-3 relative z-10">
                                                 {previewMembers.map((m) => (
                                                     <img 
                                                         key={m.id} 

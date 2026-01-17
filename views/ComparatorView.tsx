@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { ChevronLeft, Scale, Calculator, ArrowRightLeft, Users, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileQuestion } from 'lucide-react';
 import { Politician } from '../types';
 import { QUIZ_QUESTIONS } from '../constants';
-import { getGenderedRole } from '../services/camaraApi';
+import { getGenderedRole, formatPartyName } from '../services/camaraApi';
 
 interface ComparatorViewProps {
   candidateA: Politician | null;
@@ -96,7 +96,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
                              <img src={candidateA.photo} className="w-full h-full object-cover" alt={candidateA.name}/>
                          </div>
                          <h2 className="font-black text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{candidateA.name}</h2>
-                         <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{candidateA.party}</p>
+                         <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{formatPartyName(candidateA.party)}</p>
                      </div>
 
                      {/* VS Badge (Center) */}
@@ -112,7 +112,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
                              <img src={candidateB.photo} className="w-full h-full object-cover" alt={candidateB.name}/>
                          </div>
                          <h2 className="font-black text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{candidateB.name}</h2>
-                         <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{candidateB.party}</p>
+                         <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{formatPartyName(candidateB.party)}</p>
                      </div>
                  </div>
 

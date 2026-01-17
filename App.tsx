@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
@@ -10,30 +11,22 @@ import MatchResultsView from './views/MatchResultsView';
 import ComparatorView from './views/ComparatorView';
 import PartiesDashboardView from './views/PartiesDashboardView';
 import FullFeedView from './views/FullFeedView';
-import EducationModal from './views/EducationView'; // Alterado para Modal
+import EducationView from './views/EducationView';
 import ArticlesListView from './views/ArticlesListView';
 import DataTransparencyModal from './components/DataTransparencyModal';
-import { fetchDeputados, fetchSenadores, fetchGlobalVotacoes } from './services/camaraApi';
-import { generateEducationalFeed, EducationalItem } from './services/ai';
-import { Politician, FeedItem } from './types';
-import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL as STATIC_EDUCATION } from './constants';
+import { fetchDeputados, fetchSenadores, fetchGlobalVotacoes, fetchPartidos } from './services/camaraApi';
+import { Politician, FeedItem, Party } from './types';
+import { POLITICIANS_DB, FEED_ITEMS } from './constants';
 
 function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [politicians, setPoliticians] = useState<Politician[]>(POLITICIANS_DB);
   const [feedItems, setFeedItems] = useState<FeedItem[]>(FEED_ITEMS);
-  
-  // Estado para Conteúdo Educativo (Dinâmico)
-  const [educationItems, setEducationItems] = useState<any[]>(STATIC_EDUCATION);
-  const [loadingEducation, setLoadingEducation] = useState(true);
-
+  const [parties, setParties] = useState<Party[]>([]); // Novo estado para partidos oficiais
   const [selectedProfile, setSelectedProfile] = useState<Politician | null>(null);
   const [comparisonProfile, setComparisonProfile] = useState<Politician | null>(null);
   const [matchResults, setMatchResults] = useState<Politician[] | null>(null);
-  
-  // Controle do Modal de Educação
-  const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
-  
+  const [educationId, setEducationId] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [showDataModal, setShowDataModal] = useState(false);
   const [followingIds, setFollowingIds] = useState<number[]>([]);
@@ -41,27 +34,19 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
         try {
-            // 1. Dados do Congresso (Rápido/Cacheado)
-            const [deps, sens, feed] = await Promise.all([
+            // Carrega Partidos Oficiais junto com Políticos
+            const [deps, sens, feed, parts] = await Promise.all([
                 fetchDeputados(),
                 fetchSenadores(),
-                fetchGlobalVotacoes()
+                fetchGlobalVotacoes(),
+                fetchPartidos()
             ]);
             const allPol = [...deps, ...sens];
             setPoliticians(allPol);
             setFeedItems(feed);
-
-            // 2. Dados de IA (Geração sob demanda - não bloqueia UI inicial)
-            generateEducationalFeed().then(aiItems => {
-                if (aiItems && aiItems.length > 0) {
-                    setEducationItems(aiItems);
-                }
-                setLoadingEducation(false);
-            });
-
+            setParties(parts);
         } catch (error) {
             console.error("Failed to load initial data", error);
-            setLoadingEducation(false);
         }
     };
     loadData();
@@ -96,7 +81,10 @@ function App() {
   };
 
   const renderContent = () => {
-      // Modais são renderizados fora do switch principal, no final do componente
+      if (educationId !== null) {
+          return <EducationView educationId={educationId} onBack={() => setEducationId(null)} />;
+      }
+
       if (matchResults) {
           return <MatchResultsView results={matchResults} onSelectProfile={handleProfileSelect} onRetake={() => { setMatchResults(null); setActiveTab('match'); }} />;
       }
@@ -135,10 +123,8 @@ function App() {
                 <FeedView 
                     politicians={politicians} 
                     feedItems={feedItems} 
-                    educationItems={educationItems} // Passando dados dinâmicos
-                    loadingEducation={loadingEducation}
                     onSelectCandidate={handleProfileSelect} 
-                    onEducationClick={setSelectedEducationId}
+                    onEducationClick={setEducationId}
                     onSeeMore={() => setActiveTab('feed_all')}
                     followingIds={followingIds}
                 />
@@ -146,8 +132,7 @@ function App() {
           case 'articles':
               return (
                   <ArticlesListView 
-                    educationItems={educationItems} // Passando dados dinâmicos
-                    onSelectArticle={setSelectedEducationId}
+                    onSelectArticle={setEducationId}
                   />
               );
           case 'feed_all':
@@ -163,6 +148,7 @@ function App() {
               return (
                   <ExploreView 
                     politicians={politicians} 
+                    parties={parties} // Passa dados oficiais de partidos
                     onSelectCandidate={handleProfileSelect} 
                     followingIds={followingIds}
                   />
@@ -173,8 +159,6 @@ function App() {
                     politicians={politicians} 
                     feedItems={feedItems}
                     onSelectCandidate={handleProfileSelect}
-                    onGoToFeed={() => setActiveTab('feed')} // Novo Drill-down
-                    onGoToExplore={() => setActiveTab('explore')} // Novo Drill-down
                 />
               );
           default:
@@ -182,10 +166,8 @@ function App() {
                 <FeedView 
                     politicians={politicians} 
                     feedItems={feedItems} 
-                    educationItems={educationItems}
-                    loadingEducation={loadingEducation}
                     onSelectCandidate={handleProfileSelect} 
-                    onEducationClick={setSelectedEducationId} 
+                    onEducationClick={setEducationId} 
                     onSeeMore={() => setActiveTab('feed_all')} 
                     followingIds={followingIds}
                 />
@@ -222,17 +204,7 @@ function App() {
             />
         </div>
 
-        {/* MODAIS GLOBAIS */}
         {showDataModal && <DataTransparencyModal onClose={() => setShowDataModal(false)} />}
-        
-        {selectedEducationId !== null && (
-            <EducationModal 
-                items={educationItems}
-                selectedId={selectedEducationId} 
-                onClose={() => setSelectedEducationId(null)} 
-                onSelect={(id) => setSelectedEducationId(id)}
-            />
-        )}
     </div>
   );
 }

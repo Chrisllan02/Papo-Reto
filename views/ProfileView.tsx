@@ -1,21 +1,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, Share2, ArrowLeftRight, Clock, Briefcase, FileText, Building2, Banknote, Mic2, Loader2, Globe, Plus, X, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Code, ExternalLink, GraduationCap, Calendar, User, Users, Info, AlertCircle, TrendingUp, Landmark, MapPin, CheckCircle2, AlertTriangle, Database, Wallet, Vote, Lock, Download, Printer, Heart, Copy, Check, Gavel, FileCheck, MessageSquare, BriefcaseBusiness, Star, Presentation, BarChart2, PieChart, Sparkles, Newspaper, Scale, PersonStanding } from 'lucide-react';
+import { ChevronLeft, Share2, ArrowLeftRight, Clock, Briefcase, FileText, Building2, Banknote, Mic2, Loader2, Globe, Plus, X, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Code, ExternalLink, GraduationCap, Calendar, User, Users, Info, AlertCircle, TrendingUp, Landmark, MapPin, CheckCircle2, AlertTriangle, Database, Wallet, Vote, Lock, Download, Printer, Heart, Copy, Check, Gavel, FileCheck, MessageSquare, BriefcaseBusiness, Star, Presentation, BarChart2, PieChart, Sparkles, Newspaper } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { Politician, FeedItem, TimelineItem, LegislativeVote, Relatoria, Bill, Speech } from '../types';
-import { enrichPoliticianData, fetchDiscursos, getGenderedRole, fetchVotacoesPorAno, fetchRelatorias } from '../services/camaraApi';
+import { enrichPoliticianData, fetchDiscursos, getGenderedRole, fetchVotacoesPorAno, fetchRelatorias, formatPartyName } from '../services/camaraApi';
 import { getSearchContext, AIResponse } from '../services/ai';
 import { SkeletonProfileHeader } from '../components/Skeleton';
 import { Glossary } from '../components/Glossary';
-
-// DADOS OFICIAIS IBGE - PNAD Contínua 2023 (Rendimento médio mensal domiciliar per capita)
-const IBGE_INCOME_BY_STATE: Record<string, number> = {
-    'DF': 3357, 'SP': 2492, 'RJ': 2367, 'RS': 2304, 'SC': 2269, 'PR': 2115, 
-    'MS': 2030, 'MT': 1991, 'GO': 1836, 'ES': 1782, 'MG': 1729, 'RO': 1527, 
-    'TO': 1485, 'SE': 1278, 'RN': 1272, 'PB': 1228, 'AP': 1222, 'PI': 1215, 
-    'PA': 1205, 'CE': 1166, 'AM': 1136, 'BA': 1129, 'PE': 1113, 'AL': 1110, 
-    'RR': 1097, 'MA': 907, 'AC': 1095, 'BR': 1893 // Média Brasil
-};
 
 interface ProfileViewProps {
   candidate: Politician;
@@ -100,8 +91,6 @@ const TimelineIcon = ({ type }: { type: string }) => {
     }
 };
 
-// ... (ReceiptModal mantido) ...
-// --- RECIBO DA VERGONHA MODAL 2.0 ---
 const ReceiptModal = ({ expense, politician, onClose }: { expense: TimelineItem, politician: Politician, onClose: () => void }) => {
     const [generating, setGenerating] = useState(false);
 
@@ -293,7 +282,7 @@ const SimpleLineChart = ({ data }: { data: { label: string, value: number }[] })
                         <g key={i} className="group">
                             <circle cx={x} cy={y} r="4" className="fill-white stroke-blue-500 stroke-2 dark:fill-gray-900 group-hover:r-6 transition-all" />
                             <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                <rect x={x - 30} y={y - 35} width="60" height="25" rx="4" className="fill-black dark:fill-white" />
+                                <rect x={x - 30} y={y - 35} width="60" height="25" rx="12.5" className="fill-black dark:fill-white" />
                                 <text x={x} y={y - 18} textAnchor="middle" className="fill-white dark:fill-black text-[10px] font-bold">
                                     {Math.round(d.value/1000)}k
                                 </text>
@@ -330,49 +319,6 @@ const SpendingThermometer = ({ current, average }: { current: number, average: n
             <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
                 <span>R$ 0</span>
                 <span>{ratio.toFixed(1)}x da Média</span>
-            </div>
-        </div>
-    );
-};
-
-// --- COMPONENTE NOVO: Contexto Socioeconômico IBGE ---
-const IBGEContextCard = ({ spending, state }: { spending: number, state: string }) => {
-    const avgIncome = IBGE_INCOME_BY_STATE[state] || IBGE_INCOME_BY_STATE['BR'];
-    const ratio = spending / avgIncome;
-    const families = Math.round(ratio);
-
-    return (
-        <div className="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/10 dark:to-blue-900/10 p-6 rounded-[2.5rem] border border-green-100 dark:border-green-800/30 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                <Scale size={80} />
-            </div>
-            
-            <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-white dark:bg-gray-800 rounded-full text-green-600 shadow-sm">
-                    <PersonStanding size={20}/>
-                </div>
-                <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-sm">Realidade vs. Mandato</h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase">Fonte: IBGE (PNAD 2023)</p>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-4 relative z-10">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
-                    O gasto deste mês equivale à renda mensal de <span className="font-black text-green-600 dark:text-green-400 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-lg shadow-sm">{families} cidadãos</span> do estado de {state}.
-                </p>
-
-                <div className="bg-white/60 dark:bg-black/20 rounded-xl p-3 flex justify-between items-center border border-white/50 dark:border-white/5">
-                    <div className="text-center">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold mb-1">Renda Média ({state})</p>
-                        <p className="text-xs font-black text-gray-800 dark:text-white">R$ {avgIncome.toLocaleString()}</p>
-                    </div>
-                    <div className="h-8 w-px bg-gray-300 dark:bg-gray-700"></div>
-                    <div className="text-center">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold mb-1">Cota Parlamentar</p>
-                        <p className="text-xs font-black text-blue-600 dark:text-blue-400">R$ {spending.toLocaleString()}</p>
-                    </div>
-                </div>
             </div>
         </div>
     );
@@ -560,7 +506,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const chartSegments = getChartData();
   const activeExpense = hoveredExpenseIndex !== null ? candidate.expensesBreakdown?.[hoveredExpenseIndex] : null;
 
-  // ... (ContactCard, YearSelector, ActivityList, StatsCard, TabButton, showSkeleton mantidos iguais) ...
   const ContactCard = () => (
       <div className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/50 dark:border-white/5 shadow-sm space-y-4 h-full flex flex-col justify-between">
           <h3 className="font-black text-gray-900 dark:text-white text-lg flex items-center gap-2">
@@ -931,7 +876,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </div>
       )}
 
-      {/* ... (Header Section Omitted for brevity, unchanged) ... */}
+      {/* HEADER */}
       <div className="relative w-full md:w-[calc(100%-2rem)] mx-auto mt-2 md:mt-4 overflow-hidden rounded-[3rem] shadow-xl bg-gray-900 min-h-[220px] md:min-h-[270px] flex items-end">
           <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-yellow-500 to-blue-800"></div>
           <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/en/0/05/Flag_of_Brazil.svg')] bg-cover bg-center opacity-20 mix-blend-soft-light"></div>
@@ -988,7 +933,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
               <div className="flex-1 text-center md:text-left text-white mb-2">
                   <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
-                      <span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 uppercase tracking-wider">{candidate.party}</span>
+                      <span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 uppercase tracking-wider">{formatPartyName(candidate.party)}</span>
                       <span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 uppercase tracking-wider">{genderedRole}</span>
                       <span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 uppercase tracking-wider">{candidate.state}</span>
                   </div>
@@ -1144,7 +1089,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                       </div>
                   )}
 
-                  {/* ... (Outras abas mantidas inalteradas, omitidas por brevidade no diff) ... */}
                   {profileTab === 'roles' && (
                       <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid grid-cols-1 md:grid-cols-2 gap-4">
                           {candidate.roles && candidate.roles.length > 0 ? candidate.roles.map((role, idx) => {
@@ -1168,283 +1112,237 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                           <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-2">{role.name}</h4>
                                           <p className="text-xs text-gray-500 font-medium">{role.type}</p>
                                       </div>
-                                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                           <Calendar size={12}/> Desde {new Date(role.startDate).toLocaleDateString('pt-BR')}
                                       </div>
                                   </div>
-                              )
+                              );
                           }) : (
-                              <div className="col-span-2 text-center py-20 text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-700">
-                                  <BriefcaseBusiness size={48} className="mx-auto mb-4 opacity-20"/>
-                                  <p className="font-bold text-sm">Nenhum cargo ou comissão registrado atualmente.</p>
+                              <div className="col-span-full text-center py-20 text-gray-400">
+                                  <Users size={48} className="mx-auto mb-4 opacity-20"/>
+                                  <p className="font-bold text-sm">Sem cargos registrados.</p>
                               </div>
                           )}
                       </div>
                   )}
 
-                  {profileTab === 'assets' && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                           <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-[2rem] border border-amber-200 dark:border-amber-800/50 flex flex-col md:flex-row gap-5 items-start shadow-sm mb-6">
-                                <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-full shrink-0">
-                                    <Lock size={24}/>
-                                </div>
-                                <div>
-                                    <h3 className="font-black text-amber-900 dark:text-amber-300 text-lg mb-1">Dados de Patrimônio</h3>
-                                    <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed opacity-90">
-                                        Por questões de segurança da API do Tribunal Superior Eleitoral (DivulgaCand), o acesso automatizado a bens e doações é restrito. Para garantir a veracidade, consulte diretamente a fonte oficial.
-                                    </p>
-                                    <a href="https://divulgacandcontas.tse.jus.br/" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-4 py-2 rounded-full text-xs font-bold hover:bg-amber-300 transition-colors">
-                                        Acessar DivulgaCand (TSE) <ExternalLink size={12}/>
-                                    </a>
-                                </div>
-                           </div>
-                      </div>
-                  )}
-
                   {profileTab === 'projects' && (
-                      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                          {candidate.bills && candidate.bills.length > 0 ? (
-                              <div className="space-y-4 pb-4">
-                                  {candidate.bills.map((bill, idx) => (
-                                      <a key={idx} href={bill.externalLink} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-600 transition-all shadow-sm group hover:shadow-xl hover:scale-[1.01]">
-                                          <div className="flex justify-between items-start mb-4">
-                                              <span className="text-xs font-bold text-green-700 bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-1 shadow-sm">{bill.type} {bill.number}/{bill.year} <ExternalLink size={10}/></span>
-                                              
-                                              {/* TOOLTIP DE STATUS */}
-                                              <div className="relative group/tooltip">
-                                                  <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border cursor-help ${getStatusColor(bill.status)}`}>
-                                                      {bill.status}
-                                                  </span>
-                                                  <div className="absolute bottom-full mb-2 right-0 w-48 bg-gray-900 text-white text-[10px] p-3 rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50 text-right shadow-xl border border-gray-700">
-                                                      <p className="font-bold mb-1 text-gray-300">O que significa?</p>
-                                                      {getBillStatusTooltip(bill.status)}
-                                                      <div className="absolute top-full right-4 border-4 border-transparent border-t-gray-900"></div>
-                                                  </div>
-                                              </div>
-
-                                          </div>
-                                          <h4 className="font-bold text-gray-900 dark:text-white mb-3 text-xl leading-tight group-hover:text-green-600 transition-colors">{bill.title}</h4>
-                                          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                            {bill.description.split(' ').map((word, i) => (
-                                                <React.Fragment key={i}><Glossary term={word.replace(/[.,]/g, '')}>{word}</Glossary>{' '}</React.Fragment>
-                                            ))}
-                                          </p>
-                                      </a>
-                                  ))}
-                              </div>
-                          ) : <div className="text-center py-20 text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-700">Nenhum projeto recente encontrado na API.</div>}
-                      </div>
+                       <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 space-y-4">
+                           {candidate.bills && candidate.bills.length > 0 ? candidate.bills.map((bill, i) => (
+                               <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                   <div className={`absolute top-0 left-0 w-1.5 h-full ${getStatusColor(bill.status).split(' ')[0]}`}></div>
+                                   <div className="flex justify-between items-start mb-2 pl-4">
+                                       <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${getStatusColor(bill.status)}`} title={getBillStatusTooltip(bill.status)}>
+                                           {bill.status}
+                                       </span>
+                                       <span className="text-[10px] font-bold text-gray-400">{new Date(bill.date).toLocaleDateString('pt-BR')}</span>
+                                   </div>
+                                   <div className="pl-4">
+                                       <h4 className="font-black text-gray-900 dark:text-white text-base mb-1 group-hover:text-blue-600 transition-colors">
+                                            {bill.title}
+                                       </h4>
+                                       <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-2 mb-4">
+                                           {bill.description}
+                                       </p>
+                                       {bill.externalLink && (
+                                           <a href={bill.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:text-blue-600">
+                                               Ver Tramitação <ExternalLink size={12}/>
+                                           </a>
+                                       )}
+                                   </div>
+                               </div>
+                           )) : (
+                               <div className="text-center py-20 text-gray-400">
+                                   <FileText size={48} className="mx-auto mb-4 opacity-20"/>
+                                   <p className="font-bold text-sm">Nenhum projeto encontrado.</p>
+                               </div>
+                           )}
+                       </div>
                   )}
 
                   {profileTab === 'money' && (
-                       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500 pr-2">
-                           <div className="bg-white dark:bg-gray-800 p-8 rounded-[3rem] border border-gray-100 dark:border-gray-700 shadow-xl flex flex-col items-center relative overflow-hidden">
-                               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-10">Raio-X dos Gastos</h3>
-                               {candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 ? (
-                                   <div className="relative w-full max-w-[320px] aspect-square mb-10 group">
-                                        <svg viewBox="0 0 40 40" className="w-full h-full transform -rotate-90 drop-shadow-2xl">
-                                            <circle cx="20" cy="20" r="15.91549430918954" fill="transparent" stroke="#e5e7eb" strokeWidth="4" className="dark:stroke-gray-700 opacity-20" />
+                       <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                           {/* Chart */}
+                           {candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 && (
+                               <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm mb-6 flex flex-col md:flex-row items-center gap-8">
+                                   <div className="relative w-48 h-48 shrink-0">
+                                        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
                                             {chartSegments.map((segment, i) => (
-                                                <circle key={i} cx="20" cy="20" r="15.91549430918954" fill="transparent" stroke={segment.color} strokeWidth={hoveredExpenseIndex === i ? "6" : "4"} strokeDasharray={`${segment.percent} ${100 - segment.percent}`} strokeDashoffset={segment.offset} strokeLinecap="round" className="transition-all duration-500 ease-out cursor-pointer hover:opacity-80" onMouseEnter={() => setHoveredExpenseIndex(i)} onMouseLeave={() => setHoveredExpenseIndex(null)}/>
+                                                <circle
+                                                    key={i}
+                                                    cx="18" cy="18" r="15.9155"
+                                                    fill="none"
+                                                    stroke={segment.color}
+                                                    strokeWidth="4"
+                                                    strokeDasharray={`${segment.percent}, 100`}
+                                                    strokeDashoffset={segment.offset}
+                                                    className="transition-all duration-1000 ease-out hover:stroke-[6] cursor-pointer"
+                                                    onMouseEnter={() => setHoveredExpenseIndex(i)}
+                                                    onMouseLeave={() => setHoveredExpenseIndex(null)}
+                                                />
                                             ))}
+                                            <circle cx="18" cy="18" r="10" fill="white" className="dark:fill-gray-800"/>
                                         </svg>
-                                        <div className="absolute inset-6 bg-white dark:bg-gray-800 rounded-full flex flex-col items-center justify-center shadow-[inset_0_4px_20px_rgba(0,0,0,0.05)] z-10 pointer-events-none transition-all duration-300 border border-gray-100 dark:border-gray-700">
-                                            <span className="text-2xl font-black text-gray-900 dark:text-white">R$ {Math.round(activeExpense ? activeExpense.value : candidate.stats.spending).toLocaleString()}</span>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                            {activeExpense ? (
+                                                <>
+                                                    <span className="text-2xl font-black text-gray-900 dark:text-white">{activeExpense.percent}%</span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase text-center max-w-[80px] truncate">{activeExpense.type}</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-xs font-bold text-gray-400 uppercase">Gastos</span>
+                                            )}
                                         </div>
                                    </div>
-                               ) : (
-                                   <div className="text-center py-12"><Banknote size={32} className="mx-auto mb-4 opacity-20"/><p>Sem dados de gastos recentes.</p></div>
-                               )}
-                           </div>
-
-                           {/* CARD DE CONTEXTO IBGE */}
-                           {candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 && (
-                                <IBGEContextCard 
-                                    spending={candidate.stats.spending} 
-                                    state={candidate.state}
-                                />
-                           )}
-
-                           {/* NOVO: TOP FORNECEDORES (RANKING FINANCEIRO) */}
-                           {topSuppliers.length > 0 && (
-                               <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700">
-                                   <div className="flex items-center gap-2 mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
-                                       <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600"><PieChart size={16}/></div>
-                                       <div>
-                                           <h3 className="font-bold text-gray-900 dark:text-white">Quem recebe?</h3>
-                                           <p className="text-[10px] text-gray-500 font-bold uppercase">Maiores fornecedores (mês)</p>
-                                       </div>
-                                   </div>
-                                   <div className="space-y-3">
-                                       {topSuppliers.map((sup, idx) => (
-                                           <div key={idx} className="flex items-center justify-between">
-                                               <div className="flex items-center gap-3">
-                                                   <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-500">#{idx + 1}</div>
-                                                   <span className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-[200px]">{sup.name}</span>
+                                   <div className="flex-1 grid grid-cols-2 gap-3 w-full">
+                                       {chartSegments.slice(0, 6).map((seg, i) => (
+                                           <div key={i} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onMouseEnter={() => setHoveredExpenseIndex(i)} onMouseLeave={() => setHoveredExpenseIndex(null)}>
+                                               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color }}></div>
+                                               <div className="min-w-0">
+                                                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{seg.type}</p>
+                                                   <p className="text-[10px] text-gray-400">R$ {seg.value.toLocaleString('pt-BR')}</p>
                                                </div>
-                                               <span className="text-xs font-black text-gray-900 dark:text-white">R$ {sup.val.toLocaleString('pt-BR')}</span>
                                            </div>
                                        ))}
                                    </div>
                                </div>
                            )}
-
-                           {/* NOVO: GRAFICO DE LINHA (EVOLUCAO) */}
+                           
+                           {/* History Line Chart */}
                            {candidate.expensesHistory && candidate.expensesHistory.length > 0 && (
-                               <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 overflow-hidden">
-                                   <div className="flex items-center gap-2 mb-2">
-                                       <TrendingUp size={20} className="text-blue-500" />
-                                       <h3 className="font-bold text-gray-900 dark:text-white">Evolução Mensal</h3>
-                                   </div>
-                                   <SimpleLineChart data={candidate.expensesHistory} />
+                               <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm mb-6">
+                                   <h4 className="text-xs font-black uppercase text-gray-400 mb-4">Evolução de Gastos</h4>
+                                   <SimpleLineChart data={candidate.expensesHistory.map(h => ({ label: h.label, value: h.value }))} />
                                </div>
                            )}
 
-                           <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700">
-                                <h3 className="font-black text-gray-900 dark:text-white text-lg mb-4 pl-2 border-l-4 border-blue-500">Últimos Recibos (Oficiais)</h3>
-                                <div className="space-y-3">
-                                    {candidate.timeline && candidate.timeline.filter(t => t.type === 'despesa').length > 0 ? (
-                                        candidate.timeline.filter(t => t.type === 'despesa').slice(0, 10).map((receipt, idx) => {
-                                            const numericValue = parseFloat(receipt.value?.replace(/[^\d,-]/g, '').replace(',', '.') || '0');
-                                            const isHighValue = numericValue > 2000;
-
-                                            return (
-                                                <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors gap-3">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{receipt.title}</p>
-                                                            {isHighValue && (
-                                                                <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                                    <AlertTriangle size={8} /> ALERTA
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <p className="font-bold text-gray-800 dark:text-white text-sm line-clamp-1">{receipt.description}</p>
-                                                        <p className="text-[10px] text-gray-400 mt-1">{new Date(receipt.date).toLocaleDateString('pt-BR')}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                                                        <p className="font-black text-blue-600 dark:text-blue-400 text-sm">{receipt.value}</p>
-                                                        <div className="flex gap-2">
-                                                            {receipt.link && (
-                                                                <a href={receipt.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-blue-500 bg-white dark:bg-gray-800 px-3 py-2 rounded-full border border-gray-200 dark:border-gray-600 shadow-sm transition-transform active:scale-95">
-                                                                    Ver Nota <ExternalLink size={10}/>
-                                                                </a>
-                                                            )}
-                                                            <button 
-                                                                onClick={() => setSelectedReceipt(receipt)}
-                                                                className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-2 rounded-full shadow-sm transition-transform active:scale-95"
-                                                            >
-                                                                Comprovante <Printer size={10}/>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="text-center text-gray-400 py-4">Nenhum recibo recente encontrado na API.</p>
-                                    )}
-                                </div>
-                           </div>
+                           {/* Top Suppliers */}
+                           {topSuppliers.length > 0 && (
+                               <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm">
+                                   <h4 className="text-xs font-black uppercase text-gray-400 mb-4">Maiores Fornecedores</h4>
+                                   <div className="space-y-3">
+                                       {topSuppliers.map((sup, i) => (
+                                           <div key={i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                                               <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate flex-1 pr-4">{sup.name}</span>
+                                               <span className="text-xs font-black text-gray-900 dark:text-white whitespace-nowrap">R$ {sup.val.toLocaleString('pt-BR')}</span>
+                                           </div>
+                                       ))}
+                                   </div>
+                               </div>
+                           )}
                        </div>
                   )}
 
                   {profileTab === 'speeches' && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                          {/* NOVO: CLOUD DE TOPICOS (DNA DO MANDATO) */}
-                          {candidate.speeches && candidate.speeches.length > 0 && (
-                              <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                  <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
-                                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600">
-                                          <MessageSquare size={20}/>
-                                      </div>
-                                      <div>
-                                          <h3 className="font-bold text-gray-900 dark:text-white text-lg">DNA do Mandato</h3>
-                                          <p className="text-xs text-gray-500">Os temas mais abordados nos discursos recentes.</p>
-                                      </div>
-                                  </div>
-                                  
-                                  <div className="flex flex-wrap gap-2 justify-center">
-                                      {Array.from(new Set(candidate.speeches.flatMap(s => s.keywords || []))).slice(0, 15).map((kw, i) => {
-                                          const size = i < 3 ? 'text-lg px-4 py-2 bg-purple-100 text-purple-700 border-purple-200' : i < 7 ? 'text-sm px-3 py-1.5 bg-gray-100 text-gray-700 border-gray-200' : 'text-xs px-2 py-1 bg-gray-50 text-gray-500 border-gray-100';
-                                          const darkClass = i < 3 ? 'dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' : 'dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-                                          
-                                          return (
-                                              <span key={i} className={`rounded-full font-black border uppercase tracking-wide ${size} ${darkClass}`}>
-                                                  #{kw}
-                                              </span>
-                                          )
-                                      })}
-                                  </div>
-                              </div>
-                          )}
-
-                          {candidate.speeches && candidate.speeches.length > 0 ? (
-                              <>
-                              <div className="space-y-6 pb-4">
-                                  {candidate.speeches.map((speech, idx) => (
-                                      <div key={idx} className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden group hover:border-purple-200 dark:hover:border-purple-900/50 transition-colors">
-                                          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Mic2 size={64}/></div>
-                                          <div className="flex justify-between items-start mb-3">
-                                              <span className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 rounded-full uppercase tracking-wider">{speech.type}</span>
-                                              <span className="text-xs font-bold text-gray-400">{new Date(speech.date).toLocaleDateString('pt-BR')}</span>
+                      <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                          <div className="grid grid-cols-1 gap-4">
+                              {candidate.speeches && candidate.speeches.length > 0 ? candidate.speeches.map((speech, i) => (
+                                  <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
+                                      <div className="flex items-center gap-3 mb-3">
+                                          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600">
+                                              <Mic2 size={16}/>
                                           </div>
-                                          <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed italic mb-6">"{speech.summary}"</p>
-                                          <a href={speech.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-white bg-black dark:bg-white dark:text-black px-6 py-3 rounded-full hover:opacity-80 transition-opacity shadow-lg">
-                                              Ler Transcrição <ExternalLink size={12}/>
-                                          </a>
+                                          <div>
+                                              <p className="text-[10px] font-bold text-gray-400 uppercase">{new Date(speech.date).toLocaleDateString('pt-BR')}</p>
+                                              <p className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase">{speech.type}</p>
+                                          </div>
                                       </div>
-                                  ))}
+                                      <p className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-relaxed italic">
+                                          "{speech.summary}"
+                                      </p>
+                                      {speech.externalLink && (
+                                           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                                               <a href={speech.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black dark:hover:text-white transition-colors">
+                                                   <ExternalLink size={12}/> Fonte / Áudio
+                                               </a>
+                                           </div>
+                                      )}
+                                  </div>
+                              )) : (
+                                  <div className="text-center py-20 text-gray-400">
+                                      <Mic2 size={48} className="mx-auto mb-4 opacity-20"/>
+                                      <p className="font-bold text-sm">Nenhum discurso registrado.</p>
+                                  </div>
+                              )}
+                          </div>
+                          {candidate.speeches && candidate.speeches.length >= 5 && (
+                              <div className="mt-6 text-center">
                                   <button 
                                       onClick={handleLoadMoreSpeeches} 
                                       disabled={loadingSpeeches}
-                                      className="w-full py-4 rounded-[1.5rem] bg-gray-100 dark:bg-gray-800 text-gray-500 font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex justify-center gap-2"
+                                      className="px-6 py-3 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
                                   >
-                                      {loadingSpeeches ? <Loader2 className="animate-spin" size={20}/> : <Plus size={20}/>}
-                                      Carregar mais discursos
+                                      {loadingSpeeches ? <Loader2 className="animate-spin" size={16}/> : <Plus size={16}/>}
+                                      Carregar Mais
                                   </button>
                               </div>
-                              </>
-                          ) : <div className="text-center py-20 text-gray-400">Nenhum discurso recente encontrado.</div>}
+                          )}
                       </div>
                   )}
 
                   {profileTab === 'fronts' && (
-                       <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {candidate.fronts && candidate.fronts.length > 0 ? candidate.fronts.map(front => (
-                               <a key={front.id} href={front.externalLink} target="_blank" rel="noopener noreferrer" className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 hover:shadow-lg transition-all flex items-center gap-4 group h-fit">
-                                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 group-hover:text-green-600 group-hover:bg-green-50 dark:group-hover:bg-green-900/30 transition-colors shrink-0">
-                                       <Users size={20} />
+                      <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {candidate.fronts && candidate.fronts.length > 0 ? candidate.fronts.map((front, i) => (
+                                  <a key={i} href={front.externalLink} target="_blank" rel="noopener noreferrer" className="bg-white dark:bg-gray-800 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all group flex items-start gap-4 hover:border-blue-200">
+                                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-600 shrink-0 group-hover:scale-110 transition-transform">
+                                          <Users size={20}/>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                          <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-1 group-hover:text-blue-600 transition-colors">{front.title}</h4>
+                                          <p className="text-[10px] text-gray-400 font-bold uppercase">Frente Parlamentar</p>
+                                      </div>
+                                      <ExternalLink size={14} className="text-gray-300 group-hover:text-blue-500"/>
+                                  </a>
+                              )) : (
+                                  <div className="col-span-full text-center py-20 text-gray-400">
+                                      <Users size={48} className="mx-auto mb-4 opacity-20"/>
+                                      <p className="font-bold text-sm">Não participa de frentes parlamentares.</p>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  )}
+
+                  {profileTab === 'assets' && (
+                      <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                          <div className="bg-yellow-50 dark:bg-yellow-900/10 p-6 rounded-[2rem] border border-yellow-100 dark:border-yellow-900/30 mb-6 text-center">
+                              <Wallet className="mx-auto text-yellow-600 mb-2" size={32}/>
+                              <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm">Dados de Patrimônio</p>
+                              <p className="text-yellow-600 dark:text-yellow-400 text-xs mt-1">
+                                  Declaração de bens fornecida ao TSE nas eleições de 2022.
+                              </p>
+                          </div>
+                          
+                          {candidate.assets && candidate.assets.length > 0 ? (
+                               <div className="space-y-4">
+                                   <div className="flex justify-between items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                                       <span className="text-xs font-black uppercase text-gray-500">Total Declarado</span>
+                                       <span className="text-lg font-black text-gray-900 dark:text-white">
+                                           R$ {candidate.assets.reduce((acc, a) => acc + parseFloat(a.value.replace(/[^\d,]/g, '').replace(',', '.')), 0).toLocaleString('pt-BR')}
+                                       </span>
                                    </div>
-                                   <div>
-                                       <h4 className="font-bold text-gray-800 dark:text-white text-sm leading-tight group-hover:text-green-600 transition-colors">{front.title}</h4>
-                                   </div>
-                               </a>
-                           )) : (
-                               <div className="col-span-2 text-center py-20 text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-700">
-                                   Não participa de frentes parlamentares registradas.
+                                   {candidate.assets.map((asset, i) => (
+                                       <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl">
+                                           <div>
+                                               <p className="text-sm font-bold text-gray-800 dark:text-white">{asset.description}</p>
+                                               <p className="text-[10px] font-bold text-gray-400 uppercase">{asset.type}</p>
+                                           </div>
+                                           <span className="text-sm font-black text-gray-900 dark:text-white">{asset.value}</span>
+                                       </div>
+                                   ))}
                                </div>
-                           )}
-                       </div>
+                          ) : (
+                               <div className="text-center py-10 text-gray-400">
+                                   <p className="font-bold text-sm">Patrimônio não declarado ou indisponível.</p>
+                               </div>
+                          )}
+                      </div>
                   )}
 
               </div>
           </div>
       </div>
-
-      {showAuditModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300" onClick={() => setShowAuditModal(false)}>
-              <div className="bg-white dark:bg-gray-900 rounded-[3rem] p-0 max-w-lg w-full shadow-2xl relative border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col max-h-[80vh] scale-100 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                  <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-                      <div><h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><Code size={20} className="text-green-600" /> Auditoria Cidadã</h3></div>
-                      <button onClick={() => setShowAuditModal(false)} className="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-500 hover:text-red-500 transition-colors"><X size={20}/></button>
-                  </div>
-                  <div className="p-8 overflow-y-auto font-mono text-xs bg-[#0d1117] text-green-400">
-                      <pre className="whitespace-pre-wrap break-all leading-relaxed">{JSON.stringify(candidate, null, 2)}</pre>
-                  </div>
-              </div>
-          </div>
-      )}
     </div>
   );
 };
