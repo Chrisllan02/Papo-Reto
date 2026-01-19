@@ -5,6 +5,8 @@ interface BrazilMapProps {
   data: Record<string, number>; // { SP: 1000, RJ: 500 }
   labelFormatter?: (value: number) => string;
   metricName?: string;
+  selectedState?: string;
+  onSelectState?: (uf: string) => void;
 }
 
 // Simple path data for Brazil states (Simplified for performance/code size)
@@ -49,7 +51,13 @@ const STATE_LABELS: Record<string, {x: number, y: number}> = {
   SP: {x: 430, y: 368}, SE: {x: 540, y: 193}, TO: {x: 400, y: 198}
 };
 
-const BrazilMap: React.FC<BrazilMapProps> = ({ data, labelFormatter = (v) => v.toLocaleString(), metricName = 'Valor' }) => {
+const BrazilMap: React.FC<BrazilMapProps> = ({ 
+  data, 
+  labelFormatter = (v) => v.toLocaleString(), 
+  metricName = 'Valor',
+  selectedState,
+  onSelectState
+}) => {
   const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   // Calculate min/max for color scale
@@ -58,69 +66,85 @@ const BrazilMap: React.FC<BrazilMapProps> = ({ data, labelFormatter = (v) => v.t
   const minVal = Math.min(...values, 0);
 
   const getColor = (uf: string) => {
+    // Se selecionado, cor de destaque (Amarelo Ouro)
+    if (selectedState === uf) return '#EAB308'; // yellow-500
+
     const val = data[uf] || 0;
-    // Simple Green Scale
+    // Blue Scale (HSL 215)
     const intensity = (val - minVal) / (maxVal - minVal);
     
-    // Using HSL for easier gradient: Green is approx 140 hue. Lightness from 90% (light) to 30% (dark)
-    const lightness = 90 - (intensity * 60); 
+    // Lightness from 90% (light) to 40% (dark)
+    const lightness = 90 - (intensity * 50); 
     
     // If no data, return gray
-    if (val === 0) return 'fill-gray-200 dark:fill-gray-800';
+    if (val === 0) return undefined; // use fallback class
     
-    return `hsl(142, 70%, ${lightness}%)`; 
+    return `hsl(215, 80%, ${lightness}%)`; 
   };
 
   return (
-    <div className="relative w-full h-full min-h-[400px] flex items-center justify-center">
+    <div className="relative w-full h-full min-h-[400px] flex items-center justify-center select-none">
       <svg viewBox="0 0 600 550" className="w-full h-full max-w-[600px] drop-shadow-xl">
-        {Object.keys(STATE_PATHS).map((uf) => (
-          <g key={uf} 
-             onMouseEnter={() => setHoveredState(uf)}
-             onMouseLeave={() => setHoveredState(null)}
-             className="cursor-pointer transition-all duration-300 hover:brightness-110 hover:-translate-y-1"
-          >
-            <path
-              d={STATE_PATHS[uf]}
-              fill={data[uf] ? undefined : 'currentColor'} // Use inline style for dynamic color, class for fallback
-              style={{ fill: data[uf] ? getColor(uf) : undefined }}
-              stroke="white"
-              strokeWidth={1.5}
-              className={`transition-colors duration-500 ${!data[uf] ? 'text-gray-200 dark:text-gray-800' : ''}`}
-            />
-          </g>
-        ))}
+        {Object.keys(STATE_PATHS).map((uf) => {
+          const isSelected = selectedState === uf;
+          const isHovered = hoveredState === uf;
+          
+          return (
+            <g key={uf} 
+               onMouseEnter={() => setHoveredState(uf)}
+               onMouseLeave={() => setHoveredState(null)}
+               onClick={() => onSelectState && onSelectState(uf)}
+               className="cursor-pointer transition-all duration-300"
+               style={{ 
+                 transform: isSelected || isHovered ? 'translateY(-2px)' : 'none',
+                 filter: isSelected ? 'drop-shadow(0 4px 6px rgba(234, 179, 8, 0.4))' : 'none'
+               }}
+            >
+              <path
+                d={STATE_PATHS[uf]}
+                fill={data[uf] || isSelected ? undefined : 'currentColor'} 
+                style={{ fill: getColor(uf) }}
+                stroke={isSelected ? '#FEF08A' : 'white'}
+                strokeWidth={isSelected ? 2 : 1.5}
+                className={`transition-colors duration-500 ${!data[uf] && !isSelected ? 'text-gray-200 dark:text-gray-800' : ''}`}
+              />
+            </g>
+          );
+        })}
         
-        {/* Labels Layer (Pointer events none to not block hover on paths) */}
-        {Object.keys(STATE_LABELS).map((uf) => (
-           <text
-             key={`label-${uf}`}
-             x={STATE_LABELS[uf].x}
-             y={STATE_LABELS[uf].y}
-             textAnchor="middle"
-             alignmentBaseline="middle"
-             className="text-[8px] font-black fill-gray-600 dark:fill-gray-300 pointer-events-none opacity-80"
-           >
-             {uf}
-           </text>
-        ))}
+        {/* Labels Layer */}
+        {Object.keys(STATE_LABELS).map((uf) => {
+           const isSelected = selectedState === uf;
+           return (
+             <text
+               key={`label-${uf}`}
+               x={STATE_LABELS[uf].x}
+               y={STATE_LABELS[uf].y}
+               textAnchor="middle"
+               alignmentBaseline="middle"
+               className={`text-[8px] font-black pointer-events-none transition-colors duration-300 ${isSelected ? 'fill-black' : 'fill-gray-600 dark:fill-gray-300 opacity-80'}`}
+             >
+               {uf}
+             </text>
+           );
+        })}
       </svg>
 
       {/* Floating Tooltip */}
       {hoveredState && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl pointer-events-none animate-in fade-in zoom-in duration-200 z-20 border border-white/10">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl pointer-events-none animate-in fade-in zoom-in duration-200 z-20 border border-white/10">
            <div className="flex flex-col items-center">
               <span className="text-2xl font-black">{hoveredState}</span>
               <span className="text-xs uppercase font-bold text-gray-400 mb-1">{metricName}</span>
-              <span className="text-lg font-bold text-green-400">{labelFormatter(data[hoveredState] || 0)}</span>
+              <span className="text-lg font-bold text-blue-400">{labelFormatter(data[hoveredState] || 0)}</span>
            </div>
         </div>
       )}
       
       {/* Legend Scale */}
-      <div className="absolute bottom-0 right-0 flex flex-col items-end gap-1 p-4">
-          <div className="h-32 w-2 rounded-full bg-gradient-to-t from-[#005720] to-[#E0F2E9] border border-white/20"></div>
-          <span className="text-[10px] font-bold text-gray-400">Max</span>
+      <div className="absolute bottom-0 right-0 flex flex-col items-end gap-1 p-4 pointer-events-none">
+          <div className="h-24 w-2 rounded-full bg-gradient-to-t from-[#16366B] to-[#D3E0F4] border border-white/20"></div>
+          <span className="text-[10px] font-bold text-gray-400">Densidade</span>
       </div>
     </div>
   );

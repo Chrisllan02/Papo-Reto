@@ -44,10 +44,10 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
         const winB = valB > valA;
         const tie = valA === valB;
 
-        // Cores: Se inverse=true (ex: Gastos), maior é "ruim" (vermelho) e menor é "bom" (verde).
+        // Cores: Se inverse=true (ex: Gastos), maior é "ruim" (amarelo) e menor é "bom" (verde).
         // Se inverse=false (ex: Presença), maior é "bom" (verde).
-        const colorA = tie ? 'bg-gray-400' : (winA ? (inverse ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-300 dark:bg-gray-700');
-        const colorB = tie ? 'bg-gray-400' : (winB ? (inverse ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-300 dark:bg-gray-700');
+        const colorA = tie ? 'bg-gray-400' : (winA ? (inverse ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-300 dark:bg-gray-700');
+        const colorB = tie ? 'bg-gray-400' : (winB ? (inverse ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-300 dark:bg-gray-700');
 
         return (
             <div className="py-3">
@@ -120,11 +120,11 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
                  <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] p-6 border border-gray-100 dark:border-gray-700 shadow-sm mb-8 relative overflow-hidden">
                      {totalVotes > 0 ? (
                          <>
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 opacity-30"></div>
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-500 via-yellow-300 to-green-500 opacity-30"></div>
                             <div className="flex flex-col items-center text-center">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Concordância em Votações</span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className={`text-5xl font-black tracking-tighter ${score > 70 ? 'text-green-500' : score < 30 ? 'text-red-500' : 'text-yellow-500'}`}>
+                                    <span className={`text-5xl font-black tracking-tighter ${score > 70 ? 'text-green-500' : score < 30 ? 'text-yellow-600' : 'text-yellow-500'}`}>
                                         {score}%
                                     </span>
                                 </div>
@@ -190,7 +190,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
                                  
                                  const getIcon = (v: string) => {
                                      if (v === 'SIM') return <CheckCircle2 size={18} className="text-green-500"/>;
-                                     if (v === 'NAO' || v === 'NÃO') return <XCircle size={18} className="text-red-500"/>;
+                                     if (v === 'NAO' || v === 'NÃO') return <XCircle size={18} className="text-yellow-600"/>;
                                      return <HelpCircle size={18} className="text-gray-300"/>;
                                  };
 
@@ -208,7 +208,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA, candidateB,
                                          <div className="flex-1 text-center px-2">
                                              <p className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide group-hover:text-blue-500 transition-colors">{q.tema}</p>
                                              {agree && voteA !== 'N/A' && <span className="text-[9px] bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-0.5 rounded-full font-bold">Concordam</span>}
-                                             {!agree && voteA !== 'N/A' && voteB !== 'N/A' && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 px-2 py-0.5 rounded-full font-bold">Discordam</span>}
+                                             {!agree && voteA !== 'N/A' && voteB !== 'N/A' && <span className="text-[9px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 px-2 py-0.5 rounded-full font-bold">Discordam</span>}
                                          </div>
 
                                          {/* Vote B */}

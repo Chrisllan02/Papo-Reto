@@ -21,10 +21,10 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
       if (['PT', 'PSOL', 'PCDOB', 'PSB', 'REDE', 'PV', 'PDT'].includes(p)) return { 
           title: "Progressista", 
           desc: "Foco no social e Estado forte.",
-          color: "from-red-600 to-pink-600",
-          shadow: "shadow-red-500/50",
+          color: "from-yellow-500 to-orange-500",
+          shadow: "shadow-yellow-500/50",
           emoji: "🚩",
-          bg: "bg-red-950"
+          bg: "bg-yellow-950"
       };
       if (['PL', 'NOVO', 'PP', 'REPUBLICANOS', 'PATRIOTA', 'PRTB'].includes(p)) return { 
           title: "Liberal", 
@@ -45,10 +45,10 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
       return { 
           title: "Independente", 
           desc: "Análise caso a caso.",
-          color: "from-purple-600 to-violet-800",
-          shadow: "shadow-purple-500/50",
+          color: "from-blue-600 to-blue-800",
+          shadow: "shadow-blue-500/50",
           emoji: "🦅",
-          bg: "bg-purple-950"
+          bg: "bg-blue-950"
       };
   };
 

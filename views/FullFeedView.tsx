@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Search, Calendar, Filter, X, Landmark, Banknote, Info, ExternalLink, Share2, ArrowDownUp } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
@@ -130,7 +131,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                                 setSearchTerm(e.target.value);
                                 if (e.target.value && sortBy === 'date_desc') setSortBy('relevance'); // Auto-switch to relevance on search
                             }}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-medium text-gray-900 dark:text-white border-transparent focus:border-green-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-0 transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-medium text-gray-900 dark:text-white border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-0 transition-all"
                          />
                          {searchTerm && (
                              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -148,7 +149,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                                     type="date" 
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-green-500/50"
+                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-blue-500/50"
                                 />
                             </div>
                             <div className="flex items-center text-gray-400 font-bold">-</div>
@@ -158,7 +159,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                                     type="date" 
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-green-500/50"
+                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-blue-500/50"
                                 />
                             </div>
                         </div>
@@ -169,7 +170,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as any)}
-                                className="pl-9 pr-8 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 uppercase h-full appearance-none cursor-pointer border-none focus:ring-2 focus:ring-green-500/50"
+                                className="pl-9 pr-8 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 uppercase h-full appearance-none cursor-pointer border-none focus:ring-2 focus:ring-blue-500/50"
                             >
                                 <option value="relevance">Relevância</option>
                                 <option value="date_desc">Mais Recentes</option>
@@ -204,7 +205,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                     const isExpense = item.type === 'despesa';
 
                     return (
-                        <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
+                        <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
                             <div className="flex justify-between items-start mb-3">
                                 <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 ${
                                     isVote ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 

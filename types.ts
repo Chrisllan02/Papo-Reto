@@ -1,5 +1,4 @@
 
-
 export interface Mandate {
   start: string;
   end: string;
@@ -65,7 +64,6 @@ export interface LegislativeVote {
   approved?: boolean;
 }
 
-// NOVO: Interface para Relatorias (Influência)
 export interface Relatoria {
   id: string;
   billTitle: string;
@@ -84,7 +82,6 @@ export interface Role {
   startDate: string;
 }
 
-// NOVO: Interface para Histórico Profissional
 export interface Occupation {
   title: string;
   entity?: string;
@@ -192,8 +189,12 @@ export interface QuizQuestion {
   id: number;
   tema: string;
   peso: number;
-  description: string;
-  realVoteId?: string; 
+  description: string; // Usado como Pergunta final
+  context?: string; // NOVO: Contexto do problema
+  proposal?: string; // NOVO: O que está sendo proposto
+  realVoteId?: string;
+  sourceUrl?: string; 
+  originalDescription?: string; 
 }
 
 export interface FeedItem {
@@ -235,4 +236,50 @@ export interface LegislativeEvent {
   location: string;
   status: string; // Em andamento, Encerrada, Convocada
   type: string;
+}
+
+// --- AI Chat Types ---
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text?: string;
+  image?: string; // Base64 url
+  isThinking?: boolean;
+  groundingMetadata?: {
+    search?: { uri: string; title: string }[];
+    maps?: { uri: string; title: string; source: string }[];
+  };
+  timestamp: number;
+}
+
+export type ChatMode = 'fast' | 'standard' | 'search' | 'location' | 'thinking';
+
+// --- Workspace / Gabinete Digital Types ---
+export interface WorkspaceEmail {
+  id: string;
+  from: string;
+  subject: string;
+  preview: string;
+  date: string;
+  read: boolean;
+  tag: 'Câmara' | 'Partido' | 'Eleitor' | 'Urgente';
+  folder?: 'inbox' | 'sent' | 'trash'; // NOVO
+}
+
+export interface WorkspaceFile {
+  id: string;
+  name: string;
+  type: 'doc' | 'sheet' | 'slide' | 'pdf' | 'folder';
+  owner: string;
+  date: string;
+  size?: string;
+  parentId?: string | null; // NOVO
+}
+
+export interface WorkspaceEvent {
+  id: number;
+  day: number;
+  title: string;
+  time: string;
+  type: 'Sessão' | 'Reunião' | 'Pessoal';
 }

@@ -28,76 +28,78 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              // PALETA MP076
-              // Backgrounds & Neutrals
-              // Praxeti White (#F6F7ED) -> Gray 50
-              // Midnight Mirage (#001F3F) -> Gray 900 / Blue 900
+              // PALETA NOVA - Integrada às escalas funcionais
+              
+              // Escala de Cinza/Neutros (Baseada em Anti-Flash White & Lace Cap & Midnight Blue)
               gray: {
-                50: '#F6F7ED', 
-                100: '#E8EAD6',
-                200: '#D1D6B8',
-                300: '#C0C6AC',
-                400: '#ABB392',
-                500: '#96A078',
-                600: '#707A5A',
-                700: '#545C38',
-                800: '#25291E',
-                900: '#001F3F', 
-                950: '#001025',
+                50: '#F2F3F4',  // Anti-Flash White (Fundo Principal Claro)
+                100: '#EBEAED', // Lace Cap (Fundo Secundário/Cards Claro)
+                200: '#DCDCDF', // Variação do Lace Cap para bordas
+                300: '#C4C4C9',
+                400: '#9CA3AF', // Neutro padrão para textos desabilitados
+                500: '#6B7280',
+                600: '#4B5563',
+                700: '#02066F', // Dark Royalty (Usado como cinza escuro/azulado)
+                800: '#020035', // Midnight Blue (Cards Escuros)
+                900: '#020035', // Midnight Blue (Texto Principal / Fundo Escuro)
+                950: '#01001A', // Profundidade extra para Midnight Blue
               },
-              // Green Scale
-              // Mantis (#74C365) -> Green 400
-              // Picture Book Green (#00804C) -> Green 600
-              green: {
-                50: '#F4FBF2',
-                100: '#E3F6DE',
-                200: '#C2EBC9',
-                300: '#A1E0B4',
-                400: '#74C365', 
-                500: '#3AA259',
-                600: '#00804C', 
-                700: '#00663D',
-                800: '#004D2E',
-                900: '#00331F',
-              },
-              // Yellow Scale
-              // First Colors of Spring (#DBE64C) -> Yellow 400
-              yellow: {
-                50: '#FEFEEE',
-                100: '#FCFCD6',
-                200: '#F9F9A9',
-                300: '#F5F57C',
-                400: '#DBE64C', 
-                500: '#BCC730',
-                600: '#99A226',
-                700: '#737A1C',
-                800: '#4B500B',
-                900: '#262805',
-              },
-              // Blue Scale
-              // Nuit Blanche (#1E488F) -> Blue 600
-              // Midnight Mirage (#001F3F) -> Blue 900
+              
+              // Escala de Azul (Baseada em Deep Sea Exploration & Dark Royalty)
               blue: {
-                50: '#EDF2FA',
-                100: '#D3E0F4',
-                200: '#A6C2EA',
-                300: '#7AA3DF',
-                400: '#4D85D5',
-                500: '#2167CB',
-                600: '#1E488F', 
-                700: '#16366B',
-                800: '#0E2447',
-                900: '#001F3F', 
+                50: '#EEF2FF',
+                100: '#E0E7FF',
+                200: '#C7D2FE',
+                300: '#A5B4FC',
+                400: '#818CF8',
+                500: '#2000B1', // Deep Sea Exploration (Botões/Ações)
+                600: '#2000B1', // Deep Sea Exploration (Primary Brand)
+                700: '#02066F', // Dark Royalty
+                800: '#02066F', // Dark Royalty (Secondary Brand)
+                900: '#020035', // Midnight Blue
               },
-              // Mapping Red to Blue/Dark tones or keeping standard red for errors
+
+              // Escala Vermelha/Laranja (Baseada em Kimchi)
               red: {
                 50: '#FEF2F2',
                 100: '#FEE2E2',
                 200: '#FECACA',
-                500: '#EF4444', 
-                600: '#DC2626',
+                500: '#ED4B00', // Kimchi (Alertas e Destaques Quentes)
+                600: '#D64200', // Darker Kimchi
                 700: '#B91C1C',
-              }
+              },
+              orange: {
+                500: '#ED4B00', // Kimchi
+                600: '#D64200',
+              },
+
+              // Mantendo Verde e Amarelo para funcionalidades lógicas (Votos, Status, Bandeira)
+              green: {
+                50: '#F0FDF4',
+                100: '#DCFCE7',
+                200: '#BBF7D0',
+                500: '#22c55e',
+                600: '#16a34a',
+                700: '#15803d',
+                900: '#020035', // Harmonizado com Midnight Blue
+              },
+              yellow: {
+                50: '#FEFCE8',
+                100: '#FEF9C3',
+                200: '#FEF08A',
+                500: '#EAB308',
+                600: '#CA8A04',
+                700: '#A16207',
+                900: '#020035', // Harmonizado
+              },
+              
+              // Cores Específicas da Paleta (Para uso direto se necessário)
+              'anti-flash': '#F2F3F4',
+              'lace-cap': '#EBEAED',
+              'midnight': '#020035',
+              'dark-royalty': '#02066F',
+              'deep-sea': '#2000B1',
+              'kimchi': '#ED4B00',
             }
           }
         }
@@ -165,7 +167,7 @@
       }
     </style>
   </head>
-  <body class="bg-gray-50 dark:bg-gray-900 overflow-hidden selection:bg-green-200 dark:selection:bg-green-900 text-gray-900 dark:text-white">
+  <body class="bg-gray-50 dark:bg-gray-950 overflow-hidden selection:bg-blue-200 dark:selection:bg-blue-900 text-gray-900 dark:text-white">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
