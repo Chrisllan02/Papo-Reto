@@ -1,0 +1,248 @@
+
+import React from 'react';
+
+const LoadingScreen: React.FC = () => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-50 dark:bg-[#000000] transition-colors duration-500">
+      <style>{`
+        .loader-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem; 
+            width: 100%;
+            height: 100%;
+            text-align: center;
+        }
+
+        .flag-container {
+            width: 280px;
+            height: 196px;
+            position: relative;
+            perspective: 1000px;
+        }
+
+        /* --- ELEMENTOS 3D (Bandeira Oficial) --- */
+        
+        .flag-green {
+            /* Verde Oficial da Bandeira */
+            background: linear-gradient(135deg, #009c3b 0%, #008030 100%);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            z-index: 1;
+            transform: translate(-350%, -50%); 
+            box-shadow: 
+                inset 1px 1px 2px rgba(255,255,255,0.2),
+                inset -1px -1px 2px rgba(0,0,0,0.4),    
+                0 15px 35px rgba(0, 0, 0, 0.4);       
+            animation: waveGreen 5s ease-in-out infinite;
+        }
+
+        .flag-yellow {
+            /* Amarelo Oficial */
+            background: linear-gradient(135deg, #ffdf00 0%, #ffd100 100%);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            z-index: 2;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            transform: translate(-50%, -50%);
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+            animation: waveYellow 5s ease-in-out infinite;
+        }
+
+        .flag-blue {
+            /* Azul Oficial */
+            background: radial-gradient(circle at 30% 30%, #002776 0%, #001b52 100%);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            z-index: 3;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translate(250%, -50%);
+            box-shadow: 
+                0 6px 12px rgba(0,0,0,0.3), 
+                inset 0 0 15px rgba(0,0,0,0.2); 
+            animation: waveBlue 5s ease-in-out infinite;
+        }
+
+        .flag-details-svg {
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); 
+            animation: showDetails 5s ease-in-out infinite;
+        }
+
+        /* --- TYPEWRITER CONFIG --- */
+        
+        .loading-text-wrapper {
+            position: relative;
+            font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
+            font-weight: 900;
+            font-size: 1.25rem;
+            letter-spacing: 0.2em;
+            color: #00457F; /* Azul Profundo da Paleta do App */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            animation: textMotion 5s ease-in-out infinite;
+            z-index: 10;
+            transition: color 0.3s ease; 
+        }
+
+        /* Dark mode support */
+        .dark .loading-text-wrapper {
+             color: #EDF5FA; 
+             text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .loading-text-wrapper {
+                color: #EDF5FA; 
+                text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+            }
+        }
+
+        .text-ghost { opacity: 0; visibility: hidden; }
+        .text-visible {
+            position: absolute;
+            top: 0; left: 0; width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 4px solid #EC6206; /* Cursor Laranja */
+            animation: typing 5s steps(13) infinite, blinkCaret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            0% { width: 0; }
+            30% { width: 100%; }
+            80% { width: 100%; }
+            90% { width: 0; }
+            100% { width: 0; }
+        }
+        @keyframes blinkCaret {
+            from, to { border-color: transparent; }
+            50% { border-color: #EC6206; }
+        }
+        @keyframes textMotion {
+            0%, 40% { transform: translateY(-65px); opacity: 0.8; }
+            45% { transform: translateY(-35px) scale(0.95); opacity: 0.6; }
+            55% { transform: translateY(0px) scale(1); opacity: 1; }
+            75% { transform: translateY(0px) scale(1); opacity: 1; }
+            85% { transform: translateY(-35px); opacity: 0.6; }
+            95%, 100% { transform: translateY(-65px); opacity: 0.8; }
+        }
+        @keyframes waveGreen {
+            0%   { transform: translate(-350%, -50%); }
+            10%  { transform: translate(-350%, -150%); } 
+            20%  { transform: translate(-350%, -50%); }
+            35%  { transform: translate(-350%, -50%); width: 30px; height: 30px; border-radius: 6px; }
+            45%  { transform: translate(-50%, -50%) scale(0.5); width: 30px; height: 30px; } 
+            55%  { transform: translate(-50%, -50%) scale(1); width: 100%; height: 100%; border-radius: 10px; }
+            75%  { transform: translate(-50%, -50%) scale(1); width: 100%; height: 100%; border-radius: 10px; }
+            85%  { transform: translate(-50%, -50%) scale(1); width: 30px; height: 30px; border-radius: 6px; }
+            95%, 100% { transform: translate(-350%, -50%); width: 30px; height: 30px; border-radius: 6px; }
+        }
+        @keyframes waveYellow {
+            0%, 5% { transform: translate(-50%, -50%); }
+            15%    { transform: translate(-50%, -150%); }
+            25%    { transform: translate(-50%, -50%); }
+            35%    { transform: translate(-50%, -50%); width: 30px; height: 30px; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+            45%    { transform: translate(-50%, -50%) scale(0.5); width: 30px; height: 30px; }
+            55%    { transform: translate(-50%, -50%) scale(1); width: 83%; height: 76%; }
+            75%    { transform: translate(-50%, -50%) scale(1); width: 83%; height: 76%; }
+            85%    { transform: translate(-50%, -50%) scale(1); width: 30px; height: 30px; }
+            95%, 100% { transform: translate(-50%, -50%); width: 30px; height: 30px; }
+        }
+        @keyframes waveBlue {
+            0%, 10% { transform: translate(250%, -50%); }
+            20%     { transform: translate(250%, -150%); }
+            30%     { transform: translate(250%, -50%); }
+            35%     { transform: translate(250%, -50%); width: 30px; height: 30px; }
+            45%     { transform: translate(-50%, -50%) scale(0.5); width: 30px; height: 30px; } 
+            55%     { transform: translate(-50%, -50%) scale(1); width: 35%; height: 50%; }
+            75%     { transform: translate(-50%, -50%) scale(1); width: 35%; height: 50%; }
+            85%     { transform: translate(-50%, -50%) scale(1); width: 30px; height: 30px; }
+            95%, 100% { transform: translate(250%, -50%); width: 30px; height: 30px; }
+        }
+        @keyframes showDetails {
+            0%, 50% { opacity: 0; transform: scale(0.5); }
+            55% { opacity: 1; transform: scale(1); }
+            75% { opacity: 1; transform: scale(1); }
+            80% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 0; }
+        }
+      `}</style>
+      <div className="loader-wrapper">
+        <div className="flag-container">
+            <div className="flag-green"></div>
+            <div className="flag-yellow"></div>
+            <div className="flag-blue">
+                <svg className="flag-details-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <path id="textCurve" d="M -50,265 Q 250,145 550,265" />
+                    </defs>
+
+                    <g fill="#ffffff">
+                        <circle cx="280" cy="150" r="9" />
+                        <circle cx="150" cy="240" r="9" /> 
+                        <circle cx="100" cy="300" r="9" /> 
+                        <circle cx="125" cy="310" r="7" /> 
+                        <circle cx="140" cy="325" r="6" />
+                        <circle cx="80" cy="325" r="6" />
+                        <circle cx="110" cy="340" r="6" />
+                        <circle cx="155" cy="380" r="8" /> 
+                        <circle cx="225" cy="270" r="8" />
+                        <circle cx="225" cy="340" r="8" />
+                        <circle cx="190" cy="305" r="8" />
+                        <circle cx="260" cy="305" r="8" />
+                        <circle cx="240" cy="315" r="6" />
+                        <circle cx="280" cy="400" r="6" />
+                        <circle cx="300" cy="410" r="5" />
+                        <circle cx="330" cy="390" r="7" />
+                        <circle cx="355" cy="405" r="7" />
+                        <circle cx="330" cy="420" r="7" />
+                        <circle cx="250" cy="450" r="5" />
+                        <circle cx="380" cy="300" r="9" />
+                        <circle cx="395" cy="315" r="7" /> 
+                        <circle cx="410" cy="335" r="7" /> 
+                        <circle cx="420" cy="355" r="7" /> 
+                        <circle cx="415" cy="375" r="7" />
+                        <circle cx="400" cy="385" r="7" />
+                        <circle cx="385" cy="380" r="6" />
+                        <circle cx="370" cy="285" r="7" />
+                    </g>
+
+                    <path d="M -20,240 Q 250,120 520,240 L 520,285 Q 250,165 -20,285 Z" fill="#ffffff" />
+
+                    <text fontFamily="Arial, sans-serif" fontWeight="900" fontSize="34" fill="#009c3b" letterSpacing="3">
+                        <textPath href="#textCurve" startOffset="50%" textAnchor="middle" alignmentBaseline="middle">
+                            ORDEM E PROGRESSO
+                        </textPath>
+                    </text>
+                </svg>
+            </div>
+        </div>
+        
+        <div className="loading-text-wrapper">
+            <span className="text-ghost">CARREGANDO...</span>
+            <span className="text-visible">CARREGANDO...</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LoadingScreen;

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>PapoReto - Transparência Política</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              praxeti: '#F6F7ED',
+              spring: '#DBE64C',
+              midnight: '#001F3F',
+              mantis: '#74C365',
+              picture: '#00804C',
+              nuit: '#1E488F',
+              gray: {
+                50: '#F6F7ED',
+                100: '#EBECE6',
+                200: '#DBE64C',
+                800: '#1E488F',
+                900: '#001F3F',
+              },
+              blue: {
+                50: '#F0F4FF',
+                500: '#1E488F',
+                600: '#153E7A',
+                900: '#001F3F',
+              },
+              green: {
+                500: '#00804C',
+                400: '#74C365',
+              },
+              orange: {
+                50: '#FFF0E8',
+                500: '#FF6624',
+              },
+              yellow: {
+                500: '#DBE64C',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { 
+        background-color: rgba(30, 72, 143, 0.4);
+        border-radius: 20px; 
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 31, 63, 0.6); }
+      
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      .px-safe { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+      
+      .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #1E488F;
+        color: #F6F7ED;
+        padding: 8px;
+        z-index: 1000;
+        transition: top 0.3s;
+      }
+      .skip-link:focus { top: 0; }
+
+      :focus-visible {
+        outline: 3px solid #DBE64C;
+        outline-offset: 2px;
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      
+      body {
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-y: none;
+        background-color: #F6F7ED;
+        color: #001F3F;
+      }
+      .dark body { 
+        background-color: #001F3F;
+        color: #F6F7ED; 
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+</head>
+  <body class="bg-praxeti dark:bg-midnight overflow-hidden selection:bg-spring selection:text-midnight text-midnight dark:text-praxeti">
+    <a href="#main-content" class="skip-link font-bold">Pular para o conteúdo</a>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
