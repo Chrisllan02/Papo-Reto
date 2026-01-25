@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Newspaper, Activity, MapPin, LocateFixed, BookOpen, Lightbulb, Banknote, ScrollText, ArrowRight } from 'lucide-react';
+import { Newspaper, Activity, MapPin, LocateFixed, BookOpen, Lightbulb, Banknote, ScrollText, ArrowRight, ChevronRight } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { speakContent } from '../services/ai';
 import NewsTicker from '../components/NewsTicker';
@@ -14,9 +14,37 @@ interface FeedViewProps {
   onGoToExplore: (state: string) => void;
 }
 
+// Componente de Cabeçalho de Seção Padronizado
+const SectionHeader = ({ icon: Icon, title, subtitle, actionLabel, onAction, colorClass = "text-blue-600" }: any) => (
+    <div className="flex items-end justify-between mb-6 px-1">
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 ${colorClass}`}>
+                <Icon size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+                <h2 className="text-xl font-black text-gray-900 dark:text-white leading-none tracking-tight">
+                    {title}
+                </h2>
+                {subtitle && (
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                        {subtitle}
+                    </p>
+                )}
+            </div>
+        </div>
+        {actionLabel && onAction && (
+            <button 
+                onClick={onAction}
+                className="group flex items-center gap-1 text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors"
+            >
+                {actionLabel} <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform"/>
+            </button>
+        )}
+    </div>
+);
+
 const EducationCarouselWidget = ({ articles, onEducationClick }: { articles: any[], onEducationClick: (id: number) => void }) => {
     
-    // Helper para renderizar o ícone correto
     const renderIcon = (iconName: string, size: number, className: string) => {
         switch(iconName) {
             case 'Banknote': return <Banknote size={size} className={className}/>;
@@ -28,47 +56,44 @@ const EducationCarouselWidget = ({ articles, onEducationClick }: { articles: any
     if (!articles || articles.length === 0) return null;
 
     return (
-        <section className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-            <div className="mb-4 flex items-center justify-between px-1 opacity-90">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-400 backdrop-blur-sm border border-yellow-200/50 dark:border-yellow-700/30">
-                        <BookOpen size={14} />
-                    </div>
-                    <h2 className="text-xs font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest">
-                        Guia Cidadão
-                    </h2>
-                </div>
-            </div>
+        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+            <SectionHeader 
+                icon={BookOpen} 
+                title="Guia Cidadão" 
+                subtitle="Aprenda como funciona" 
+                colorClass="text-yellow-600 dark:text-yellow-400"
+            />
 
-            <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-4 -mx-4 md:mx-0 md:px-1">
+            <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1 -mx-1">
                 {articles.map((item) => (
                     <button 
                         key={item.id}
                         onClick={() => onEducationClick(item.id)}
-                        className="snap-center shrink-0 w-[85vw] sm:w-[45vw] md:w-[340px] lg:w-[400px] h-48 md:h-56 relative rounded-[2rem] overflow-hidden group shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_20px_rgba(0,0,0,0.4)] hover:shadow-xl transition-all active:scale-95"
+                        className="snap-center shrink-0 w-[280px] md:w-[320px] h-auto relative rounded-[2rem] overflow-hidden group transition-all hover:-translate-y-1"
                     >
-                        {/* Background Gradient */}
-                        <div className={`absolute inset-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} transition-transform duration-500 group-hover:scale-105`}></div>
+                        {/* Clean Card Background - Removed heavy gradients/textures */}
+                        <div className="absolute inset-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:shadow-xl transition-all duration-300 rounded-[2rem]"></div>
                         
-                        {/* Texture Overlay */}
-                        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none"></div>
+                        {/* Top Accent Bar */}
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${item.colorFrom} ${item.colorTo}`}></div>
 
-                        <div className="relative z-10 p-5 md:p-7 flex flex-col h-full justify-between text-left">
-                            <div className="flex justify-between items-start">
-                                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-sm border border-white/20`}>
-                                    {renderIcon(item.icon, 20, "drop-shadow-sm md:scale-110")}
+                        <div className="relative z-10 p-6 flex flex-col h-full justify-between text-left">
+                            <div className="flex justify-between items-start mb-4">
+                                {/* Icon Container with Gradient */}
+                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.colorFrom} ${item.colorTo} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                                    {renderIcon(item.icon, 24, "drop-shadow-sm")}
                                 </div>
-                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-white/80 bg-black/10 px-2 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded-lg">
                                     {item.topic || 'Saber'}
                                 </span>
                             </div>
 
                             <div>
-                                <h3 className="text-lg md:text-2xl font-black text-white leading-tight mb-2 drop-shadow-md line-clamp-2">
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                                     {item.title}
                                 </h3>
-                                <div className="flex items-center gap-2 text-[10px] md:text-xs font-bold text-white/70 group-hover:text-white transition-colors">
-                                    Ler Agora <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform"/>
+                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors mt-3">
+                                    Ler Artigo <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform"/>
                                 </div>
                             </div>
                         </div>
@@ -123,14 +148,12 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                             setRandomState();
                         }
                     } catch (e) {
-                        console.error("Erro na geolocalização:", e);
                         setRandomState();
                     } finally {
                         setIsLoading(false);
                     }
                 },
                 (error) => {
-                    console.log("Geolocalização negada ou indisponível:", error);
                     setRandomState();
                 }
             );
@@ -139,61 +162,44 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         }
     }, [politicians]);
 
-    if (isLoading) return <div className="h-48 w-full bg-white/20 dark:bg-gray-800/20 backdrop-blur-md rounded-[2.5rem] animate-pulse mb-8 border border-white/10"></div>;
+    if (isLoading) return <div className="h-48 w-full bg-gray-100 dark:bg-gray-800 rounded-[2rem] animate-pulse mb-8"></div>;
     if (statePoliticians.length === 0) return null;
 
     return (
-        <section className="mb-12 animate-in fade-in slide-in-from-bottom-8 duration-500 relative">
-            <div className="absolute inset-0 bg-white/95 dark:bg-midnight/40 backdrop-blur-3xl rounded-[3rem] -mx-4 md:mx-0 z-0 border border-white/20 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_60px_rgba(0,0,0,0.5)]"></div>
+        <section className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+            {/* Removed the heavy backdrop container for cleaner look */}
+            
+            <SectionHeader 
+                icon={isLocal ? LocateFixed : MapPin}
+                title={selectedState}
+                subtitle={isLocal ? 'Sua Bancada Regional' : 'Giro pelos Estados'}
+                actionLabel="Ver Todos"
+                onAction={() => onGoToExplore(selectedState)}
+                colorClass={isLocal ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"}
+            />
 
-            <div className="relative z-10 p-4 md:p-6">
-                <div className="mb-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2.5 rounded-2xl shadow-lg backdrop-blur-md ${isLocal ? 'bg-picture/90 text-white' : 'bg-spring/90 text-midnight'}`}>
-                            {isLocal ? <LocateFixed size={20} /> : <MapPin size={20} />}
+            <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide snap-x snap-mandatory px-1 -mx-1">
+                {statePoliticians.map((pol) => (
+                    <div 
+                        key={pol.id} 
+                        onClick={() => onSelectCandidate(pol)}
+                        className="snap-center shrink-0 w-32 md:w-36 bg-white dark:bg-gray-800 rounded-[1.5rem] p-4 flex flex-col items-center text-center shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group"
+                    >
+                        <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-gray-200 to-white dark:from-gray-700 dark:to-gray-600 mb-3 relative group-hover:from-blue-500 group-hover:to-purple-500 transition-colors">
+                            <img src={pol.photo} alt={pol.name} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-gray-800" loading="lazy" decoding="async" />
                         </div>
-                        <div>
-                            <h2 className="text-lg font-black text-midnight dark:text-white leading-none">
-                                {selectedState}
-                            </h2>
-                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                                {isLocal ? 'Sua Bancada' : 'Giro pelos Estados'}
+                        
+                        <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-1 line-clamp-2 min-h-[2.5em]">
+                            {pol.name}
+                        </h3>
+                        
+                        <div className="mt-2 w-full">
+                            <span className="block w-full py-1 bg-gray-50 dark:bg-gray-900 rounded-lg text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide border border-gray-100 dark:border-gray-700">
+                                {pol.party}
                             </span>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => onGoToExplore(selectedState)}
-                        className="px-4 py-2 bg-white/60 dark:bg-midnight/80 backdrop-blur-xl rounded-full text-[10px] font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm border border-white/30 dark:border-white/10 active:scale-95 transition-all hover:bg-white/80 dark:hover:bg-gray-800/80"
-                    >
-                        Ver Todos
-                    </button>
-                </div>
-
-                <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1">
-                    {statePoliticians.map((pol) => (
-                        <div 
-                            key={pol.id} 
-                            onClick={() => onSelectCandidate(pol)}
-                            className="snap-center shrink-0 w-36 bg-white/95 dark:bg-midnight/90 backdrop-blur-xl rounded-[2rem] p-4 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/20 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-2xl transition-all duration-300 group relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-nuit to-midnight opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            
-                            <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-gray-200 to-white dark:from-gray-700 dark:to-gray-800 mb-3 shadow-inner relative group-hover:from-nuit group-hover:to-midnight transition-colors">
-                                <img src={pol.photo} alt={pol.name} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-gray-900" loading="lazy" decoding="async" />
-                            </div>
-                            
-                            <h3 className="text-xs font-black text-midnight dark:text-white leading-tight mb-1 line-clamp-2 min-h-[2.5em]">
-                                {pol.name}
-                            </h3>
-                            
-                            <div className="mt-2 w-full">
-                                <span className="block w-full py-1 bg-gray-50/50 dark:bg-white/5 rounded-lg text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide border border-gray-100/50 dark:border-white/10 group-hover:bg-nuit/10 group-hover:text-nuit dark:group-hover:bg-nuit/20 dark:group-hover:text-blue-400 transition-colors">
-                                    {pol.party}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                ))}
             </div>
         </section>
     );
@@ -211,12 +217,13 @@ const HeaderGreeting = () => {
     }
 
     return (
-        <header className="flex items-center justify-between gap-4 w-full mb-6 pt-safe">
-            <div className="min-w-0">
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-midnight to-nuit dark:from-white dark:to-blue-300 tracking-tighter truncate leading-tight py-1 drop-shadow-sm">
-                    {greeting}, Cidadão!
-                </h1>
-            </div>
+        <header className="flex flex-col gap-1 w-full mb-8 pt-safe">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-midnight dark:text-white tracking-tighter leading-none">
+                {greeting}, Cidadão!
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                Resumo diário da transparência política.
+            </p>
         </header>
     );
 };
@@ -229,24 +236,27 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                 
                 <HeaderGreeting />
 
-                {/* 1: DESTAQUE DO DIA */}
-                <div className="mb-8">
-                    <div className="mb-3 flex items-center gap-2 px-1 opacity-80">
-                        <div className="p-1.5 bg-red-100/50 dark:bg-red-900/30 rounded-lg text-red-600 backdrop-blur-sm">
-                            <Newspaper size={14} />
-                        </div>
-                        <h2 className="text-xs font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest">
-                            Destaques do Dia
-                        </h2>
+                {/* Vertical Spacing Increased for clearer sections */}
+                <div className="space-y-12">
+                    
+                    {/* 1: DESTAQUE DO DIA (Hero) */}
+                    <div>
+                        <SectionHeader 
+                            icon={Newspaper} 
+                            title="Destaques do Dia" 
+                            subtitle="O que está acontecendo agora"
+                            colorClass="text-red-600"
+                        />
+                        <NewsTicker />
                     </div>
-                    <NewsTicker />
+
+                    {/* 2: CARROSSEL GUIA CIDADÃO */}
+                    <EducationCarouselWidget articles={articles} onEducationClick={onEducationClick} />
+
+                    {/* 3: SUA BANCADA */}
+                    <StateSpotlightWidget politicians={politicians} onSelectCandidate={onSelectCandidate} onGoToExplore={onGoToExplore} />
+                
                 </div>
-
-                {/* 2: CARROSSEL GUIA CIDADÃO (RESPONSIVO) */}
-                <EducationCarouselWidget articles={articles} onEducationClick={onEducationClick} />
-
-                {/* 3: SUA BANCADA */}
-                <StateSpotlightWidget politicians={politicians} onSelectCandidate={onSelectCandidate} onGoToExplore={onGoToExplore} />
 
             </div>
         </div>

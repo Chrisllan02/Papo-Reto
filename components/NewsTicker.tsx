@@ -20,7 +20,6 @@ const NewsTicker: React.FC = () => {
                 // Background fetch
                 const fresh = await fetchDailyNews();
                 if (fresh && fresh.length > 0) {
-                    // Simple check to avoid unnecessary re-renders if data is same
                     if (fresh[0].title !== news[0]?.title) {
                         setNews(fresh);
                     }
@@ -60,7 +59,7 @@ const NewsTicker: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="w-full h-64 bg-white/95 dark:bg-gray-900/50 backdrop-blur-md rounded-[2rem] flex items-center justify-center border border-gray-200 dark:border-gray-800 animate-pulse mb-6">
+            <div className="w-full h-64 bg-gray-100 dark:bg-gray-800 rounded-[2rem] flex items-center justify-center border border-gray-200 dark:border-gray-700 animate-pulse">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-wider">
                     <Loader2 className="animate-spin" size={14} /> Carregando Destaques...
                 </div>
@@ -76,15 +75,15 @@ const NewsTicker: React.FC = () => {
 
     return (
         <section 
-            className="w-full relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] mb-6 transition-all duration-500 group flex flex-col md:flex-row cursor-default h-auto min-h-[320px] md:h-80"
+            className="w-full relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/50 dark:shadow-black/50 transition-all duration-500 group flex flex-col md:flex-row cursor-default h-auto min-h-[320px] md:h-80"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             aria-label="Destaque de notícia política"
         >
-            {/* LEFT SIDE: Big Typography Title */}
+            {/* LEFT SIDE: Big Typography Title - THE HERO */}
             <div className={`relative w-full md:w-1/2 bg-gradient-to-br ${theme.gradient} p-6 md:p-8 flex flex-col justify-between shrink-0 overflow-hidden`}>
                 
-                {/* Background Decor */}
+                {/* Background Decor - Kept ONLY here for emphasis */}
                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
                 
                 {/* Header: Icon & Category */}
@@ -112,7 +111,7 @@ const NewsTicker: React.FC = () => {
                 </div>
             </div>
 
-            {/* RIGHT SIDE: Summary & Content */}
+            {/* RIGHT SIDE: Summary & Content - Clean & readable */}
             <div className="flex-1 flex flex-col p-6 md:p-8 bg-white dark:bg-gray-900 relative">
                 
                 {/* Metadata Header */}
@@ -152,7 +151,7 @@ const NewsTicker: React.FC = () => {
                             href={currentNews.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-white/10 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-black uppercase tracking-wider transition-all group/link"
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-black uppercase tracking-wider transition-all group/link border border-gray-200 dark:border-gray-700"
                         >
                             Fonte Oficial <ExternalLink size={12} className="group-hover/link:translate-x-0.5 transition-transform"/>
                         </a>
