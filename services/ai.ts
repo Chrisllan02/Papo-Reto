@@ -1,48 +1,39 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
+import { db } from './db';
 
 // Fix: Always initialize GoogleGenAI strictly using process.env.API_KEY as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Cache Utils para AI
+// Cache Utils para AI (Async com IndexedDB)
 const NEWS_CACHE_KEY = 'paporeto_news_v9_daily_summary';
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v2';
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas de Cache para o "Destaque do Dia"
-
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas
 const EDU_CACHE_KEY = 'paporeto_edu_content_v1';
-const EDU_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 dias (Conteúdo Educativo é estático)
+const EDU_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 dias
 
-const getCache = (key: string, ttl: number) => {
+const getCache = async <T>(key: string, ttl: number): Promise<T | null> => {
     try {
-        const item = localStorage.getItem(key);
+        const item = await db.get<{ data: T, timestamp: number }>(key);
         if (!item) return null;
-        const { data, timestamp } = JSON.parse(item);
-        // Se TTL for 0, é infinito (para histórico)
-        if (ttl > 0 && Date.now() - timestamp > ttl) return null;
-        return data;
+        if (ttl > 0 && Date.now() - item.timestamp > ttl) return null;
+        return item.data;
     } catch (e) {
         return null;
     }
 };
 
-const setCache = (key: string, data: any) => {
+const setCache = async (key: string, data: any) => {
     try {
-        localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+        await db.set(key, { data, timestamp: Date.now() });
     } catch (e) {
-        console.warn('Cache full, attempting cleanup');
-        try {
-            localStorage.removeItem('paporeto_news_v8_daily'); // Remove chaves antigas
-            localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
-        } catch(err) {
-            console.error("Critical storage error", err);
-        }
+        console.warn('DB Error', e);
     }
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Wrapper com Retry para Quota (429)
 const safeGenerateContent = async (model: string, params: any, retries = 3): Promise<any> => {
     let lastError;
     for (let i = 0; i < retries; i++) {
@@ -61,7 +52,7 @@ const safeGenerateContent = async (model: string, params: any, retries = 3): Pro
                             (error.message && error.message.includes('RESOURCE_EXHAUSTED'));
             
             if (isQuota && i < retries - 1) {
-                const delay = 2000 * Math.pow(2, i); // 2s, 4s, 8s
+                const delay = 2000 * Math.pow(2, i);
                 console.warn(`[AI] Quota limite atingida. Tentando novamente em ${delay/1000}s... (Tentativa ${i+1}/${retries})`);
                 await sleep(delay);
                 continue;
@@ -95,7 +86,6 @@ export interface GeneratedArticle {
     impact?: string;
 }
 
-// --- GERAÇÃO DE VOZ ACESSÍVEL (TTS) ---
 export const speakContent = async (text: string): Promise<Uint8Array | null> => {
     try {
         const response = await safeGenerateContent("gemini-2.5-flash-preview-tts", {
@@ -108,7 +98,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
                     },
                 },
             },
-        }, 1); // TTS retries less often as it's user initiated
+        }, 1);
         
         const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
@@ -126,16 +116,11 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     }
 };
 
-// Funçao Auxiliar para salvar no Histórico (Com limpeza automática de 30 dias)
-const saveToHistory = (newArticles: NewsArticle[]) => {
+const saveToHistory = async (newArticles: NewsArticle[]) => {
     try {
-        const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
+        const currentHistory = await getCache<NewsArticle[]>(NEWS_HISTORY_KEY, 0) || [];
         const thirtyDaysAgo = Date.now() - (1000 * 60 * 60 * 24 * 30);
 
-        // 1. Remove duplicatas (baseado no título)
-        // 2. Remove itens mais antigos que 30 dias
-        // 3. Adiciona timestamp se não tiver
-        
         const validHistory = currentHistory.filter(h => {
             const ts = h.timestamp || Date.now();
             return ts > thirtyDaysAgo;
@@ -146,11 +131,10 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
         
         if (uniqueNew.length > 0) {
             const updatedHistory = [...uniqueNew, ...validHistory];
-            setCache(NEWS_HISTORY_KEY, updatedHistory);
+            await setCache(NEWS_HISTORY_KEY, updatedHistory);
         } else {
-            // Apenas atualiza a limpeza de velhos se não houver novos
             if (validHistory.length !== currentHistory.length) {
-                setCache(NEWS_HISTORY_KEY, validHistory);
+                await setCache(NEWS_HISTORY_KEY, validHistory);
             }
         }
     } catch (e) {
@@ -158,23 +142,21 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
     }
 };
 
-export const getNewsHistory = (): NewsArticle[] => {
-    return getCache(NEWS_HISTORY_KEY, 0) || [];
+export const getNewsHistory = async (): Promise<NewsArticle[]> => {
+    return await getCache<NewsArticle[]>(NEWS_HISTORY_KEY, 0) || [];
 };
 
-export const getBestAvailableNews = (): NewsArticle[] | null => {
-    return getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
+export const getBestAvailableNews = async (): Promise<NewsArticle[] | null> => {
+    return await getCache<NewsArticle[]>(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
 };
 
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
-    // 1. Cache Check (Daily)
-    const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
+    const cachedNews = await getCache<NewsArticle[]>(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) {
         return cachedNews;
     }
 
     try {
-        // 2. Single Gemini Call with Retry
         const response = await safeGenerateContent('gemini-3-flash-preview', {
             contents: `Busque as 3 principais notícias políticas do Brasil de hoje (Congresso, Leis, Economia).
             
@@ -208,12 +190,11 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
         const jsonStr = response.text?.trim();
         if (!jsonStr) throw new Error("Empty AI response");
         
-        // Parse sem necessidade de pós-processamento de imagem
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
         if (data.length > 0) {
-            setCache(NEWS_CACHE_KEY, data);
-            saveToHistory(data);
+            await setCache(NEWS_CACHE_KEY, data);
+            await saveToHistory(data);
         }
 
         return data;
@@ -225,7 +206,6 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
              console.error("News Fetch Error:", error);
         }
         
-        // Fallback robusto com design system
         return [
             { 
                 title: "Congresso Nacional define pautas da semana",
@@ -249,7 +229,6 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     }
 };
 
-// Mantido para compatibilidade, mas o NewsTicker principal não usa mais isso
 export const getNewsSummary = async (title: string, source: string): Promise<string> => {
     return "Resumo disponível no card."; 
 };
@@ -291,8 +270,6 @@ export const chatWithGemini = async (
             { role: 'user', parts: [{ text: message }] }
         ];
 
-        // Chat typically uses safeGenerateContent but since it's interactive, we might want immediate feedback
-        // However, retrying is better than crashing.
         const response = await safeGenerateContent(model, {
             contents,
             config: {
@@ -379,12 +356,10 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
-    // 1. Cache Check
-    const cached = getCache(EDU_CACHE_KEY, EDU_CACHE_TTL);
+    const cached = await getCache<GeneratedArticle[]>(EDU_CACHE_KEY, EDU_CACHE_TTL);
     if (cached) return cached;
 
     try {
-        // Reduzido para 3 artigos e solicitado concisão para evitar erro de JSON cortado
         const response = await safeGenerateContent('gemini-3-flash-preview', {
             contents: `Atue como um Professor de Direito Constitucional e Cidadania.
             Gere 3 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
@@ -423,8 +398,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         if (!jsonStr) return [];
         const data = JSON.parse(jsonStr) as GeneratedArticle[];
         
-        // Cache on success
-        if (data.length > 0) setCache(EDU_CACHE_KEY, data);
+        if (data.length > 0) await setCache(EDU_CACHE_KEY, data);
         return data;
 
     } catch (error: any) {
@@ -434,7 +408,6 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
              console.error("Educational Content Gen Error:", error);
         }
         
-        // Fallback content in case of error (Extended to 3 items for UI balance)
         return [
             {
                 title: "Entenda a Tramitação de Leis",

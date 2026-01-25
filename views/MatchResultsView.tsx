@@ -4,6 +4,8 @@ import { RefreshCw, Share2, Shield, User, ChevronRight, Download, Zap, Loader2, 
 import { Politician } from '../types';
 import html2canvas from 'html2canvas';
 import { formatPartyName } from '../services/camaraApi';
+import OptimizedImage from '../components/OptimizedImage';
+import { getOptimizedImageUrl } from '../utils/imageOptimizer';
 
 interface MatchResultsViewProps {
   results: Politician[];
@@ -18,16 +20,14 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
 
   const getArchetype = (party: string) => {
       const p = party.toUpperCase();
-      // Progressista -> Solar Orange (Warm/Change)
       if (['PT', 'PSOL', 'PCDOB', 'PSB', 'REDE', 'PV', 'PDT'].includes(p)) return { 
           title: "Progressista", 
           desc: "Foco no social e Estado forte.",
           color: "from-orange-500 to-red-500", 
           shadow: "shadow-orange-500/50",
           emoji: "🚩",
-          bg: "bg-gray-900" // Neutral dark background
+          bg: "bg-gray-900" 
       };
-      // Liberal -> Solar Blue (Cool/Structure)
       if (['PL', 'NOVO', 'PP', 'REPUBLICANOS', 'PATRIOTA', 'PRTB'].includes(p)) return { 
           title: "Liberal", 
           desc: "Liberdade econômica e valores.",
@@ -36,7 +36,6 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
           emoji: "🦁",
           bg: "bg-gray-900"
       };
-      // Pragmático -> Solar Yellow (Warning/Caution)
       if (['MDB', 'PSD', 'PSDB', 'UNIÃO', 'PODEMOS', 'SOLIDARIEDADE'].includes(p)) return { 
           title: "Pragmático", 
           desc: "Equilíbrio e governabilidade.",
@@ -45,7 +44,6 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
           emoji: "⚖️",
           bg: "bg-gray-900"
       };
-      // Independente -> Solar Dark Blue
       return { 
           title: "Independente", 
           desc: "Análise caso a caso.",
@@ -63,18 +61,14 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
     setGenerating(true);
     try {
         const canvas = await html2canvas(cardRef.current, {
-            useCORS: true,
-            scale: 2, // Retina quality
-            backgroundColor: null
+            useCORS: true, // Fundamental para proxy
+            scale: 2, 
+            backgroundColor: null,
+            allowTaint: true
         });
         
         const image = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = image;
-        link.download = `meu-match-politico-${topMatch.name.split(' ')[0]}.png`;
-        link.click();
         
-        // Tentar compartilhar nativo se for mobile
         if (navigator.share) {
              const blob = await (await fetch(image)).blob();
              const file = new File([blob], "match.png", { type: "image/png" });
@@ -83,6 +77,11 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
                  text: `Deu ${topMatch.matchScore}% com ${topMatch.name}! Qual o seu perfil?`,
                  files: [file]
              });
+        } else {
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = `meu-match-politico-${topMatch.name.split(' ')[0]}.png`;
+            link.click();
         }
     } catch (err) {
         console.error("Erro ao gerar imagem", err);
@@ -162,7 +161,13 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
                             {/* Politician Avatar */}
                             <div className="flex flex-col items-center gap-3 relative z-10">
                                 <div className={`w-24 h-24 rounded-full border-4 border-white shadow-[0_0_30px_rgba(255,255,255,0.2)] overflow-hidden bg-gray-800 relative`}>
-                                    <img src={topMatch.photo} alt={topMatch.name} className="w-full h-full object-cover" crossOrigin="anonymous"/>
+                                    {/* Using raw img tag with proxy URL here to ensure crossOrigin works correctly for canvas */}
+                                    <img 
+                                        src={getOptimizedImageUrl(topMatch.photo, 200)} 
+                                        alt={topMatch.name} 
+                                        className="w-full h-full object-cover" 
+                                        crossOrigin="anonymous"
+                                    />
                                 </div>
                                 <div className="text-center bg-gray-800/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 -mt-2">
                                     <h3 className="text-white font-black text-sm leading-tight whitespace-nowrap">{topMatch.name.split(' ')[0]}</h3>

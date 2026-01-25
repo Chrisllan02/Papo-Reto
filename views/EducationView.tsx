@@ -1,21 +1,19 @@
 
 import React from 'react';
 import { ChevronLeft, Lightbulb, Banknote, ScrollText, ArrowRight, Clock, CheckCircle2, Scale, Target } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
-interface EducationViewProps {
-  educationId: number;
-  articles: any[];
-  onBack: () => void;
-  onSelectArticle: (id: number) => void;
-}
+const EducationView: React.FC = () => {
+  const { selectedEducationId, articles, setSelectedEducationId } = useAppStore();
+  const onBack = () => setSelectedEducationId(null);
+  const onSelectArticle = (id: number) => setSelectedEducationId(id);
 
-const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
-  const item = articles.find(i => i.id === educationId);
+  const item = articles.find(i => i.id === selectedEducationId);
   
   if (!item) return <div className="p-8 text-center text-gray-500 font-bold mt-10">Conteúdo não encontrado ou carregando...</div>;
 
   // Encontra o próximo item para sugestão
-  const nextItemIndex = (articles.findIndex(i => i.id === educationId) + 1) % articles.length;
+  const nextItemIndex = (articles.findIndex(i => i.id === selectedEducationId) + 1) % articles.length;
   const nextItem = articles[nextItemIndex];
 
   // Helper para renderizar o ícone correto

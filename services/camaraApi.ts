@@ -1,6 +1,7 @@
 
 import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
 import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
+import { db } from './db';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -111,47 +112,25 @@ export const formatText = (text: string) => {
     return formatted;
 };
 
-// --- CONFIGURAÇÃO DE CACHE ---
-const CACHE_PREFIX = 'paporeto_v23_'; // Incrementado para invalidar caches antigos quebrados
-const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias (Listas)
-const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas (Feed)
-const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano (Histórico)
-const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas (Perfil Completo)
+// --- CONFIGURAÇÃO DE CACHE (AGORA ASSÍNCRONO) ---
+const CACHE_PREFIX = 'paporeto_v24_'; 
+const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias
+const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas
+const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano
+const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas
 
-// Recupera dado cru do cache sem validar tempo (útil para identidade)
-const getRawCache = (key: string) => {
-    try {
-        const cached = localStorage.getItem(CACHE_PREFIX + key);
-        return cached ? JSON.parse(cached) : null;
-    } catch (e) {
-        return null;
-    }
+// Wrapper assíncrono para IndexedDB
+const getRawCache = async (key: string) => {
+    return await db.get<{ data: any, timestamp: number }>(CACHE_PREFIX + key);
 };
 
-const setInCache = (key: string, data: any) => {
-    let payload = '';
-    try {
-        payload = JSON.stringify({ data, timestamp: Date.now() });
-        localStorage.setItem(CACHE_PREFIX + key, payload);
-    } catch (e) {
-        try {
-            console.warn('LocalStorage cheio. Tentando limpar itens antigos...');
-            // Estratégia de limpeza: remove itens que começam com "req_" (requisições de API)
-            Object.keys(localStorage).forEach(k => {
-                if (k.startsWith(CACHE_PREFIX + 'req_')) {
-                    localStorage.removeItem(k);
-                }
-            });
-            if (payload) localStorage.setItem(CACHE_PREFIX + key, payload);
-        } catch (clearErr) {
-            console.error('Falha crítica no cache', clearErr);
-        }
-    }
+const setInCache = async (key: string, data: any) => {
+    await db.set(CACHE_PREFIX + key, { data, timestamp: Date.now() });
 };
 
 const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, ttl: number): Promise<any> => {
     const cacheKey = `req_${keySuffix}`;
-    const cached = getRawCache(cacheKey);
+    const cached = await getRawCache(cacheKey);
     
     // Se existe cache válido, usa
     if (cached && (Date.now() - cached.timestamp < ttl)) {
@@ -160,16 +139,15 @@ const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, tt
 
     try {
         const data = await fetchFn();
-        // Só salva se vier dados válidos (não nulo, não vazio)
+        // Só salva se vier dados válidos
         if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
-            setInCache(cacheKey, data);
+            await setInCache(cacheKey, data);
         }
-        // Se a busca falhou (retornou null) mas temos cache antigo, usa o antigo (Stale-while-revalidate fallback)
+        // Fallback Stale-while-revalidate
         if (!data && cached) return cached.data;
         
         return data;
     } catch (e) {
-        // Se deu erro na requisição, tenta usar cache antigo
         return cached ? cached.data : null;
     }
 };
@@ -297,7 +275,6 @@ const fetchPresencaReal = async (id: number) => {
     const yearlyMap: Record<number, any> = {};
     
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
-        // CACHE PERMANENTE PARA ANOS PASSADOS
         const ttl = year < currentYear ? TTL_PERMANENT : TTL_DYNAMIC;
         
         const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
@@ -329,7 +306,7 @@ const fetchPresencaReal = async (id: number) => {
         pct: totalSessoes > 0 ? Math.round((totalPresente / totalSessoes) * 100) : 0, 
         total: totalSessoes, presente: totalPresente, falta: totalFalta, yearly: yearlyMap,
         plenary: { total: totalSessoes, present: totalPresente, justified: 0, unjustified: totalFalta, percentage: totalSessoes > 0 ? Math.round((totalPresente / totalSessoes) * 100) : 0 },
-        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 } // Placeholder agregado
+        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }
     };
 };
 
@@ -379,7 +356,7 @@ const fetchProposicoesAggregated = async (id: number) => {
     return yearlyMap;
 };
 
-// --- ADDITIONAL FETCHERS (Restored) ---
+// --- ADDITIONAL FETCHERS ---
 
 const fetchSenadorVotacoes = async (id: number) => { return []; };
 const fetchSenadorDiscursos = async (id: number) => { return []; };
@@ -534,7 +511,7 @@ const fetchMapDeVotosReais = async (): Promise<Record<number, Record<number, str
 
 export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
     const cacheKey = `fast_profile_${pol.id}`;
-    const cached = getRawCache(cacheKey);
+    const cached = await getRawCache(cacheKey);
     
     // CACHE ETERNO PARA IDENTIDADE: Se já baixamos detalhes um dia, use-os para sempre.
     if (cached && cached.data) {
@@ -549,7 +526,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
             bio = `${details.civilName}, Senador(a) da República...`;
         }
         const result = { ...pol, ...details, bio };
-        setInCache(cacheKey, result);
+        await setInCache(cacheKey, result);
         return result;
     }
 
@@ -577,7 +554,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
             roles: orgaos
         };
 
-        if (details) setInCache(cacheKey, result); // Só salva se o fetch principal funcionou
+        if (details) await setInCache(cacheKey, result); 
         return result;
     } catch (e) {
         return pol;
@@ -586,22 +563,21 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 
 export const enrichPoliticianData = async (pol: Politician): Promise<Politician> => {
     const fullCacheKey = `full_profile_${pol.id}`;
-    const cachedFull = getRawCache(fullCacheKey);
+    const cachedFull = await getRawCache(fullCacheKey);
     
     // 1. Tenta Cache Completo (24h)
     if (cachedFull && (Date.now() - cachedFull.timestamp < TTL_PROFILE)) {
         return cachedFull.data;
     }
 
-    // 2. Garante Identidade Básica (Cache Eterno ou Novo Fetch)
+    // 2. Garante Identidade Básica
     let baseData = pol;
     const fastCacheKey = `fast_profile_${pol.id}`;
-    const cachedFast = getRawCache(fastCacheKey);
+    const cachedFast = await getRawCache(fastCacheKey);
     
     if (cachedFast && cachedFast.data) {
         baseData = { ...pol, ...cachedFast.data };
     } else {
-        // Se não tem cache de identidade, tenta buscar agora
         const fastData = await enrichPoliticianFast(pol);
         baseData = fastData;
     }
@@ -646,9 +622,6 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
     // Deputados (Fetch Paralelo Robusto)
     const currentYear = new Date().getFullYear();
     
-    // AQUI ESTÁ A GRANDE OTIMIZAÇÃO:
-    // As funções chamadas aqui dentro (fetchPresencaReal, fetchDespesasAggregated) já implementam
-    // a lógica de usar Cache Permanente para anos passados.
     const results = await Promise.allSettled([
         fetchPresencaReal(pol.id),
         fetchDespesasAggregated(pol.id),
@@ -743,15 +716,13 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
         };
     }
 
-    // Salva no cache se tivemos algum sucesso (ex: despesas ou presença)
     if (presenca.total > 0 || expensesData.total > 0) {
-        setInCache(fullCacheKey, fullProfile);
+        await setInCache(fullCacheKey, fullProfile);
     }
 
     return fullProfile;
 };
 
-// Funções de Lista e Feed (mantidas com cache otimizado)
 export const fetchDeputados = async (): Promise<Politician[]> => {
     return fetchWithCache('lista_deputados', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?pagina=1&itens=600`, 2);
@@ -812,29 +783,15 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
     return fetchWithCache('global_feed', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=20`, 2);
         if (!data || !data.dados) return [];
-        return data.dados.map((v: any) => {
-            // Tenta extrair o ID da proposição se houver
-            // A API retorna algo como "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2418866" em proposicaoObjeto
-            let realLink = 'https://www.camara.leg.br/atividade-legislativa/plenario/votacoes';
-            
-            if (v.proposicaoObjeto) {
-                const parts = v.proposicaoObjeto.split('/');
-                const propId = parts[parts.length - 1];
-                if (propId) {
-                    realLink = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
-                }
-            }
-
-            return {
-                id: (typeof v.id === 'string' && v.id.includes('-')) ? v.id : (parseInt(v.id) || Date.now()), // Handle string IDs like '2256735-89'
-                type: 'voto',
-                title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
-                date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
-                description: formatText(v.descricao),
-                status: 'Concluído',
-                sourceUrl: realLink // FIXED: Link to Proposition or Plenary page, not broken endpoint
-            };
-        });
+        return data.dados.map((v: any) => ({
+            id: parseInt(v.id) || Date.now(),
+            type: 'voto',
+            title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
+            date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
+            description: formatText(v.descricao),
+            status: 'Concluído',
+            sourceUrl: `https://www.camara.leg.br/votacoes/${v.id}`
+        }));
     }, TTL_DYNAMIC);
 };
 
@@ -867,14 +824,11 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
             const v = realVotes[i];
             const qId = 100 + i;
             
-            // Fetch votes for specific aggregation
             const votesData = await fetchAPI(`${BASE_URL_CAMARA}/votacoes/${v.id}/votos`, 2);
-            
             let stats: QuizVoteStats = { totalYes: 0, totalNo: 0, totalAbstain: 0, partiesYes: [], partiesNo: [], approvalRate: 0 };
             
             if (votesData && votesData.dados) {
                 voteMap[v.id] = {};
-                
                 const partyYesCounts: Record<string, number> = {};
                 const partyNoCounts: Record<string, number> = {};
 
@@ -897,17 +851,8 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
                     voteMap[v.id][vote.deputado_.id] = sVoto;
                 });
 
-                // Calculate Top Parties
-                stats.partiesYes = Object.entries(partyYesCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3)
-                    .map(e => e[0]);
-                
-                stats.partiesNo = Object.entries(partyNoCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3)
-                    .map(e => e[0]);
-
+                stats.partiesYes = Object.entries(partyYesCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+                stats.partiesNo = Object.entries(partyNoCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
                 const totalVotes = stats.totalYes + stats.totalNo + stats.totalAbstain;
                 stats.approvalRate = totalVotes > 0 ? Math.round((stats.totalYes / totalVotes) * 100) : 0;
             }

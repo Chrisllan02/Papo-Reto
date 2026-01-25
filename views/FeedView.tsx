@@ -1,20 +1,11 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Newspaper, Activity, MapPin, LocateFixed, BookOpen, Lightbulb, Banknote, ScrollText, ArrowRight, ChevronRight } from 'lucide-react';
-import { FeedItem, Politician } from '../types';
-import { speakContent } from '../services/ai';
+import { useAppStore } from '../store/useAppStore';
+import { Politician } from '../types';
 import NewsTicker from '../components/NewsTicker';
+import OptimizedImage from '../components/OptimizedImage';
 
-interface FeedViewProps {
-  politicians: Politician[];
-  feedItems: FeedItem[];
-  articles: any[];
-  onSelectCandidate: (pol: Politician) => void;
-  onEducationClick: (id: number) => void;
-  onGoToExplore: (state: string) => void;
-}
-
-// Componente de Cabeçalho de Seção Padronizado
 const SectionHeader = ({ icon: Icon, title, subtitle, actionLabel, onAction, colorClass = "text-blue-600" }: any) => (
     <div className="flex items-end justify-between mb-6 px-1">
         <div className="flex items-center gap-3">
@@ -43,7 +34,9 @@ const SectionHeader = ({ icon: Icon, title, subtitle, actionLabel, onAction, col
     </div>
 );
 
-const EducationCarouselWidget = ({ articles, onEducationClick }: { articles: any[], onEducationClick: (id: number) => void }) => {
+const EducationCarouselWidget = () => {
+    const articles = useAppStore((state) => state.articles);
+    const setSelectedEducationId = useAppStore((state) => state.setSelectedEducationId);
     
     const renderIcon = (iconName: string, size: number, className: string) => {
         switch(iconName) {
@@ -68,18 +61,15 @@ const EducationCarouselWidget = ({ articles, onEducationClick }: { articles: any
                 {articles.map((item) => (
                     <button 
                         key={item.id}
-                        onClick={() => onEducationClick(item.id)}
+                        onClick={() => setSelectedEducationId(item.id)}
                         className="snap-center shrink-0 w-[280px] md:w-[320px] h-auto relative rounded-[2rem] overflow-hidden group transition-all hover:-translate-y-1"
                     >
-                        {/* Clean Card Background - Removed heavy gradients/textures */}
                         <div className="absolute inset-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:shadow-xl transition-all duration-300 rounded-[2rem]"></div>
                         
-                        {/* Top Accent Bar */}
                         <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${item.colorFrom} ${item.colorTo}`}></div>
 
                         <div className="relative z-10 p-6 flex flex-col h-full justify-between text-left">
                             <div className="flex justify-between items-start mb-4">
-                                {/* Icon Container with Gradient */}
                                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.colorFrom} ${item.colorTo} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
                                     {renderIcon(item.icon, 24, "drop-shadow-sm")}
                                 </div>
@@ -104,7 +94,11 @@ const EducationCarouselWidget = ({ articles, onEducationClick }: { articles: any
     );
 };
 
-const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }: { politicians: Politician[], onSelectCandidate: (p: Politician) => void, onGoToExplore: (state: string) => void }) => {
+const StateSpotlightWidget = () => {
+    const politicians = useAppStore((state) => state.politicians);
+    const setSelectedCandidate = useAppStore((state) => state.setSelectedCandidate);
+    const setExploreFilterState = useAppStore((state) => state.setExploreFilterState);
+
     const [selectedState, setSelectedState] = useState<string>('');
     const [statePoliticians, setStatePoliticians] = useState<Politician[]>([]);
     const [isLocal, setIsLocal] = useState(false);
@@ -114,7 +108,7 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         if (!politicians || politicians.length === 0) return;
 
         const setRandomState = () => {
-             const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
+             const states = Array.from(new Set(politicians.map(p => p.state).filter((s): s is string => !!s)));
              if (states.length > 0) {
                 const random = states[Math.floor(Math.random() * states.length)];
                 updateState(random);
@@ -138,8 +132,8 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                     try {
                         const { latitude, longitude } = position.coords;
                         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        const data = await response.json();
-                        const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
+                        const data = await response.json() as any;
+                        const uf = data.principalSubdivisionCode ? (data.principalSubdivisionCode as string).split('-')[1] : null;
                         
                         if (uf && politicians.some(p => p.state === uf)) {
                             updateState(uf);
@@ -167,14 +161,12 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
 
     return (
         <section className="animate-in fade-in slide-in-from-bottom-8 duration-500">
-            {/* Removed the heavy backdrop container for cleaner look */}
-            
             <SectionHeader 
                 icon={isLocal ? LocateFixed : MapPin}
                 title={selectedState}
                 subtitle={isLocal ? 'Sua Bancada Regional' : 'Giro pelos Estados'}
                 actionLabel="Ver Todos"
-                onAction={() => onGoToExplore(selectedState)}
+                onAction={() => setExploreFilterState(selectedState)}
                 colorClass={isLocal ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"}
             />
 
@@ -182,11 +174,16 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                 {statePoliticians.map((pol) => (
                     <div 
                         key={pol.id} 
-                        onClick={() => onSelectCandidate(pol)}
+                        onClick={() => setSelectedCandidate(pol)}
                         className="snap-center shrink-0 w-32 md:w-36 bg-white dark:bg-gray-800 rounded-[1.5rem] p-4 flex flex-col items-center text-center shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group"
                     >
                         <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-gray-200 to-white dark:from-gray-700 dark:to-gray-600 mb-3 relative group-hover:from-blue-500 group-hover:to-purple-500 transition-colors">
-                            <img src={pol.photo} alt={pol.name} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-gray-800" loading="lazy" decoding="async" />
+                            <OptimizedImage 
+                                src={pol.photo} 
+                                alt={pol.name} 
+                                widthParam={100}
+                                className="w-full h-full rounded-full object-cover border-2 border-white dark:border-gray-800" 
+                            />
                         </div>
                         
                         <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-1 line-clamp-2 min-h-[2.5em]">
@@ -228,18 +225,13 @@ const HeaderGreeting = () => {
     );
 };
 
-const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, onSelectCandidate, onEducationClick, onGoToExplore }) => {
+const FeedView: React.FC = () => {
   return (
     <div id="main-content" className="w-full h-full bg-transparent font-sans flex flex-col">
         <div className="flex-1 overflow-hidden">
             <div className="h-full w-full overflow-y-auto pb-32 px-4 md:px-8 pt-4 md:pt-8 custom-scrollbar">
-                
                 <HeaderGreeting />
-
-                {/* Vertical Spacing Increased for clearer sections */}
                 <div className="space-y-12">
-                    
-                    {/* 1: DESTAQUE DO DIA (Hero) */}
                     <div>
                         <SectionHeader 
                             icon={Newspaper} 
@@ -249,15 +241,9 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                         />
                         <NewsTicker />
                     </div>
-
-                    {/* 2: CARROSSEL GUIA CIDADÃO */}
-                    <EducationCarouselWidget articles={articles} onEducationClick={onEducationClick} />
-
-                    {/* 3: SUA BANCADA */}
-                    <StateSpotlightWidget politicians={politicians} onSelectCandidate={onSelectCandidate} onGoToExplore={onGoToExplore} />
-                
+                    <EducationCarouselWidget />
+                    <StateSpotlightWidget />
                 </div>
-
             </div>
         </div>
     </div>

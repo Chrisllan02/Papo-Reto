@@ -13,7 +13,11 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
     const [search, setSearch] = useState('');
 
     useEffect(() => {
-        setHistory(getNewsHistory());
+        const load = async () => {
+            const data = await getNewsHistory();
+            setHistory(data);
+        };
+        load();
     }, []);
 
     const filtered = history.filter(h => 

@@ -1,17 +1,10 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight } from 'lucide-react';
-import { Politician, FeedItem, Party } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Users, Compass, Trophy, Globe, ShieldCheck } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
+import { Politician } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
-import { QUIZ_QUESTIONS } from '../constants';
 import BrazilMap from '../components/BrazilMap';
-
-interface PartiesDashboardViewProps {
-  politicians: Politician[];
-  parties?: Party[];
-  feedItems?: FeedItem[];
-  onSelectCandidate?: (pol: Politician) => void;
-}
 
 interface RegionStats {
     Norte: number;
@@ -516,10 +509,12 @@ const CohesionCard = ({ data, selectedParty }: { data: PartyStats[], selectedPar
     );
 };
 
-const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
+const PartiesDashboardView: React.FC = () => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
+  
+  const politicians = useAppStore((state) => state.politicians);
 
-  const { partyStats, ideologyStats, dominantIdeology } = useMemo(() => {
+  const { partyStats, ideologyStats } = useMemo(() => {
     const groups: Record<string, PartyStats> = {};
     const ideologyGroups: Record<string, number> = { 'Esquerda': 0, 'Centro': 0, 'Direita': 0 };
 
@@ -555,16 +550,9 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
         }
     });
 
-    let max = 0;
-    let dom = 'Centro';
-    Object.entries(ideologyGroups).forEach(([k, v]) => {
-        if (v > max) { max = v; dom = k; }
-    });
-
     return {
         partyStats: Object.values(groups).filter(g => g.totalMembers > 0),
         ideologyStats: ideologyGroups,
-        dominantIdeology: dom
     };
   }, [politicians]);
 

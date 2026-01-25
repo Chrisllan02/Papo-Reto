@@ -5,33 +5,41 @@ import { NewsArticle } from '../types';
 import { Loader2, ExternalLink, Globe, Gavel, TrendingUp, Users, Scale } from 'lucide-react';
 
 const NewsTicker: React.FC = () => {
-    const [news, setNews] = useState<NewsArticle[]>(() => {
-        const cached = getBestAvailableNews();
-        return cached || [];
-    });
-    
-    const [loading, setLoading] = useState(() => news.length === 0);
+    const [news, setNews] = useState<NewsArticle[]>([]);
+    const [loading, setLoading] = useState(true);
     const [index, setIndex] = useState(0);
     const [paused, setPaused] = useState(false);
 
+    // Initial load from Async Cache
     useEffect(() => {
-        const updateNews = async () => {
-            try {
-                // Background fetch
-                const fresh = await fetchDailyNews();
-                if (fresh && fresh.length > 0) {
-                    if (fresh[0].title !== news[0]?.title) {
-                        setNews(fresh);
-                    }
-                }
-            } catch (error) {
-                console.error("Background news update failed", error);
-            } finally {
+        const loadInitial = async () => {
+            const cached = await getBestAvailableNews();
+            if (cached) {
+                setNews(cached);
                 setLoading(false);
             }
+            // Trigger background fetch if needed, or if no cache
+            updateNews(cached);
         };
-        updateNews();
+        loadInitial();
     }, []);
+
+    const updateNews = async (existing: NewsArticle[] | null) => {
+        try {
+            // Background fetch
+            const fresh = await fetchDailyNews();
+            if (fresh && fresh.length > 0) {
+                // If data changed or was empty
+                if (!existing || existing.length === 0 || fresh[0].title !== existing[0]?.title) {
+                    setNews(fresh);
+                }
+            }
+        } catch (error) {
+            console.error("Background news update failed", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (news.length === 0 || paused) return;
