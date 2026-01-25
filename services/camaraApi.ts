@@ -111,17 +111,14 @@ export const formatText = (text: string) => {
     return formatted;
 };
 
-// --- ESTRATÉGIA DE CACHE INTELIGENTE ---
-// Atualizamos o prefixo para invalidar caches antigos "burros"
-const CACHE_PREFIX = 'paporeto_smart_v1_'; 
+// --- CONFIGURAÇÃO DE CACHE ---
+const CACHE_PREFIX = 'paporeto_v23_'; // Incrementado para invalidar caches antigos quebrados
+const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias (Listas)
+const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas (Feed)
+const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano (Histórico)
+const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas (Perfil Completo)
 
-// TTLs (Tempos de Vida)
-const TTL_STATIC = 1000 * 60 * 60 * 24 * 7; // 7 Dias (Listas de deputados/partidos)
-const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas (Feed, presença atual, gastos do mês)
-const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano (Dados históricos de anos anteriores)
-const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas (Agregação do Perfil Completo)
-
-// Recupera dado cru do cache sem validar tempo (útil para identidade que não expira)
+// Recupera dado cru do cache sem validar tempo (útil para identidade)
 const getRawCache = (key: string) => {
     try {
         const cached = localStorage.getItem(CACHE_PREFIX + key);
@@ -138,15 +135,13 @@ const setInCache = (key: string, data: any) => {
         localStorage.setItem(CACHE_PREFIX + key, payload);
     } catch (e) {
         try {
-            console.warn('LocalStorage cheio. Executando limpeza inteligente...');
-            // Estratégia de limpeza: remove apenas requisições de API antigas (começam com "req_")
-            // Preserva "profile_" e "fast_profile_" que são dados nobres do usuário
+            console.warn('LocalStorage cheio. Tentando limpar itens antigos...');
+            // Estratégia de limpeza: remove itens que começam com "req_" (requisições de API)
             Object.keys(localStorage).forEach(k => {
                 if (k.startsWith(CACHE_PREFIX + 'req_')) {
                     localStorage.removeItem(k);
                 }
             });
-            // Tenta salvar novamente
             if (payload) localStorage.setItem(CACHE_PREFIX + key, payload);
         } catch (clearErr) {
             console.error('Falha crítica no cache', clearErr);
@@ -154,7 +149,6 @@ const setInCache = (key: string, data: any) => {
     }
 };
 
-// Fetch inteligente com cache
 const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, ttl: number): Promise<any> => {
     const cacheKey = `req_${keySuffix}`;
     const cached = getRawCache(cacheKey);
@@ -170,7 +164,7 @@ const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, tt
         if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
             setInCache(cacheKey, data);
         }
-        // Fallback "Stale-while-revalidate": Se a busca falhou (offline/erro), usa cache antigo se existir
+        // Se a busca falhou (retornou null) mas temos cache antigo, usa o antigo (Stale-while-revalidate fallback)
         if (!data && cached) return cached.data;
         
         return data;
@@ -303,7 +297,7 @@ const fetchPresencaReal = async (id: number) => {
     const yearlyMap: Record<number, any> = {};
     
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
-        // LÓGICA CORRIGIDA: Anos passados são imutáveis -> Cache Permanente
+        // CACHE PERMANENTE PARA ANOS PASSADOS
         const ttl = year < currentYear ? TTL_PERMANENT : TTL_DYNAMIC;
         
         const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
@@ -347,7 +341,6 @@ const fetchDespesasAggregated = async (id: number) => {
     const history: ExpenseHistoryItem[] = [];
 
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
-        // LÓGICA CORRIGIDA: Anos passados são imutáveis -> Cache Permanente
         const ttl = year < currentYear ? TTL_PERMANENT : TTL_DYNAMIC;
         
         let yearTotal = 0;
@@ -544,14 +537,13 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
     const cached = getRawCache(cacheKey);
     
     // CACHE ETERNO PARA IDENTIDADE: Se já baixamos detalhes um dia, use-os para sempre.
-    // Isso resolve o problema de ficar consultando dados fixos repetidamente.
     if (cached && cached.data) {
         return { ...pol, ...cached.data };
     }
 
     // Senadores
     if (pol.role.includes('Senad')) {
-        const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
+        const details = await fetchSenadorDetalhes(pol.id).catch(() => ({} as SenadorDetails));
         let bio = pol.bio;
         if (details.civilName) {
             bio = `${details.civilName}, Senador(a) da República...`;
@@ -597,22 +589,19 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
     const cachedFull = getRawCache(fullCacheKey);
     
     // 1. Tenta Cache Completo (24h)
-    // Se o perfil completo já foi montado hoje, retorna ele e não faz NENHUMA requisição de rede.
     if (cachedFull && (Date.now() - cachedFull.timestamp < TTL_PROFILE)) {
         return cachedFull.data;
     }
 
     // 2. Garante Identidade Básica (Cache Eterno ou Novo Fetch)
     let baseData = pol;
-    
-    // Otimização: Tenta pegar a identidade do cache primeiro antes de fazer request
     const fastCacheKey = `fast_profile_${pol.id}`;
     const cachedFast = getRawCache(fastCacheKey);
     
     if (cachedFast && cachedFast.data) {
         baseData = { ...pol, ...cachedFast.data };
     } else {
-        // Se não tem cache de identidade, busca agora (e salva lá dentro)
+        // Se não tem cache de identidade, tenta buscar agora
         const fastData = await enrichPoliticianFast(pol);
         baseData = fastData;
     }
@@ -823,15 +812,29 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
     return fetchWithCache('global_feed', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=20`, 2);
         if (!data || !data.dados) return [];
-        return data.dados.map((v: any) => ({
-            id: parseInt(v.id) || Date.now(),
-            type: 'voto',
-            title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
-            date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
-            description: formatText(v.descricao),
-            status: 'Concluído',
-            sourceUrl: `https://www.camara.leg.br/votacoes/${v.id}`
-        }));
+        return data.dados.map((v: any) => {
+            // Tenta extrair o ID da proposição se houver
+            // A API retorna algo como "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2418866" em proposicaoObjeto
+            let realLink = 'https://www.camara.leg.br/atividade-legislativa/plenario/votacoes';
+            
+            if (v.proposicaoObjeto) {
+                const parts = v.proposicaoObjeto.split('/');
+                const propId = parts[parts.length - 1];
+                if (propId) {
+                    realLink = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
+                }
+            }
+
+            return {
+                id: (typeof v.id === 'string' && v.id.includes('-')) ? v.id : (parseInt(v.id) || Date.now()), // Handle string IDs like '2256735-89'
+                type: 'voto',
+                title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
+                date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
+                description: formatText(v.descricao),
+                status: 'Concluído',
+                sourceUrl: realLink // FIXED: Link to Proposition or Plenary page, not broken endpoint
+            };
+        });
     }, TTL_DYNAMIC);
 };
 

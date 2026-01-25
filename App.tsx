@@ -6,7 +6,6 @@ import FeedView from './views/FeedView';
 import ExploreView from './views/ExploreView';
 import ProfileView from './views/ProfileView';
 import PartiesDashboardView from './views/PartiesDashboardView';
-import FullFeedView from './views/FullFeedView';
 import EducationView from './views/EducationView';
 import ArticlesListView from './views/ArticlesListView';
 import NewsHistoryView from './views/NewsHistoryView';
@@ -53,7 +52,6 @@ function App() {
   const [showDataModal, setShowDataModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false); 
   const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
-  const [isFullFeed, setIsFullFeed] = useState(false);
   const [isNewsHistory, setIsNewsHistory] = useState(false);
   const [explorePreselectedState, setExplorePreselectedState] = useState<string>(''); 
   
@@ -109,7 +107,7 @@ function App() {
             generateEducationalContent().then(eduContent => {
                 if (eduContent && eduContent.length > 0) {
                      const newArticles = eduContent.map((item, index) => ({
-                         id: index + 100,
+                         id: index + 100, // IDs start at 100 to avoid conflict with static IDs (1, 2, 3...)
                          title: item.title,
                          text: item.text,
                          topic: item.topic, 
@@ -117,7 +115,13 @@ function App() {
                          impact: item.impact,           
                          ...mapArticleStyle(index, item.topic)
                      }));
-                     setArticles(newArticles);
+                     // MERGE instead of replace to avoid "Content not found" if user is reading static content
+                     setArticles(prev => {
+                         // Check for duplicates based on title to be safe with React.StrictMode double-invocations
+                         const existingTitles = new Set(prev.map(a => a.title));
+                         const uniqueNew = newArticles.filter(a => !existingTitles.has(a.title));
+                         return [...prev, ...uniqueNew];
+                     });
                 }
             });
         } catch (error) {
@@ -166,14 +170,12 @@ function App() {
             onSelectArticle={markArticleAsRead}
         />
       );
-  } else if (isFullFeed) {
-      content = <FullFeedView feedItems={feedItems} politicians={politicians} onBack={() => setIsFullFeed(false)} onSelectCandidate={handleSelectCandidate} />;
   } else if (isNewsHistory) {
       content = <NewsHistoryView onBack={() => setIsNewsHistory(false)} />;
   } else {
       switch (activeTab) {
           case 'feed':
-              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onGoToExplore={handleGoToExplore} />;
               break;
           case 'explore':
               content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} preselectedState={explorePreselectedState} />;
@@ -185,7 +187,7 @@ function App() {
               content = <ArticlesListView articles={articles} onSelectArticle={markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => setIsNewsHistory(true)} />;
               break;
           default:
-              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onGoToExplore={handleGoToExplore} />;
       }
   }
 
@@ -212,7 +214,6 @@ function App() {
                     setActiveTab(tab); 
                     setSelectedCandidate(null); 
                     setSelectedEducationId(null); 
-                    setIsFullFeed(false);
                     setIsNewsHistory(false);
                     if (tab !== 'explore') setExplorePreselectedState('');
                 }} 
@@ -237,7 +238,6 @@ function App() {
             setActiveTab={(tab) => { 
                 setActiveTab(tab); 
                 setSelectedCandidate(null); 
-                setIsFullFeed(false); 
                 setIsNewsHistory(false);
                 if (tab !== 'explore') setExplorePreselectedState('');
             }} 

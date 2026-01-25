@@ -352,6 +352,8 @@ export interface NewsArticle {
   source: string;
   url: string;
   time: string;
-  imageUrl?: string; // NOVO
-  summary?: string; // NOVO: Resumo pré-gerado
+  summary: string; // Agora obrigatório, pois vem do prompt
+  category: 'politica' | 'economia' | 'justica' | 'social' | 'mundo'; // Para definir o ícone/cor
+  imageUrl?: string; // Mantido como opcional, mas não será usado no novo design
+  timestamp?: number; // Para controle de exclusão (1 mês)
 }

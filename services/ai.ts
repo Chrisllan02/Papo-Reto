@@ -1,61 +1,24 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
 
-// Inicialização segura
+// Fix: Always initialize GoogleGenAI strictly using process.env.API_KEY as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
-const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; 
+// Cache Utils para AI
+const NEWS_CACHE_KEY = 'paporeto_news_v9_daily_summary';
+const NEWS_HISTORY_KEY = 'paporeto_news_history_v2';
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas de Cache para o "Destaque do Dia"
 
-const THEMATIC_IMAGE_BANK: Record<string, string[]> = {
-    congresso: [
-        "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1590333748338-d629e4564ad9?q=80&w=800&auto=format&fit=crop", 
-        "https://images.unsplash.com/photo-1575320181282-9afab399332c?q=80&w=800&auto=format&fit=crop"
-    ],
-    justica: [
-        "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1529101091760-6149d4c46b7d?q=80&w=800&auto=format&fit=crop"
-    ],
-    economia: [
-        "https://images.unsplash.com/photo-1555848962-6e79363ec58f?q=80&w=800&auto=format&fit=crop", 
-        "https://images.unsplash.com/photo-1621261304229-373981882c9e?q=80&w=800&auto=format&fit=crop"
-    ],
-    saude: [
-        "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=800&auto=format&fit=crop"
-    ],
-    educacao: [
-        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=800&auto=format&fit=crop"
-    ],
-    ambiente: [
-        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop"
-    ],
-    tecnologia: [
-        "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop"
-    ],
-    agro: [
-        "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=800&auto=format&fit=crop"
-    ]
-};
-
-const getThematicImage = (title: string): string => {
-    const t = title.toLowerCase();
-    if (t.includes('amazônia') || t.includes('floresta') || t.includes('clima')) return THEMATIC_IMAGE_BANK.ambiente[0];
-    if (t.includes('agro') || t.includes('safra')) return THEMATIC_IMAGE_BANK.agro[0];
-    if (t.includes('dólar') || t.includes('economia') || t.includes('orçamento')) return THEMATIC_IMAGE_BANK.economia[0];
-    if (t.includes('stf') || t.includes('juiz') || t.includes('lei')) return THEMATIC_IMAGE_BANK.justica[0];
-    if (t.includes('saúde') || t.includes('sus')) return THEMATIC_IMAGE_BANK.saude[0];
-    if (t.includes('educação') || t.includes('escola')) return THEMATIC_IMAGE_BANK.educacao[0];
-    if (t.includes('tech') || t.includes('digital')) return THEMATIC_IMAGE_BANK.tecnologia[0];
-    return THEMATIC_IMAGE_BANK.congresso[0];
-};
+const EDU_CACHE_KEY = 'paporeto_edu_content_v1';
+const EDU_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 dias (Conteúdo Educativo é estático)
 
 const getCache = (key: string, ttl: number) => {
     try {
         const item = localStorage.getItem(key);
         if (!item) return null;
         const { data, timestamp } = JSON.parse(item);
+        // Se TTL for 0, é infinito (para histórico)
         if (ttl > 0 && Date.now() - timestamp > ttl) return null;
         return data;
     } catch (e) {
@@ -67,16 +30,61 @@ const setCache = (key: string, data: any) => {
     try {
         localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
     } catch (e) {
-        console.warn('Cache full, clearing old keys');
-        localStorage.removeItem('paporeto_img_cache_v2'); 
-        localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+        console.warn('Cache full, attempting cleanup');
+        try {
+            localStorage.removeItem('paporeto_news_v8_daily'); // Remove chaves antigas
+            localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+        } catch(err) {
+            console.error("Critical storage error", err);
+        }
     }
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Wrapper com Retry para Quota (429)
+const safeGenerateContent = async (model: string, params: any, retries = 3): Promise<any> => {
+    let lastError;
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await ai.models.generateContent({
+                model,
+                ...params
+            });
+            return response;
+        } catch (error: any) {
+            lastError = error;
+            const isQuota = error.status === 429 || 
+                            error.code === 429 || 
+                            (error.message && error.message.includes('429')) ||
+                            (error.message && error.message.includes('quota')) ||
+                            (error.message && error.message.includes('RESOURCE_EXHAUSTED'));
+            
+            if (isQuota && i < retries - 1) {
+                const delay = 2000 * Math.pow(2, i); // 2s, 4s, 8s
+                console.warn(`[AI] Quota limite atingida. Tentando novamente em ${delay/1000}s... (Tentativa ${i+1}/${retries})`);
+                await sleep(delay);
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
 };
 
 export interface AIResponse {
     text: string;
-    searchSources?: { uri: string; title: string }[];
-    mapSources?: { uri: string; title: string; source: string }[];
+    sources: {
+        web?: {
+            uri: string;
+            title: string;
+        };
+        maps?: {
+            uri: string;
+            title: string;
+            source: string;
+        };
+    }[];
 }
 
 export interface GeneratedArticle {
@@ -87,10 +95,10 @@ export interface GeneratedArticle {
     impact?: string;
 }
 
+// --- GERAÇÃO DE VOZ ACESSÍVEL (TTS) ---
 export const speakContent = async (text: string): Promise<Uint8Array | null> => {
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
+        const response = await safeGenerateContent("gemini-2.5-flash-preview-tts", {
             contents: [{ parts: [{ text: `Diga de forma clara e profissional: ${text}` }] }],
             config: {
                 responseModalities: [Modality.AUDIO],
@@ -100,7 +108,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
                     },
                 },
             },
-        });
+        }, 1); // TTS retries less often as it's user initiated
         
         const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
@@ -118,40 +126,36 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     }
 };
 
-export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: {
-                parts: [{ text: `Fotojornalismo profissional no Brasil: ${headline}. Sem texto.` }]
-            },
-            config: {
-               imageConfig: { aspectRatio: "16:9" }
-            }
-        });
-        
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    return `data:image/png;base64,${part.inlineData.data}`;
-                }
-            }
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
-};
-
+// Funçao Auxiliar para salvar no Histórico (Com limpeza automática de 30 dias)
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
-        const uniqueNew = newArticles.filter(n => !currentHistory.some(h => h.title === n.title));
+        const thirtyDaysAgo = Date.now() - (1000 * 60 * 60 * 24 * 30);
+
+        // 1. Remove duplicatas (baseado no título)
+        // 2. Remove itens mais antigos que 30 dias
+        // 3. Adiciona timestamp se não tiver
+        
+        const validHistory = currentHistory.filter(h => {
+            const ts = h.timestamp || Date.now();
+            return ts > thirtyDaysAgo;
+        });
+
+        const newWithTs = newArticles.map(a => ({ ...a, timestamp: Date.now() }));
+        const uniqueNew = newWithTs.filter(n => !validHistory.some(h => h.title === n.title));
+        
         if (uniqueNew.length > 0) {
-            const updatedHistory = [...uniqueNew, ...currentHistory].slice(0, 50);
+            const updatedHistory = [...uniqueNew, ...validHistory];
             setCache(NEWS_HISTORY_KEY, updatedHistory);
+        } else {
+            // Apenas atualiza a limpeza de velhos se não houver novos
+            if (validHistory.length !== currentHistory.length) {
+                setCache(NEWS_HISTORY_KEY, validHistory);
+            }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Erro ao salvar histórico", e);
+    }
 };
 
 export const getNewsHistory = (): NewsArticle[] => {
@@ -159,17 +163,27 @@ export const getNewsHistory = (): NewsArticle[] => {
 };
 
 export const getBestAvailableNews = (): NewsArticle[] | null => {
-    return getCache(NEWS_CACHE_KEY, 0);
+    return getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
 };
 
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
+    // 1. Cache Check (Daily)
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    if (cachedNews && cachedNews.length > 0) return cachedNews;
+    if (cachedNews && cachedNews.length > 0) {
+        return cachedNews;
+    }
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Busque as 3 principais notícias políticas do Brasil de hoje. JSON array.`,
+        // 2. Single Gemini Call with Retry
+        const response = await safeGenerateContent('gemini-3-flash-preview', {
+            contents: `Busque as 3 principais notícias políticas do Brasil de hoje (Congresso, Leis, Economia).
+            
+            REGRAS:
+            - Use APENAS fontes oficiais ou veículos confiáveis.
+            - Categorize cada notícia em: 'politica', 'economia', 'justica', 'social' ou 'mundo'.
+            - Gere um 'summary' (resumo) de 2 frases explicando o impacto para o cidadão comum.
+            
+            Formate a saída estritamente como um JSON Array.`,
             config: {
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json",
@@ -179,12 +193,13 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                         type: Type.OBJECT,
                         properties: {
                             title: { type: Type.STRING },
+                            summary: { type: Type.STRING },
                             source: { type: Type.STRING },
                             url: { type: Type.STRING },
                             time: { type: Type.STRING },
-                            imageUrl: { type: Type.STRING }
+                            category: { type: Type.STRING, enum: ['politica', 'economia', 'justica', 'social', 'mundo'] }
                         },
-                        required: ["title", "source", "url", "time"]
+                        required: ["title", "summary", "source", "url", "time", "category"]
                     }
                 }
             }
@@ -192,57 +207,51 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
 
         const jsonStr = response.text?.trim();
         if (!jsonStr) throw new Error("Empty AI response");
+        
+        // Parse sem necessidade de pós-processamento de imagem
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
-        const enrichedData = await Promise.all(data.map(async (item, index) => {
-            let img = null;
-            if (index < 1) { 
-                try {
-                    img = await Promise.race([
-                        generateNewsImage(item.title),
-                        new Promise<string | null>(resolve => setTimeout(() => resolve(null), 6000))
-                    ]);
-                } catch (e) {}
-            }
-            if (!img) img = getThematicImage(item.title);
-            return { ...item, imageUrl: img };
-        }));
-
-        if (enrichedData.length > 0) {
-            setCache(NEWS_CACHE_KEY, enrichedData);
-            saveToHistory(enrichedData);
+        if (data.length > 0) {
+            setCache(NEWS_CACHE_KEY, data);
+            saveToHistory(data);
         }
-        return enrichedData;
-    } catch (error) {
+
+        return data;
+
+    } catch (error: any) {
+        if (error.status === 429 || error.code === 429 || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+             console.warn("Gemini Quota Exceeded for News. Using fallback data to ensure UI stability.");
+        } else {
+             console.error("News Fetch Error:", error);
+        }
+        
+        // Fallback robusto com design system
         return [
             { 
-                title: "Acompanhe o Congresso Nacional", 
+                title: "Congresso Nacional define pautas da semana",
+                summary: "Câmara e Senado organizam votações prioritárias. Acompanhe as sessões ao vivo para saber como os deputados estão votando.",
                 source: "Agência Câmara", 
                 url: "https://www.camara.leg.br", 
-                time: "Hoje", 
-                imageUrl: THEMATIC_IMAGE_BANK.congresso[0]
+                time: "Hoje",
+                category: "politica",
+                timestamp: Date.now()
+            },
+            {
+                title: "Novas diretrizes econômicas em debate",
+                summary: "Equipe econômica discute metas fiscais. Mudanças podem impactar inflação e juros no curto prazo.",
+                source: "Portal da Câmara",
+                url: "https://www.camara.leg.br/noticias/",
+                time: "Recente",
+                category: "economia",
+                timestamp: Date.now()
             }
         ];
     }
 };
 
+// Mantido para compatibilidade, mas o NewsTicker principal não usa mais isso
 export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    const summaryKey = `news_summary_${btoa(title).slice(0, 20)}`;
-    const cached = getCache(summaryKey, NEWS_CACHE_TTL);
-    if (cached) return cached;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Resumo detalhado sobre: "${title}" (${source}). Estilo Papo Reto.`,
-            config: { tools: [{ googleSearch: {} }] }
-        });
-        const text = response.text || "Resumo indisponível.";
-        setCache(summaryKey, text);
-        return text;
-    } catch (error) {
-        return "Resumo indisponível.";
-    }
+    return "Resumo disponível no card."; 
 };
 
 export const chatWithGemini = async (
@@ -256,56 +265,142 @@ export const chatWithGemini = async (
         let config: any = {};
 
         switch (mode) {
-            case 'fast': model = 'gemini-flash-lite-latest'; break;
-            case 'search': model = 'gemini-3-flash-preview'; tools = [{ googleSearch: {} }]; break;
-            case 'location': model = 'gemini-flash-latest'; tools = [{ googleMaps: {} }]; break;
-            case 'thinking': model = 'gemini-3-pro-preview'; config = { thinkingConfig: { thinkingBudget: 32768 } }; break;
-            case 'standard': default: model = 'gemini-3-pro-preview'; break;
+            case 'fast':
+                model = 'gemini-flash-lite-latest';
+                break;
+            case 'search':
+                model = 'gemini-3-flash-preview';
+                tools = [{ googleSearch: {} }];
+                break;
+            case 'location':
+                model = 'gemini-flash-latest';
+                tools = [{ googleMaps: {} }];
+                break;
+            case 'thinking':
+                model = 'gemini-3-pro-preview';
+                config = { thinkingConfig: { thinkingBudget: 32768 } };
+                break;
+            case 'standard':
+            default:
+                model = 'gemini-3-pro-preview';
+                break;
         }
 
-        const contents = [...history, { role: 'user', parts: [{ text: message }] }];
-        const response = await ai.models.generateContent({ model, contents, config: { ...config, tools: tools.length > 0 ? tools : undefined } });
+        const contents = [
+            ...history,
+            { role: 'user', parts: [{ text: message }] }
+        ];
+
+        // Chat typically uses safeGenerateContent but since it's interactive, we might want immediate feedback
+        // However, retrying is better than crashing.
+        const response = await safeGenerateContent(model, {
+            contents,
+            config: {
+                ...config,
+                tools: tools.length > 0 ? tools : undefined
+            }
+        });
 
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const searchSources = groundingChunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
-        const mapSources = groundingChunks.filter((c: any) => c.maps).map((c: any) => ({ uri: c.maps.uri, title: c.maps.title, source: "Google Maps" }));
+        const searchSources = groundingChunks
+            .filter((c: any) => c.web)
+            .map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
+        
+        const mapSources = groundingChunks
+            .filter((c: any) => c.maps)
+            .map((c: any) => ({ 
+                uri: c.maps.uri, 
+                title: c.maps.title,
+                source: c.maps.placeAnswerSources?.[0]?.reviewSnippets?.[0]?.snippet || "Localização Google Maps"
+            }));
 
-        return { text: response.text || "Sem resposta.", searchSources, mapSources };
-    } catch (error) {
-        return { text: "Erro ao processar mensagem." };
+        return { 
+            text: response.text || "Sem resposta.", 
+            searchSources, 
+            mapSources 
+        };
+
+    } catch (error: any) {
+        console.error("Chat Error:", error);
+        if (error.message?.includes('429') || error.status === 429) {
+             return { text: "⚠️ O sistema de inteligência está sobrecarregado no momento (Cota Excedida). Por favor, aguarde alguns instantes e tente novamente." };
+        }
+        return { text: "Erro ao processar sua mensagem. Tente novamente." };
     }
 };
 
 export const generateCampaignImage = async (prompt: string, aspectRatio: string): Promise<string | null> => {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: { parts: [{ text: prompt }] },
-            config: { imageConfig: { aspectRatio: aspectRatio as any } }
+        const response = await safeGenerateContent('gemini-2.5-flash-image', {
+            contents: {
+                parts: [{ text: prompt }]
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: aspectRatio as any, 
+                }
+            }
         });
-        return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    } catch (error) {
+
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    return `data:image/png;base64,${part.inlineData.data}`;
+                }
+            }
+        }
+        return null;
+    } catch (error: any) {
+        console.error("Image Gen Error:", error);
         return null;
     }
 };
 
-export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
+export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [{ inlineData: { mimeType, data: base64Audio } }, { text: "Transcreva." }] }
+        const response = await safeGenerateContent('gemini-3-flash-preview', {
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: base64Audio
+                        }
+                    },
+                    { text: "Transcreva este áudio exatamente como foi falado." }
+                ]
+            }
         });
         return response.text || "";
     } catch (error) {
+        console.error("Audio Transcription Error:", error);
         return "";
     }
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
+    // 1. Cache Check
+    const cached = getCache(EDU_CACHE_KEY, EDU_CACHE_TTL);
+    if (cached) return cached;
+
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Gere 6 artigos educativos sobre Direito Constitucional Brasileiro. JSON.`,
+        // Reduzido para 3 artigos e solicitado concisão para evitar erro de JSON cortado
+        const response = await safeGenerateContent('gemini-3-flash-preview', {
+            contents: `Atue como um Professor de Direito Constitucional e Cidadania.
+            Gere 3 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
+            
+            Temas sugeridos (variar): Orçamento Público, Tramitação de Leis (PEC vs PL), Funções do STF, O que faz um Deputado, Direitos do Consumidor, Reforma Tributária.
+
+            Formato JSON Estrito:
+            [
+              {
+                "title": "Título chamativo",
+                "text": "Explicação didática de 2 parágrafos (máx 100 palavras). Linguagem simples.",
+                "topic": "Categoria (ex: Legislação, Orçamento, Cidadania)",
+                "legislation": "Artigo da Constituição ou Lei relacionada (ex: Art. 5º da CF/88)",
+                "impact": "Como isso afeta a vida prática do cidadão (1 frase)."
+              }
+            ]`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -326,8 +421,42 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         });
         const jsonStr = response.text?.trim();
         if (!jsonStr) return [];
-        return JSON.parse(jsonStr) as GeneratedArticle[];
-    } catch (error) {
-        return [];
+        const data = JSON.parse(jsonStr) as GeneratedArticle[];
+        
+        // Cache on success
+        if (data.length > 0) setCache(EDU_CACHE_KEY, data);
+        return data;
+
+    } catch (error: any) {
+        if (error.status === 429 || error.code === 429 || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+             console.warn("Gemini Quota Exceeded for Education. Using fallback data.");
+        } else {
+             console.error("Educational Content Gen Error:", error);
+        }
+        
+        // Fallback content in case of error (Extended to 3 items for UI balance)
+        return [
+            {
+                title: "Entenda a Tramitação de Leis",
+                text: "Projetos de lei passam por comissões e plenário antes de virarem lei. É um processo que garante debate e transparência. Se aprovado nas duas casas, segue para sanção presidencial.",
+                topic: "Legislação",
+                legislation: "CF/88 Art. 61",
+                impact: "Garante que novas regras sejam discutidas antes de valerem para você."
+            },
+            {
+                title: "Para onde vai seu imposto?",
+                text: "O Orçamento da União define os gastos em saúde, educação e segurança. O Congresso pode alterar a proposta do Presidente através de emendas.",
+                topic: "Orçamento",
+                legislation: "CF/88 Art. 165",
+                impact: "Define a qualidade dos serviços públicos que você usa."
+            },
+            {
+                title: "O Papel do Deputado",
+                text: "Eles fiscalizam o Executivo e criam leis. Não podem executar obras, mas podem destinar verbas para municípios através de emendas parlamentares.",
+                topic: "Cidadania",
+                legislation: "CF/88 Art. 49",
+                impact: "Eles representam sua voz e seus interesses em Brasília."
+            }
+        ];
     }
 };

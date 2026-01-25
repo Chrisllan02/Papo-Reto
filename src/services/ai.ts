@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
 
@@ -5,12 +6,9 @@ import { NewsArticle } from '../types';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Cache Utils para AI
-const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
-const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas de Cache (Otimização de Performance e Custo)
-
-// Helper para rate limiting
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const NEWS_CACHE_KEY = 'paporeto_news_v9_daily_summary'; // Nova chave para forçar refresh da estrutura nova
+const NEWS_HISTORY_KEY = 'paporeto_news_history_v2';
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas de Cache para o "Destaque do Dia"
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -29,25 +27,15 @@ const setCache = (key: string, data: any) => {
     try {
         localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
     } catch (e) {
-        console.warn('Cache full, clearing old keys');
+        console.warn('Cache full, attempting cleanup');
         try {
-            // Estratégia simples de limpeza: remove chaves antigas se der erro de cota
-            localStorage.removeItem('paporeto_img_cache_v2'); 
+            localStorage.removeItem('paporeto_news_v8_daily'); // Remove chaves antigas
             localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
         } catch(err) {
             console.error("Critical storage error", err);
         }
     }
 };
-
-// Fallback de Imagens de Alta Qualidade (Política/Brasil/Abstrato) - Substitui API externa complexa
-const STATIC_FALLBACK_IMAGES = [
-    "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop", // Planalto
-    "https://images.unsplash.com/photo-1575320181282-9afab399332c?q=80&w=800&auto=format&fit=crop", // Bandeira
-    "https://images.unsplash.com/photo-1555848962-6e79363ec58f?q=80&w=800&auto=format&fit=crop", // Abstrato Dados
-    "https://images.unsplash.com/photo-1529101091760-6149d4c46b7d?q=80&w=800&auto=format&fit=crop", // Caneta/Lei
-    "https://images.unsplash.com/photo-1590333748338-d629e4564ad9?q=80&w=800&auto=format&fit=crop"  // Congresso
-];
 
 export interface AIResponse {
     text: string;
@@ -70,13 +58,6 @@ export interface GeneratedArticle {
     topic: string;
     legislation?: string;
     impact?: string;
-}
-
-export interface TranslatedQuizItem {
-    theme: string;
-    context: string;
-    proposal: string;
-    question: string;
 }
 
 // --- GERAÇÃO DE VOZ ACESSÍVEL (TTS) ---
@@ -111,50 +92,32 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     }
 };
 
-export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    try {
-        // Tenta gerar imagem única com o modelo Flash
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: {
-                parts: [{ text: `Fotojornalismo profissional, estilo editorial de revista (como Time ou The Economist), alta resolução, 8k, hiper-realista. A imagem deve ilustrar de forma abstrata ou concreta a seguinte manchete política no Brasil: '${headline}'. Iluminação dramática e volumétrica, composição cinematográfica, foco nítido. IMPORTANTE: NÃO INCLUIR TEXTO, LETRAS OU MARCAS D'ÁGUA NA IMAGEM.` }]
-            },
-            config: {
-               imageConfig: {
-                   aspectRatio: "16:9"
-               }
-            }
-        });
-        
-        if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    return `data:image/png;base64,${part.inlineData.data}`;
-                }
-            }
-        }
-        return null;
-    } catch (e: any) {
-        // Apenas aviso se falhar imagem, pois temos fallback
-        if (!e.message?.includes('429')) {
-             console.warn("Falha na geração de imagem (usando fallback):", e.message);
-        }
-        return null;
-    }
-};
-
-// Funçao Auxiliar para salvar no Histórico
+// Funçao Auxiliar para salvar no Histórico (Com limpeza automática de 30 dias)
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
+        const thirtyDaysAgo = Date.now() - (1000 * 60 * 60 * 24 * 30);
+
+        // 1. Remove duplicatas (baseado no título)
+        // 2. Remove itens mais antigos que 30 dias
+        // 3. Adiciona timestamp se não tiver
         
-        // Evita duplicatas baseadas no título
-        const uniqueNew = newArticles.filter(n => !currentHistory.some(h => h.title === n.title));
+        const validHistory = currentHistory.filter(h => {
+            const ts = h.timestamp || Date.now();
+            return ts > thirtyDaysAgo;
+        });
+
+        const newWithTs = newArticles.map(a => ({ ...a, timestamp: Date.now() }));
+        const uniqueNew = newWithTs.filter(n => !validHistory.some(h => h.title === n.title));
         
         if (uniqueNew.length > 0) {
-            // Adiciona novos no início e mantém no máximo 50 itens
-            const updatedHistory = [...uniqueNew, ...currentHistory].slice(0, 50);
+            const updatedHistory = [...uniqueNew, ...validHistory];
             setCache(NEWS_HISTORY_KEY, updatedHistory);
+        } else {
+            // Apenas atualiza a limpeza de velhos se não houver novos
+            if (validHistory.length !== currentHistory.length) {
+                setCache(NEWS_HISTORY_KEY, validHistory);
+            }
         }
     } catch (e) {
         console.error("Erro ao salvar histórico", e);
@@ -165,26 +128,27 @@ export const getNewsHistory = (): NewsArticle[] => {
     return getCache(NEWS_HISTORY_KEY, 0) || [];
 };
 
+export const getBestAvailableNews = (): NewsArticle[] | null => {
+    return getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
+};
+
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
-    // 1. PERFORMANCE: Cache Rigoroso (Verifica antes de qualquer coisa)
+    // 1. Cache Check (Daily)
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    
-    // Se temos cache válido e com imagens, RETORNA IMEDIATAMENTE (Zero Delay)
     if (cachedNews && cachedNews.length > 0) {
         return cachedNews;
     }
 
     try {
-        // 2. Fetch Text from Gemini (apenas se não houver cache)
+        // 2. Single Gemini Call: Text + Summary + Categorization
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Busque as 3 principais notícias políticas do Brasil de hoje (Congresso, Leis, Economia).
             
-            IMPORTANTE: Foco em fatos concretos e votações recentes.
-            
-            REGRAS DE FONTE:
-            - Use APENAS fontes oficiais (Agência Câmara, Senado, Gov) ou veículos de hard news.
-            - IGNORE colunas de opinião.
+            REGRAS:
+            - Use APENAS fontes oficiais ou veículos confiáveis.
+            - Categorize cada notícia em: 'politica', 'economia', 'justica', 'social' ou 'mundo'.
+            - Gere um 'summary' (resumo) de 2 frases explicando o impacto para o cidadão comum.
             
             Formate a saída estritamente como um JSON Array.`,
             config: {
@@ -196,12 +160,13 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                         type: Type.OBJECT,
                         properties: {
                             title: { type: Type.STRING },
+                            summary: { type: Type.STRING },
                             source: { type: Type.STRING },
                             url: { type: Type.STRING },
-                            time: { type: Type.STRING, description: "Ex: 'Há 2 horas' ou 'Hoje'" },
-                            imageUrl: { type: Type.STRING, description: "Deixe vazio." }
+                            time: { type: Type.STRING },
+                            category: { type: Type.STRING, enum: ['politica', 'economia', 'justica', 'social', 'mundo'] }
                         },
-                        required: ["title", "source", "url", "time"]
+                        required: ["title", "summary", "source", "url", "time", "category"]
                     }
                 }
             }
@@ -209,142 +174,47 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
 
         const jsonStr = response.text?.trim();
         if (!jsonStr) throw new Error("Empty AI response");
+        
+        // Parse sem necessidade de pós-processamento de imagem
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
-        // 3. Processamento de Imagens (Apenas para o que veio novo)
-        // Se falhar o Gemini, usa o Array de Fallback estático
-        const enrichedData = await Promise.all(data.map(async (item, index) => {
-            let img = null;
-            
-            // Tenta gerar com Gemini Nano/Flash
-            if (index < 3) { // Limita a 3 gerações para economizar quota
-                try {
-                    // Timeout curto de 6s para não travar a UI
-                    img = await Promise.race([
-                        generateNewsImage(item.title),
-                        new Promise<string | null>(resolve => setTimeout(() => resolve(null), 6000))
-                    ]);
-                } catch (e) {
-                    console.warn(`Image skip for ${item.title}`);
-                }
-            }
-
-            // Fallback Garantido: Se não gerou, pega uma imagem bonita do Unsplash
-            if (!img) {
-                img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
-            }
-            
-            return { ...item, imageUrl: img };
-        }));
-
-        if (enrichedData.length > 0) {
-            // Salva no Cache Diário
-            setCache(NEWS_CACHE_KEY, enrichedData);
-            // Salva na Galeria de Histórico
-            saveToHistory(enrichedData);
+        if (data.length > 0) {
+            setCache(NEWS_CACHE_KEY, data);
+            saveToHistory(data);
         }
 
-        return enrichedData;
+        return data;
 
     } catch (error: any) {
-        // Detect Quota Limit and handle gracefully
-        const isQuota = error.message?.includes('429') || error.status === 429 || error.code === 429 || error.message?.includes('quota');
+        console.error("News Fetch Error:", error);
         
-        if (isQuota) {
-             console.warn("News Fetch: Gemini Quota Exceeded. Using fallback data.");
-        } else {
-             console.error("News Fetch Error:", error);
-        }
-        
-        // Fallback de Emergência (Caso a API falhe totalmente ou esteja sem cota)
-        const emergencyData = [
+        // Fallback robusto com design system
+        return [
             { 
-                title: "Sessão Deliberativa no Plenário da Câmara", 
+                title: "Congresso Nacional define pautas da semana",
+                summary: "Câmara e Senado organizam votações prioritárias. Acompanhe as sessões ao vivo para saber como os deputados estão votando.",
                 source: "Agência Câmara", 
                 url: "https://www.camara.leg.br", 
                 time: "Hoje",
-                imageUrl: STATIC_FALLBACK_IMAGES[0]
-            },
-            { 
-                title: "Votações de hoje no Senado Federal", 
-                source: "Agência Senado", 
-                url: "https://www12.senado.leg.br", 
-                time: "Hoje",
-                imageUrl: STATIC_FALLBACK_IMAGES[1]
+                category: "politica",
+                timestamp: Date.now()
             },
             {
-                title: "Pauta Econômica em destaque no Congresso",
+                title: "Novas diretrizes econômicas em debate",
+                summary: "Equipe econômica discute metas fiscais. Mudanças podem impactar inflação e juros no curto prazo.",
                 source: "Portal da Câmara",
                 url: "https://www.camara.leg.br/noticias/",
                 time: "Recente",
-                imageUrl: STATIC_FALLBACK_IMAGES[2]
+                category: "economia",
+                timestamp: Date.now()
             }
         ];
-        return emergencyData;
     }
 };
 
+// Mantido para compatibilidade, mas o NewsTicker principal não usa mais isso
 export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    const summaryKey = `news_summary_${btoa(title).slice(0, 20)}`;
-    const cached = getCache(summaryKey, NEWS_CACHE_TTL);
-    if (cached) return cached;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Pesquise e gere um resumo detalhado sobre a notícia: "${title}" (Fonte original: ${source}).
-            
-            Estrutura da resposta:
-            - Escreva 2 parágrafos informativos e neutros.
-            - Explique o impacto dessa notícia para o cidadão comum.
-            - Use linguagem direta (Estilo "Papo Reto").
-            - Não use markdown complexo, apenas texto corrido e quebras de linha.`,
-            config: {
-                tools: [{ googleSearch: {} }]
-            }
-        });
-
-        const text = response.text || "Não foi possível carregar os detalhes desta notícia no momento.";
-        if (response.text) {
-            setCache(summaryKey, text);
-        }
-        return text;
-    } catch (error: any) {
-        if (error.message?.includes('429') || error.status === 429) {
-            return "Resumo indisponível no momento (limite de tráfego excedido). Por favor, leia a matéria completa no link original.";
-        }
-        console.error("News Expansion Error:", error);
-        return "Erro ao conectar com o serviço de inteligência para expandir a notícia.";
-    }
-};
-
-export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Pesquise as últimas notícias e dados atualizados sobre: "${query}".
-            Seja direto, imparcial e didático (estilo Papo Reto).
-            Responda em Português do Brasil.`,
-            config: {
-                tools: [{ googleSearch: {} }]
-            }
-        });
-
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const sources = groundingChunks
-            .map((c: any) => ({ 
-                web: c.web ? { uri: c.web.uri, title: c.web.title } : undefined 
-            }))
-            .filter((s: any) => s.web);
-
-        return {
-            text: response.text || "Não foi possível gerar um resumo.",
-            sources: sources
-        };
-    } catch (error) {
-        console.error("AI Search Error:", error);
-        return null;
-    }
+    return "Resumo disponível no card."; 
 };
 
 export const chatWithGemini = async (
@@ -445,9 +315,6 @@ export const generateCampaignImage = async (prompt: string, aspectRatio: string)
         return null;
     } catch (error: any) {
         console.error("Image Gen Error:", error);
-        if (error.message?.includes('429') || error.status === 429) {
-            alert("Limite de criação de imagens excedido. Tente novamente mais tarde.");
-        }
         return null;
     }
 };
@@ -477,10 +344,11 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
     try {
+        // Reduzido para 3 artigos e solicitado concisão para evitar erro de JSON cortado
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Atue como um Professor de Direito Constitucional e Cidadania.
-            Gere 6 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
+            Gere 3 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
             
             Temas sugeridos (variar): Orçamento Público, Tramitação de Leis (PEC vs PL), Funções do STF, O que faz um Deputado, Direitos do Consumidor, Reforma Tributária.
 
@@ -488,7 +356,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             [
               {
                 "title": "Título chamativo",
-                "text": "Explicação didática de 2 parágrafos (aprox 80 palavras). Linguagem simples.",
+                "text": "Explicação didática de 2 parágrafos (máx 100 palavras). Linguagem simples.",
                 "topic": "Categoria (ex: Legislação, Orçamento, Cidadania)",
                 "legislation": "Artigo da Constituição ou Lei relacionada (ex: Art. 5º da CF/88)",
                 "impact": "Como isso afeta a vida prática do cidadão (1 frase)."
@@ -517,6 +385,15 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         return JSON.parse(jsonStr) as GeneratedArticle[];
     } catch (error) {
         console.error("Educational Content Gen Error:", error);
-        return [];
+        // Fallback content in case of error
+        return [
+            {
+                title: "Entenda a Tramitação de Leis",
+                text: "Projetos de lei passam por comissões e plenário antes de virarem lei. É um processo que garante debate e transparência.",
+                topic: "Legislação",
+                legislation: "CF/88 Art. 61",
+                impact: "Garante que novas regras sejam discutidas antes de valerem para você."
+            }
+        ];
     }
 };

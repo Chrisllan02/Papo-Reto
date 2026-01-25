@@ -543,7 +543,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 
     // Senadores
     if (pol.role.includes('Senad')) {
-        const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
+        const details = await fetchSenadorDetalhes(pol.id).catch(() => ({} as SenadorDetails));
         let bio = pol.bio;
         if (details.civilName) {
             bio = `${details.civilName}, Senador(a) da República...`;
