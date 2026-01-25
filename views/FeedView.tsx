@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Newspaper, Activity, MapPin, LocateFixed, BookOpen, Lightbulb, Banknote, ScrollText, ArrowRight, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
@@ -141,9 +140,9 @@ const StateSpotlightWidget = () => {
                     try {
                         const { latitude, longitude } = position.coords;
                         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        const data = (await response.json()) as { principalSubdivisionCode?: string };
+                        const data = (await response.json()) as any;
                         const ufCode = data?.principalSubdivisionCode;
-                        const uf: string | null = (typeof ufCode === 'string') ? ufCode.split('-')[1] : null;
+                        const uf = (typeof ufCode === 'string') ? ufCode.split('-')[1] : null;
                         
                         if (uf && politicians.some(p => p.state === uf)) {
                             updateState(uf);
