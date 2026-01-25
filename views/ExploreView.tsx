@@ -2,16 +2,13 @@
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, Map, ChevronDown, X, Contact } from 'lucide-react';
 import { FixedSizeGrid as Grid, areEqual } from 'react-window';
-import * as AutoSizerPkg from 'react-virtualized-auto-sizer';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import { Politician } from '../types';
 import { useAppStore } from '../store/useAppStore';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { PARTY_METADATA } from '../services/camaraApi';
 import BrazilMap from '../components/BrazilMap';
 import OptimizedImage from '../components/OptimizedImage';
-
-// Fix for: Uncaught SyntaxError: The requested module 'react-virtualized-auto-sizer' does not provide an export named 'default'
-const AutoSizer = (AutoSizerPkg as any).default || AutoSizerPkg;
 
 const ESTADOS_BRASIL = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
@@ -409,7 +406,7 @@ const ExploreView: React.FC = () => {
                             ) : (
                                 <div style={{ height: 'calc(100% - 100px)' }}> 
                                     <AutoSizer>
-                                        {({ height, width }: { height: number; width: number }) => {
+                                        {({ height, width }) => {
                                             let columnCount = 2;
                                             if (width >= 768) columnCount = 3;
                                             if (width >= 1024) columnCount = 4;

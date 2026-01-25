@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Newspaper, Activity, MapPin, LocateFixed, BookOpen, Lightbulb, Banknote, ScrollText, ArrowRight, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
@@ -5,16 +6,7 @@ import { Politician } from '../types';
 import NewsTicker from '../components/NewsTicker';
 import OptimizedImage from '../components/OptimizedImage';
 
-interface SectionHeaderProps {
-    icon: React.ElementType;
-    title: string;
-    subtitle?: string;
-    actionLabel?: string;
-    onAction?: () => void;
-    colorClass?: string;
-}
-
-const SectionHeader: React.FC<SectionHeaderProps> = ({ icon: Icon, title, subtitle, actionLabel, onAction, colorClass = "text-blue-600" }) => (
+const SectionHeader = ({ icon: Icon, title, subtitle, actionLabel, onAction, colorClass = "text-blue-600" }: any) => (
     <div className="flex items-end justify-between mb-6 px-1">
         <div className="flex items-center gap-3">
             <div className={`p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 ${colorClass}`}>
@@ -79,7 +71,7 @@ const EducationCarouselWidget = () => {
                         <div className="relative z-10 p-6 flex flex-col h-full justify-between text-left">
                             <div className="flex justify-between items-start mb-4">
                                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.colorFrom} ${item.colorTo} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                                    {renderIcon(item.icon as string, 24, "drop-shadow-sm")}
+                                    {renderIcon(item.icon, 24, "drop-shadow-sm")}
                                 </div>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded-lg">
                                     {item.topic || 'Saber'}
@@ -115,15 +107,6 @@ const StateSpotlightWidget = () => {
     useEffect(() => {
         if (!politicians || politicians.length === 0) return;
 
-        const updateState = (uf: string) => {
-            setSelectedState(uf);
-            const filtered = politicians
-                .filter(p => p.state === uf)
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            setStatePoliticians(filtered);
-        };
-
         const setRandomState = () => {
              const states = Array.from(new Set(politicians.map(p => p.state).filter((s): s is string => !!s)));
              if (states.length > 0) {
@@ -134,15 +117,23 @@ const StateSpotlightWidget = () => {
              setIsLoading(false);
         };
 
+        const updateState = (uf: string) => {
+            setSelectedState(uf);
+            const filtered = politicians
+                .filter(p => p.state === uf)
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            setStatePoliticians(filtered);
+        };
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     try {
                         const { latitude, longitude } = position.coords;
                         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        const data = (await response.json()) as any;
-                        const ufCode = data?.principalSubdivisionCode;
-                        const uf = (typeof ufCode === 'string') ? ufCode.split('-')[1] : null;
+                        const data = await response.json() as any;
+                        const uf = data.principalSubdivisionCode ? (data.principalSubdivisionCode as string).split('-')[1] : null;
                         
                         if (uf && politicians.some(p => p.state === uf)) {
                             updateState(uf);

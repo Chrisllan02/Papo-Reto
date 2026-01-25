@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { RefreshCw, Share2, Shield, User, ChevronRight, Download, Zap, Loader2, Check } from 'lucide-react';
 import { Politician } from '../types';
+import html2canvas from 'html2canvas';
 import { formatPartyName } from '../services/camaraApi';
 import OptimizedImage from '../components/OptimizedImage';
 import { getOptimizedImageUrl } from '../utils/imageOptimizer';
@@ -59,9 +60,6 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
     if (!cardRef.current) return;
     setGenerating(true);
     try {
-        // Dynamic Import for Performance
-        const html2canvas = (await import('html2canvas')).default;
-
         const canvas = await html2canvas(cardRef.current, {
             useCORS: true, // Fundamental para proxy
             scale: 2, 

@@ -14,16 +14,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: false,
-      target: 'esnext',
-      chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'lucide-react', 'zustand'],
-            charts: ['html2canvas'], // Isolates heavy canvas lib
-          },
-        },
-      },
     },
   };
 });
