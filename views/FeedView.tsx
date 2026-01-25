@@ -131,9 +131,9 @@ const StateSpotlightWidget = () => {
                     try {
                         const { latitude, longitude } = position.coords;
                         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        const data = (await response.json()) as any;
-                        const ufCode = data?.principalSubdivisionCode;
-                        const uf = typeof ufCode === 'string' ? ufCode.split('-')[1] : null;
+                        const data = await response.json() as any;
+                        const ufCode = data?.principalSubdivisionCode as string | undefined;
+                        const uf = ufCode ? ufCode.split('-')[1] : null;
                         
                         if (uf && typeof uf === 'string' && politicians.some(p => p.state === uf)) {
                             updateState(uf);
