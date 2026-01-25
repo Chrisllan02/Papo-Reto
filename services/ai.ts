@@ -1,9 +1,8 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
 import { db } from './db';
 
-// Fix: Always initialize GoogleGenAI strictly using process.env.API_KEY as per guidelines
+// Initialize GoogleGenAI strictly using process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Cache Utils para AI (Async com IndexedDB)
