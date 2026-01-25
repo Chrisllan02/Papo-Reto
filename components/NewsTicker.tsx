@@ -83,7 +83,7 @@ const NewsTicker: React.FC = () => {
 
     return (
         <section 
-            className="w-full relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/50 dark:shadow-black/50 transition-all duration-500 group flex flex-col md:flex-row cursor-default h-auto min-h-[320px] md:h-80"
+            className="w-full relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] transition-all duration-500 group flex flex-col md:flex-row cursor-default h-auto min-h-[320px] md:h-80"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             aria-label="Destaque de notícia política"
