@@ -1,8 +1,14 @@
 
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, Map, ChevronDown, X, Contact } from 'lucide-react';
-import { FixedSizeGrid as Grid, areEqual } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import * as ReactWindow from 'react-window';
+import * as AutoSizerModule from 'react-virtualized-auto-sizer';
+
+// Robust fallback for CJS/ESM interop
+const AutoSizer = (AutoSizerModule as any).default || AutoSizerModule;
+const Grid = (ReactWindow as any).FixedSizeGrid || (ReactWindow as any).default?.FixedSizeGrid || ReactWindow;
+const areEqual = (ReactWindow as any).areEqual || (ReactWindow as any).default?.areEqual;
+
 import { Politician } from '../types';
 import { useAppStore } from '../store/useAppStore';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
@@ -406,7 +412,7 @@ const ExploreView: React.FC = () => {
                             ) : (
                                 <div style={{ height: 'calc(100% - 100px)' }}> 
                                     <AutoSizer>
-                                        {({ height, width }) => {
+                                        {({ height, width }: { height: number, width: number }) => {
                                             let columnCount = 2;
                                             if (width >= 768) columnCount = 3;
                                             if (width >= 1024) columnCount = 4;

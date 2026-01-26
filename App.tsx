@@ -37,27 +37,24 @@ const mapArticleStyle = (index: number, topic: string) => {
 };
 
 function App() {
-  // Global State Consumption
-  const { 
-      activeTab, 
-      selectedCandidate, 
-      selectedEducationId, 
-      isNewsHistoryOpen, 
-      showDataModal, 
-      showOnboarding,
-      fontSizeLevel,
-      darkMode,
-      highContrast,
-      setShowDataModal,
-      setShowOnboarding,
-      setSelectedCandidate,
-      setSelectedEducationId,
-      setIsNewsHistoryOpen,
-      setPoliticians,
-      setFeedItems,
-      setParties,
-      setArticles
-  } = useAppStore();
+  // Global State Consumption (Granular Selectors)
+  const activeTab = useAppStore((state) => state.activeTab);
+  const selectedCandidate = useAppStore((state) => state.selectedCandidate);
+  const selectedEducationId = useAppStore((state) => state.selectedEducationId);
+  const isNewsHistoryOpen = useAppStore((state) => state.isNewsHistoryOpen);
+  const showDataModal = useAppStore((state) => state.showDataModal);
+  const showOnboarding = useAppStore((state) => state.showOnboarding);
+  const fontSizeLevel = useAppStore((state) => state.fontSizeLevel);
+  const darkMode = useAppStore((state) => state.darkMode);
+  const highContrast = useAppStore((state) => state.highContrast);
+  
+  const setShowDataModal = useAppStore((state) => state.setShowDataModal);
+  const setShowOnboarding = useAppStore((state) => state.setShowOnboarding);
+  const setIsNewsHistoryOpen = useAppStore((state) => state.setIsNewsHistoryOpen);
+  const setPoliticians = useAppStore((state) => state.setPoliticians);
+  const setFeedItems = useAppStore((state) => state.setFeedItems);
+  const setParties = useAppStore((state) => state.setParties);
+  const setArticles = useAppStore((state) => state.setArticles);
 
   const [isLoading, setIsLoading] = React.useState(true);
 

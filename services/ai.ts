@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
 import { db } from './db';
@@ -6,10 +7,10 @@ import { db } from './db';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Cache Utils para AI (Async com IndexedDB)
-const NEWS_CACHE_KEY = 'paporeto_news_v9_daily_summary';
+const NEWS_CACHE_KEY = 'paporeto_news_v12_daily_summary';
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v2';
 const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas
-const EDU_CACHE_KEY = 'paporeto_edu_content_v1';
+const EDU_CACHE_KEY = 'paporeto_edu_content_v4';
 const EDU_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 dias
 
 const getCache = async <T>(key: string, ttl: number): Promise<T | null> => {
@@ -162,12 +163,14 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             REGRAS:
             - Use APENAS fontes oficiais ou veículos confiáveis.
             - Categorize cada notícia em: 'politica', 'economia', 'justica', 'social' ou 'mundo'.
-            - Gere um 'summary' (resumo) de 2 frases explicando o impacto para o cidadão comum.
+            - Gere um 'summary' (resumo) CURTO de 1 frase (máx 30 palavras) explicando o impacto direto.
+            - Evite aspas ou caracteres especiais que quebrem JSON.
             
             Formate a saída estritamente como um JSON Array.`,
             config: {
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json",
+                maxOutputTokens: 8192,
                 responseSchema: {
                     type: Type.ARRAY,
                     items: {
@@ -334,7 +337,8 @@ export const generateCampaignImage = async (prompt: string, aspectRatio: string)
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
     try {
-        const response = await safeGenerateContent('gemini-3-flash-preview', {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
             contents: {
                 parts: [
                     {
@@ -363,19 +367,25 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             contents: `Atue como um Professor de Direito Constitucional e Cidadania.
             Gere 3 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
             
-            Temas sugeridos (variar): Orçamento Público, Tramitação de Leis (PEC vs PL), Funções do STF, O que faz um Deputado, Direitos do Consumidor, Reforma Tributária.
+            REGRAS DE FORMATACAO JSON:
+            - SEJA CONCISO E DIRETO. Maximo 2 parágrafos curtos por texto.
+            - NUNCA use aspas duplas (") dentro dos valores de texto. Use aspas simples (') se necessário.
+            - O JSON deve ser válido.
+
+            Temas sugeridos: Orçamento Público, Tramitação de Leis, Funções do STF, O que faz um Deputado, Direitos do Consumidor.
 
             Formato JSON Estrito:
             [
               {
                 "title": "Título chamativo",
-                "text": "Explicação didática de 2 parágrafos (máx 100 palavras). Linguagem simples.",
+                "text": "Explicação didática e BREVE (máx 40 palavras). Linguagem simples.",
                 "topic": "Categoria (ex: Legislação, Orçamento, Cidadania)",
                 "legislation": "Artigo da Constituição ou Lei relacionada (ex: Art. 5º da CF/88)",
                 "impact": "Como isso afeta a vida prática do cidadão (1 frase)."
               }
             ]`,
             config: {
+                maxOutputTokens: 8192,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
@@ -393,8 +403,14 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
                 }
             }
         });
-        const jsonStr = response.text?.trim();
+        let jsonStr = response.text?.trim();
         if (!jsonStr) return [];
+        
+        // Remove markdown formatting if present
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+
         const data = JSON.parse(jsonStr) as GeneratedArticle[];
         
         if (data.length > 0) await setCache(EDU_CACHE_KEY, data);

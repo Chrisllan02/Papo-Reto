@@ -107,6 +107,15 @@ const StateSpotlightWidget = () => {
     useEffect(() => {
         if (!politicians || politicians.length === 0) return;
 
+        const updateState = (uf: string) => {
+            setSelectedState(uf);
+            const filtered = politicians
+                .filter(p => p.state === uf)
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            setStatePoliticians(filtered);
+        };
+
         const setRandomState = () => {
              const states = Array.from(new Set(politicians.map(p => p.state).filter((s): s is string => !!s)));
              if (states.length > 0) {
@@ -117,27 +126,23 @@ const StateSpotlightWidget = () => {
              setIsLoading(false);
         };
 
-        const updateState = (uf: string) => {
-            setSelectedState(uf);
-            const filtered = politicians
-                .filter(p => p.state === uf)
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            setStatePoliticians(filtered);
-        };
-
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     try {
                         const { latitude, longitude } = position.coords;
                         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        // Fix: Explicitly type data to handle API response safely
+                        // Ensure data is typed correctly to avoid 'unknown' issues
                         const data = (await response.json()) as { principalSubdivisionCode?: string };
                         const ufCode = data?.principalSubdivisionCode;
-                        const uf = typeof ufCode === 'string' ? ufCode.split('-')[1] : null;
+                        let uf: string | null = null;
                         
-                        if (typeof uf === 'string' && politicians.some(p => p.state === uf)) {
+                        if (typeof ufCode === 'string') {
+                            const parts = ufCode.split('-');
+                            if (parts.length > 1) uf = parts[1];
+                        }
+                        
+                        if (uf && politicians.some(p => p.state === uf)) {
                             updateState(uf);
                             setIsLocal(true);
                         } else {

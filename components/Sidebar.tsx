@@ -6,21 +6,18 @@ import { useAppStore } from '../store/useAppStore';
 const Sidebar: React.FC = () => {
   const [showAccessMenu, setShowAccessMenu] = useState(false);
   
-  const { 
-      activeTab, 
-      setActiveTab, 
-      darkMode, 
-      toggleDarkMode, 
-      highContrast, 
-      toggleHighContrast, 
-      fontSizeLevel, 
-      cycleFontSize,
-      setShowDataModal,
-      setShowOnboarding,
-      setSelectedCandidate,
-      setSelectedEducationId,
-      setIsNewsHistoryOpen
-  } = useAppStore();
+  const activeTab = useAppStore((state) => state.activeTab);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const darkMode = useAppStore((state) => state.darkMode);
+  const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
+  const highContrast = useAppStore((state) => state.highContrast);
+  const toggleHighContrast = useAppStore((state) => state.toggleHighContrast);
+  const fontSizeLevel = useAppStore((state) => state.fontSizeLevel);
+  const cycleFontSize = useAppStore((state) => state.cycleFontSize);
+  const setShowOnboarding = useAppStore((state) => state.setShowOnboarding);
+  const setSelectedCandidate = useAppStore((state) => state.setSelectedCandidate);
+  const setSelectedEducationId = useAppStore((state) => state.setSelectedEducationId);
+  const setIsNewsHistoryOpen = useAppStore((state) => state.setIsNewsHistoryOpen);
 
   const handleTabChange = (tab: string) => {
       // Reset view states when changing tabs
