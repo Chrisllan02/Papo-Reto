@@ -390,7 +390,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     className={`shrink-0 px-5 py-3 rounded-2xl border font-bold text-xs uppercase flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
                                         showMap 
                                         ? 'bg-blue-600 text-white border-blue-600' 
-                                        : 'bg-gray-100/50 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border-gray-200/50 dark:border-white/10 hover:bg-white/80'
+                                        : 'bg-gray-100/50 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-white/80'
                                     }`}
                                 >
                                     Mapa
