@@ -82,7 +82,7 @@ function App() {
   const fontStyle = { fontSize: `${fontSizeLevel * 100}%` };
 
   return (
-    <div className={`flex h-screen w-full overflow-hidden font-sans transition-colors duration-500 ${darkMode ? 'dark' : ''} ${highContrast ? 'high-contrast' : ''}`} style={fontStyle}>
+    <div className={`flex h-[100dvh] w-full overflow-hidden font-sans transition-colors duration-500 ${darkMode ? 'dark' : ''} ${highContrast ? 'high-contrast' : ''}`} style={fontStyle}>
         <style>{`
             .high-contrast { background-color: #000 !important; color: #fff !important; }
             .high-contrast * { background-color: transparent !important; color: #fff !important; border-color: #fff !important; box-shadow: none !important; text-shadow: none !important; }

@@ -272,7 +272,7 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
             aria-modal="true"
             aria-labelledby="modal-title"
         >
-            <div className={`glass-card dark:bg-midnight backdrop-blur-3xl w-full max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl dark:shadow-[0_-20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col max-h-[95vh] md:max-h-[85vh] transition-transform duration-500 ease-out border border-white/20 dark:border-white/10 ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}>
+            <div className={`glass-card dark:bg-midnight backdrop-blur-3xl w-full max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl dark:shadow-[0_-20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col max-h-[95dvh] md:max-h-[85dvh] transition-transform duration-500 ease-out border border-white/20 dark:border-white/10 ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}>
                 <div className="md:hidden w-12 h-1.5 bg-gray-300/50 dark:bg-gray-700/50 rounded-full mx-auto my-4 shrink-0" aria-hidden="true"></div>
                 
                 <div className={`h-24 md:h-32 shrink-0 relative flex items-start justify-end p-6 ${isVote ? 'bg-nuit/90' : isExpense ? 'bg-orange-600/90' : 'bg-spring/90'} backdrop-blur-md`}>

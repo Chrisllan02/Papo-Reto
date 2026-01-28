@@ -95,7 +95,7 @@ const MatchResultsView: React.FC<MatchResultsViewProps> = ({ results, onSelectPr
     <div className={`fixed inset-0 z-[100] ${archetype.bg} overflow-y-auto pb-safe animate-in slide-in-from-bottom duration-500`}>
         
         {/* Animated Background Mesh */}
-        <div className={`absolute top-0 left-0 right-0 h-[80vh] bg-gradient-to-b ${archetype.color} opacity-40 blur-[100px] pointer-events-none`}></div>
+        <div className={`absolute top-0 left-0 right-0 h-[80dvh] bg-gradient-to-b ${archetype.color} opacity-40 blur-[100px] pointer-events-none`}></div>
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none mix-blend-overlay"></div>
 
         <div className="relative z-10 max-w-lg mx-auto min-h-full flex flex-col p-6">
