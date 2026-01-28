@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Politician, FeedItem, Party } from '../types';
 import { 
@@ -89,6 +90,7 @@ export const useInitialData = () => {
 export const usePoliticianProfile = (initialCandidate: Politician | null) => {
     const [candidate, setCandidate] = useState<Politician | null>(initialCandidate);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState<string>("Carregando...");
 
     useEffect(() => {
         if (!initialCandidate) {
@@ -112,13 +114,16 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             }
 
             setIsLoadingDetails(true);
+            setLoadingStatus("Identificando parlamentar...");
+            
             try {
                 // Step 1: Fast Enrich (Identity, Contact, Bio) - returns fast
                 const fastData = await enrichPoliticianFast(initialCandidate);
                 setCandidate(prev => prev ? { ...prev, ...fastData } : fastData);
 
                 // Step 2: Deep Enrich (Votes, Expenses, History) - takes time
-                const fullData = await enrichPoliticianData(fastData);
+                // Pass callback to update status text
+                const fullData = await enrichPoliticianData(fastData, (msg) => setLoadingStatus(msg));
                 setCandidate(fullData);
             } catch (e) {
                 console.error(`Error enriching profile for ${initialCandidate.name}`, e);
@@ -130,5 +135,5 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
         loadDeepData();
     }, [initialCandidate?.id]); // Only re-run if the ID changes
 
-    return { candidate, isLoadingDetails };
+    return { candidate, isLoadingDetails, loadingStatus };
 };

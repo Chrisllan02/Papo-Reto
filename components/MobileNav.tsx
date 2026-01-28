@@ -1,11 +1,12 @@
 
 import React, { useMemo, useState } from 'react';
-import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, MessageCircle, BookOpen, ChevronRight, PieChart } from 'lucide-react';
+import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, MessageCircle, BookOpen, ChevronRight, PieChart, MapPin } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
+import { ESTADOS_BRASIL } from '../constants';
 
 const MobileNav: React.FC = () => {
   const { state, actions } = useAppContext();
-  const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
+  const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const tabs = useMemo(() => [
@@ -63,6 +64,22 @@ const MobileNav: React.FC = () => {
                 {/* Settings Grid */}
                 <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Acessibilidade & Ajustes</h4>
                 <div className="grid grid-cols-2 gap-3">
+                    {/* Location Selector */}
+                    <div className="col-span-2 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                            <MapPin size={20} className="text-blue-500" />
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Meu Estado</span>
+                        </div>
+                        <select 
+                            value={userLocation}
+                            onChange={(e) => actions.updateUserLocation(e.target.value)}
+                            className="bg-transparent text-xs font-black text-blue-600 dark:text-blue-400 outline-none text-right"
+                        >
+                            <option value="">Brasil</option>
+                            {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                        </select>
+                    </div>
+
                     <button 
                         onClick={actions.toggleDarkMode}
                         className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"

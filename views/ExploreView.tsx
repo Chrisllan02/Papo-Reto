@@ -26,6 +26,14 @@ const ESTADOS_BRASIL = [
 type IdeologyFilter = 'Todos' | 'Esquerda' | 'Centro' | 'Direita';
 type ViewMode = 'parties' | 'candidates';
 
+// Helper de Normalização para Busca (Remove acentos e lowercase)
+const normalizeString = (str: string) => {
+    return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+};
+
 interface PartyCardProps {
   group: any;
   getPartyColor: (i: string) => string;
@@ -150,15 +158,22 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     }, [politicians]);
 
     const filteredPoliticians = useMemo(() => {
-        const searchLower = deferredSearch.toLowerCase();
+        const searchNorm = normalizeString(deferredSearch);
         
         return politicians.filter(p => {
             if (selectedUF && p.state !== selectedUF) return false;
             
-            if (searchLower) {
-                const matchesName = p.name.toLowerCase().includes(searchLower);
-                const matchesParty = p.party.toLowerCase().includes(searchLower);
-                if (!matchesName && !matchesParty) return false;
+            if (searchNorm) {
+                const nameNorm = normalizeString(p.name);
+                const partyNorm = normalizeString(p.party);
+                const stateNorm = normalizeString(p.state);
+                
+                // Busca abrangente: Nome, Partido ou Estado (Sigla ou Nome)
+                const matchesName = nameNorm.includes(searchNorm);
+                const matchesParty = partyNorm.includes(searchNorm);
+                const matchesState = stateNorm.includes(searchNorm);
+
+                if (!matchesName && !matchesParty && !matchesState) return false;
             }
 
             if (selectedIdeology !== 'Todos') {
@@ -293,7 +308,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         onClick={() => setViewMode('candidates')}
                                         className={`p-2.5 rounded-xl transition-all ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
                                         title="Ver Candidatos"
-                                     >
+                                    >
                                          <Contact size={18} />
                                      </button>
                                  </div>

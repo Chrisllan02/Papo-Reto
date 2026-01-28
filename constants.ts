@@ -9,6 +9,10 @@ export const REAL_VOTE_CONFIG: Record<number, string> = {
   4: "2192459-33"  
 };
 
+export const ESTADOS_BRASIL = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
 export const QUIZ_QUESTIONS: QuizQuestion[] = [
   { id: 1, tema: "Regulação das Redes", peso: 2, description: "Votação sobre o PL das Fake News (PL 2630/20)." },
   { id: 2, tema: "Fim da 'Saidinha'", peso: 3, description: "Votação para restringir a saída temporária de presos." },

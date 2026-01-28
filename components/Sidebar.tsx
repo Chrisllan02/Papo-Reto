@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
-import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X } from 'lucide-react';
+import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
+import { ESTADOS_BRASIL } from '../constants';
 
 const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
-  const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
+  const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation } = state;
   const [showAccessMenu, setShowAccessMenu] = useState(false);
 
   const NavItem = ({ id, icon: Icon, label, colorClass = "bg-gradient-to-r from-nuit to-midnight" }: any) => (
@@ -85,6 +86,22 @@ const Sidebar: React.FC = () => {
                      <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Ajustes</span>
                  </div>
                  
+                 {/* Seletor de Localização */}
+                 <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full">
+                     <div className="flex items-center gap-3">
+                         <MapPin size={18} className="text-nuit dark:text-blue-400"/>
+                         <span className="text-sm font-bold text-gray-800 dark:text-white">Localização</span>
+                     </div>
+                     <select 
+                        value={userLocation}
+                        onChange={(e) => actions.updateUserLocation(e.target.value)}
+                        className="bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border-none cursor-pointer"
+                     >
+                        <option value="">Brasil</option>
+                        {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                     </select>
+                 </div>
+
                  <button onClick={actions.cycleFontSize} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left">
                      <div className="flex items-center gap-3">
                          <Type size={18} className="text-nuit dark:text-blue-400"/>

@@ -187,9 +187,9 @@ const LoadingScreen: React.FC = () => {
       `}</style>
       <div className="loader-wrapper">
         <div className="flag-container">
-            <div class="flag-green"></div>
-            <div class="flag-yellow"></div>
-            <div class="flag-blue">
+            <div className="flag-green"></div>
+            <div className="flag-yellow"></div>
+            <div className="flag-blue">
                 <svg className="flag-details-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <path id="textCurve" d="M -50,265 Q 250,145 550,265" />

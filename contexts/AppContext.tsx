@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Politician, FeedItem, Party } from '../types';
 import { useInitialData } from '../hooks/useCamaraData';
 
@@ -26,6 +26,9 @@ interface AppState {
   showDataModal: boolean;
   showOnboarding: boolean;
   readArticleIds: number[];
+  
+  // Location
+  userLocation: string; // UF
 }
 
 interface AppActions {
@@ -45,6 +48,7 @@ interface AppActions {
   setShowOnboarding: (show: boolean) => void;
   
   updatePolitician: (updated: Politician) => void;
+  updateUserLocation: (uf: string) => void;
   
   // Navigation Helpers
   resetNavigation: () => void;
@@ -71,6 +75,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [showDataModal, setShowDataModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [readArticleIds, setReadArticleIds] = useState<number[]>([]);
+  const [userLocation, setUserLocation] = useState<string>('');
+
+  // Initial Location Logic
+  useEffect(() => {
+      const savedLoc = localStorage.getItem('paporeto_user_location');
+      if (savedLoc) {
+          setUserLocation(savedLoc);
+      } else if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                  try {
+                      const { latitude, longitude } = position.coords;
+                      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
+                      const data = await response.json();
+                      const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
+                      if (uf) {
+                          setUserLocation(uf);
+                          localStorage.setItem('paporeto_user_location', uf);
+                      }
+                  } catch (e) {
+                      console.warn("Auto-geolocation failed", e);
+                  }
+              },
+              (err) => console.warn("Geolocation permission denied", err)
+          );
+      }
+  }, []);
 
   // Theme Handling
   const toggleDarkMode = () => {
@@ -121,6 +152,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
   };
 
+  const updateUserLocation = (uf: string) => {
+      setUserLocation(uf);
+      localStorage.setItem('paporeto_user_location', uf);
+  };
+
   const resetNavigation = () => {
       setSelectedCandidate(null);
       setSelectedEducationId(null);
@@ -144,7 +180,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab, politicians, feedItems, articles, parties, isLoading,
         darkMode, highContrast, fontSizeLevel,
         selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
-        showDataModal, showOnboarding, readArticleIds
+        showDataModal, showOnboarding, readArticleIds, userLocation
     },
     actions: {
         setActiveTab: handleSetActiveTab,
@@ -160,6 +196,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowDataModal,
         setShowOnboarding,
         updatePolitician,
+        updateUserLocation,
         resetNavigation,
         goToExplore
     }

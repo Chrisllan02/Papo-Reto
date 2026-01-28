@@ -4,6 +4,7 @@ import { Landmark, Banknote, Lightbulb, Filter, ArrowRight, ExternalLink, Chevro
 import { FeedItem, Politician } from '../types';
 import { speakContent } from '../services/ai';
 import NewsTicker from '../components/NewsTicker';
+import { useAppContext } from '../contexts/AppContext';
 
 interface FeedViewProps {
   politicians: Politician[];
@@ -383,6 +384,9 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
 };
 
 const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }: { politicians: Politician[], onSelectCandidate: (p: Politician) => void, onGoToExplore: (state: string) => void }) => {
+    const { state: appState } = useAppContext();
+    const { userLocation } = appState;
+    
     const [selectedState, setSelectedState] = useState<string>('');
     const [statePoliticians, setStatePoliticians] = useState<Politician[]>([]);
     const [isLocal, setIsLocal] = useState(false);
@@ -391,56 +395,36 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
     useEffect(() => {
         if (!politicians || politicians.length === 0) return;
 
-        const setRandomState = () => {
-             const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
-             if (states.length > 0) {
-                const random = states[Math.floor(Math.random() * states.length)];
-                updateState(random);
-                setIsLocal(false);
-             }
-             setIsLoading(false);
-        };
-
-        const updateState = (uf: string) => {
+        const updateState = (uf: string, local: boolean) => {
             setSelectedState(uf);
+            setIsLocal(local);
             const filtered = politicians
                 .filter(p => p.state === uf)
                 .sort((a, b) => a.name.localeCompare(b.name));
             
             setStatePoliticians(filtered);
+            setIsLoading(false);
         };
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    try {
-                        const { latitude, longitude } = position.coords;
-                        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                        const data = await response.json();
-                        const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
-                        
-                        if (uf && politicians.some(p => p.state === uf)) {
-                            updateState(uf);
-                            setIsLocal(true);
-                        } else {
-                            setRandomState();
-                        }
-                    } catch (e) {
-                        console.error("Erro na geolocalização:", e);
-                        setRandomState();
-                    } finally {
-                        setIsLoading(false);
-                    }
-                },
-                (error) => {
-                    console.log("Geolocalização negada ou indisponível:", error);
-                    setRandomState();
-                }
-            );
+        if (userLocation) {
+            // Se temos uma localização definida no contexto (manual ou geo)
+            if (politicians.some(p => p.state === userLocation)) {
+                updateState(userLocation, true);
+            } else {
+                // Fallback se a location não tiver dados
+                const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
+                if (states.length > 0) updateState(states[Math.floor(Math.random() * states.length)], false);
+            }
         } else {
-            setRandomState();
+            // Sem localização, modo "Giro" (Aleatório)
+            const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
+            if (states.length > 0) {
+                const random = states[Math.floor(Math.random() * states.length)];
+                updateState(random, false);
+            }
+            setIsLoading(false);
         }
-    }, [politicians]);
+    }, [politicians, userLocation]);
 
     if (isLoading) return <div className="h-48 w-full glass rounded-[2.5rem] animate-pulse mb-8"></div>;
     if (statePoliticians.length === 0) return null;

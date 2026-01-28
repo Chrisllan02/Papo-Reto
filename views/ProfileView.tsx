@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin } from 'lucide-react';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText } from 'lucide-react';
 import { Politician, FeedItem, YearStats } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
@@ -36,11 +36,198 @@ const SocialIcon: React.FC<{ url: string }> = ({ url }) => {
 
     return (
         <a href={url} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${colorClass}`} title={label}>
-            {/* Optical Center for Icons */}
             <Icon size={20} className="stroke-[1.5]" />
         </a>
     );
 };
+
+const PresenceBar = ({ label, present, justified, unjustified, total }: { label: string, present: number, justified: number, unjustified: number, total: number }) => {
+    if (total === 0) {
+        return (
+            <div className="w-full">
+                <div className="flex justify-between items-end mb-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
+                </div>
+                <div className="w-full h-10 bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-400">
+                    <FolderOpen size={14} />
+                    <span className="text-[10px] font-bold uppercase tracking-wide">Sem dados</span>
+                </div>
+            </div>
+        );
+    }
+    const pctPresent = total > 0 ? (present / total) * 100 : 0;
+    const pctJustified = total > 0 ? (justified / total) * 100 : 0;
+    const pctUnjustified = total > 0 ? (unjustified / total) * 100 : 0;
+
+    return (
+        <div className="w-full">
+            <div className="flex justify-between items-end mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
+                <span className="text-sm font-black text-gray-900 dark:text-white">{Math.round(pctPresent)}% Presença</span>
+            </div>
+            <div className="w-full h-3 bg-gray-100/50 dark:bg-gray-700/50 rounded-full overflow-hidden flex shadow-inner">
+                <div style={{ width: `${pctPresent}%` }} className="bg-green-500 h-full shadow-[0_0_10px_rgba(34,197,94,0.4)]" title="Presenças"></div>
+                <div style={{ width: `${pctJustified}%` }} className="bg-yellow-400 h-full" title="Ausências Justificadas"></div>
+                <div style={{ width: `${pctUnjustified}%` }} className="bg-red-500 h-full" title="Ausências Não Justificadas"></div>
+            </div>
+            <div className="flex justify-between mt-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> {present}</div>
+                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div> {justified} Justif.</div>
+                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> {unjustified} Falta</div>
+            </div>
+        </div>
+    );
+};
+
+const YearFilter = ({ years, selected, onSelect }: { years: number[], selected: number | 'total', onSelect: (y: number | 'total') => void }) => (
+    <div className="w-full">
+        <div className="bg-gray-100/50 dark:bg-white/5 p-1 rounded-xl flex gap-1 overflow-x-auto scrollbar-hide shadow-inner border border-gray-200/50 dark:border-white/10 backdrop-blur-sm">
+            <button
+                onClick={() => onSelect('total')}
+                className={`flex-1 min-w-[70px] px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                    selected === 'total'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+            >
+                Mandato
+            </button>
+            {years.map(year => (
+                <button
+                    key={year}
+                    onClick={() => onSelect(year)}
+                    className={`flex-1 min-w-[50px] px-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                        selected === year
+                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
+                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                    {year}
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
+// --- NEW EXPOSED SECTIONS (REPLACING MODALS) ---
+
+const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: boolean }) => (
+    <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
+                <Contact size={20} />
+            </div>
+            <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Ficha Parlamentar</h3>
+        </div>
+
+        <div className="space-y-6 flex-1">
+            {/* Contatos */}
+            <div>
+                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Canais Oficiais</p>
+                <div className="space-y-3">
+                    {isLoading && !candidate.email ? <Skeleton className="h-10 w-full"/> : (
+                        candidate.email && (
+                            <div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><Mail size={12} className="text-blue-500"/> E-mail</div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{candidate.email}</p>
+                            </div>
+                        )
+                    )}
+                    {isLoading && !candidate.cabinet?.phone ? <Skeleton className="h-10 w-3/4"/> : (
+                        candidate.cabinet?.phone && (
+                            <div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><Phone size={12} className="text-blue-500"/> Gabinete</div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{candidate.cabinet.phone}</p>
+                            </div>
+                        )
+                    )}
+                </div>
+            </div>
+
+            {/* Redes */}
+            {candidate.socials && candidate.socials.length > 0 && (
+                <div>
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Redes Sociais</p>
+                    <div className="flex flex-wrap gap-2">
+                        {candidate.socials.map((url, i) => <SocialIcon key={i} url={url} />)}
+                    </div>
+                </div>
+            )}
+
+            {/* Bio Info */}
+            <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><GraduationCap size={10} /> Escolaridade</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{candidate.education || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><MapPin size={10} /> Naturalidade</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{candidate.birthCity || 'N/A'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading }: any) => (
+    <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
+        <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
+            <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400">
+                    <BarChart3 size={20} />
+                </div>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Desempenho</h3>
+            </div>
+            <div className="w-40">
+                <YearFilter years={availableYears} selected={selectedYear} onSelect={setSelectedYear} />
+            </div>
+        </div>
+
+        {isLoading && !displayStats.plenary ? (
+            <div className="space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+        ) : (
+            <div className="space-y-8 flex-1">
+                <PresenceBar 
+                    label="Presença em Plenário" 
+                    present={displayStats.plenary?.present || 0} 
+                    justified={displayStats.plenary?.justified || 0} 
+                    unjustified={displayStats.plenary?.unjustified || 0} 
+                    total={displayStats.plenary?.total || 0}
+                />
+
+                <PresenceBar 
+                    label="Presença em Comissões" 
+                    present={displayStats.commissions?.present || 0} 
+                    justified={displayStats.commissions?.justified || 0} 
+                    unjustified={displayStats.commissions?.unjustified || 0} 
+                    total={displayStats.commissions?.total || 0}
+                />
+
+                <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Gasto Acumulado ({selectedYear === 'total' ? 'Total' : selectedYear})</p>
+                            <p className="text-xl font-black text-blue-900 dark:text-white">R$ {displayStats.spending?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</p>
+                        </div>
+                        {commissionGroups.titular.length > 0 && (
+                            <div className="text-right">
+                                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Comissões (Titular)</p>
+                                <span className="text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-md">{commissionGroups.titular.length} colegiados</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
+    </div>
+);
 
 const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const type = item._type;
@@ -134,16 +321,44 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [selectedYear, setSelectedYear] = useState<number | 'total'>(2025);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Utilizando o Hook para gerenciar o estado e carregamento do perfil
-  const { candidate: enrichedCandidate, isLoadingDetails } = usePoliticianProfile(initialCandidate);
-  
-  // Se o hook ainda não retornou um candidato (ex: primeira montagem), usa o inicial.
-  // Se retornou, usa o enriquecido.
+  // --- SWIPE TO BACK LOGIC ---
+  const touchStartRef = useRef<number | null>(null);
+  const [translateX, setTranslateX] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      // Inicia apenas se o toque for na borda esquerda (20% da tela)
+      if (e.touches[0].clientX < window.innerWidth * 0.2) {
+          touchStartRef.current = e.touches[0].clientX;
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (touchStartRef.current !== null) {
+          const delta = e.touches[0].clientX - touchStartRef.current;
+          // Permite apenas arrastar para a direita (voltar)
+          if (delta > 0) {
+              setTranslateX(delta);
+          }
+      }
+  };
+
+  const handleTouchEnd = () => {
+      if (touchStartRef.current !== null) {
+          const threshold = window.innerWidth * 0.3; // 30% da tela para disparar
+          if (translateX > threshold) {
+              onBack();
+          }
+          setTranslateX(0);
+          touchStartRef.current = null;
+      }
+  };
+
+  const { candidate: enrichedCandidate, isLoadingDetails, loadingStatus } = usePoliticianProfile(initialCandidate);
   const candidate = enrichedCandidate || initialCandidate;
 
-  // Notifica o pai (App.tsx) quando o candidato é atualizado (para manter cache global)
   useEffect(() => {
       if (enrichedCandidate && enrichedCandidate !== initialCandidate && onUpdate) {
           onUpdate(enrichedCandidate);
@@ -255,80 +470,35 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { percentage, startStr: formatDate(start), endStr: formatDate(end) };
   }, [candidate.mandate]);
 
-  const PresenceBar = ({ label, present, justified, unjustified, total }: { label: string, present: number, justified: number, unjustified: number, total: number }) => {
-    if (total === 0) {
-        return (
-            <div className="mb-6 w-full">
-                <div className="flex justify-between items-end mb-2">
-                    <span className="text-sm font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                </div>
-                <div className="w-full h-12 bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-400">
-                    <FolderOpen size={16} />
-                    <span className="text-xs font-bold uppercase tracking-wide">Sem registros no período</span>
-                </div>
-            </div>
-        );
-    }
-    const pctPresent = total > 0 ? (present / total) * 100 : 0;
-    const pctJustified = total > 0 ? (justified / total) * 100 : 0;
-    const pctUnjustified = total > 0 ? (unjustified / total) * 100 : 0;
-
-    return (
-        <div className="mb-6 w-full">
-            <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                <span className="text-lg font-black text-gray-900 dark:text-white">{Math.round(pctPresent)}% Presença</span>
-            </div>
-            <div className="w-full h-4 bg-gray-100/50 dark:bg-gray-700/50 rounded-full overflow-hidden flex shadow-inner">
-                <div style={{ width: `${pctPresent}%` }} className="bg-green-500 h-full shadow-[0_0_10px_rgba(34,197,94,0.4)]" title="Presenças"></div>
-                <div style={{ width: `${pctJustified}%` }} className="bg-yellow-400 h-full" title="Ausências Justificadas"></div>
-                <div style={{ width: `${pctUnjustified}%` }} className="bg-red-500 h-full" title="Ausências Não Justificadas"></div>
-            </div>
-            <div className="flex justify-between mt-2 text-xs font-bold text-gray-400 uppercase tracking-wide">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div> {present} Presente</div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> {justified} Justif.</div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div> {unjustified} Falta</div>
-            </div>
-        </div>
-    );
-  };
-
-  const YearFilter = ({ years, selected, onSelect }: { years: number[], selected: number | 'total', onSelect: (y: number | 'total') => void }) => (
-    <div className="w-full md:w-auto">
-        <p className="md:hidden text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Filtrar Dados por Ano</p>
-        <div className="bg-gray-100/50 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto scrollbar-hide shadow-inner border border-gray-200/50 dark:border-white/10 backdrop-blur-sm">
-            <button
-                onClick={() => onSelect('total')}
-                className={`flex-1 md:flex-none min-w-[80px] px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                    selected === 'total'
-                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-            >
-                Mandato
-            </button>
-            {years.map(year => (
-                <button
-                    key={year}
-                    onClick={() => onSelect(year)}
-                    className={`flex-1 md:flex-none min-w-[60px] px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                        selected === year
-                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                >
-                    {year}
-                </button>
-            ))}
-        </div>
-    </div>
-  );
-
   return (
     <div 
         ref={containerRef}
-        className="w-full h-full overflow-y-auto bg-transparent pb-32 scroll-smooth"
+        className="w-full h-full overflow-y-auto bg-transparent pb-32 scroll-smooth will-change-transform"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ 
+            transform: `translateX(${translateX}px)`,
+            transition: translateX === 0 ? 'transform 0.3s ease-out' : 'none' 
+        }}
     >
+      {/* Botão Flutuante de Retorno (Mobile Only - Canto Inferior Esquerdo) */}
+      <button 
+          onClick={onBack}
+          className="md:hidden fixed bottom-28 left-5 z-50 p-4 bg-black/80 dark:bg-white/90 text-white dark:text-black rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/20 active:scale-90 transition-all animate-in fade-in slide-in-from-left-10 duration-700 hover:scale-110"
+          aria-label="Voltar (Botão Flutuante)"
+      >
+          <ChevronLeft size={24} strokeWidth={3} />
+      </button>
+
+      {/* FEEDBACK DE CARREGAMENTO (TOAST) */}
+      {isLoadingDetails && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
+              <Loader2 size={18} className="animate-spin shrink-0"/>
+              <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">{loadingStatus}</span>
+          </div>
+      )}
+
       <div className="relative w-full overflow-hidden rounded-b-[2.5rem] md:rounded-b-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
           {/* Background Layers */}
           <div className="absolute inset-0 bg-green-900"></div>
@@ -361,7 +531,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   </p>
               </div>
               
-              {/* Mandate Timer Card */}
+              {/* Mandate Timer Card (Desktop Only) */}
               <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5">
@@ -392,142 +562,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </div>
       </div>
 
-      <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-8 md:mt-10 relative z-20 space-y-6 px-safe">
-          <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h3 className="font-black text-blue-900 dark:text-white text-lg border-b border-gray-100/50 dark:border-white/10 pb-4 mb-8 flex items-center gap-2">
-                   <Contact size={20} className="text-blue-600"/> Ficha Parlamentar
-               </h3>
-               
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:divide-x md:divide-gray-100 dark:md:divide-white/10">
-                   <div className="space-y-6">
-                       <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Canais Oficiais</h4>
-                       {/* Granular Loading for Email/Phone/Socials */}
-                       {isLoadingDetails && !candidate.email ? <Skeleton className="h-10 w-full"/> : (
-                           candidate.email && (
-                               <div className="min-w-0">
-                                   <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Mail size={12} className="text-blue-500" aria-hidden="true" /> E-mail Institucional</p>
-                                   <p className="text-base font-medium text-blue-900 dark:text-white truncate selection:bg-blue-100">{candidate.email}</p>
-                               </div>
-                           )
-                       )}
-                       {isLoadingDetails && !candidate.cabinet?.phone ? <Skeleton className="h-10 w-3/4"/> : (
-                           candidate.cabinet?.phone && (
-                               <div>
-                                   <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-500" aria-hidden="true" /> Gabinete Legislativo</p>
-                                   <p className="text-base font-medium text-blue-900 dark:text-white">{candidate.cabinet.phone}</p>
-                               </div>
-                           )
-                       )}
-                       {candidate.socials && candidate.socials.length > 0 && (
-                           <div>
-                               <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-3"><Globe size={12} className="text-blue-500" aria-hidden="true" /> Redes Sociais</p>
-                               <div className="flex flex-wrap gap-2">
-                                   {candidate.socials.map((url, i) => <SocialIcon key={i} url={url} />)}
-                               </div>
-                           </div>
-                       )}
-                       {candidate.externalLink && (
-                           <div className="pt-4 mt-2 border-t border-gray-100/50 dark:border-white/10">
-                               <a href={candidate.externalLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 hover:bg-green-50/50 dark:hover:bg-green-900/20 group transition-all border border-transparent hover:border-green-200 dark:hover:border-green-900/50 w-full">
-                                   <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-green-600 shadow-sm group-hover:scale-110 transition-transform"><Building2 size={18} /></div>
-                                   <div className="flex-1">
-                                       <p className="text-[9px] font-bold text-gray-500 uppercase group-hover:text-green-600 transition-colors">Transparência</p>
-                                       <p className="text-xs font-black text-gray-900 dark:text-white">Perfil Oficial na Câmara</p>
-                                   </div>
-                                   <ExternalLink size={14} className="text-gray-400 group-hover:text-green-600" />
-                               </a>
-                           </div>
-                       )}
-                   </div>
-
-                   <div className="space-y-6 md:pl-8">
-                       <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Bio & Carreira</h4>
-                        <div>
-                            <p className="text-xs text-gray-500 font-black uppercase mb-1 flex items-center gap-1.5"><GraduationCap size={12} className="text-blue-500" /> Escolaridade</p>
-                            <p className="text-base font-medium text-gray-800 dark:text-white">{candidate.education || 'Não informado'}</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-xs text-gray-500 font-black uppercase mb-1 flex items-center gap-1.5"><MapPin size={12} className="text-blue-500" /> Naturalidade</p>
-                                <p className="text-base font-medium text-gray-800 dark:text-white leading-tight">{candidate.birthCity ? `${candidate.birthCity} - ${candidate.birthState}` : 'Não informado'}</p>
-                            </div>
-                        </div>
-                        {candidate.cabinet && (
-                            <div>
-                                <p className="text-xs text-gray-500 font-black uppercase mb-2 flex items-center gap-1.5"><Building2 size={12} className="text-blue-500" /> Gabinete em Brasília</p>
-                                <p className="text-sm md:text-base font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
-                                    Câmara dos Deputados, Anexo {candidate.cabinet.building || 'IV'}, Andar {candidate.cabinet.floor || 'N/A'}, Gabinete {candidate.cabinet.room || 'N/A'}, Brasília - DF
-                                </p>
-                            </div>
-                        )}
-                   </div>
-               </div>
-          </section>
-
-          {/* SKELETON REPLACEMENT: Check if we have plenary data. If loading and missing data, show Realistic SkeletonStats */}
-          {isLoadingDetails && !displayStats.plenary ? (
-              <SkeletonStats />
-          ) : (
-              <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] w-full mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100/50 dark:border-white/10 pb-4 mb-8">
-                       <h3 className="font-black text-blue-900 dark:text-white text-lg">Desempenho & Comissões</h3>
-                       <YearFilter years={availableYears} selected={selectedYear} onSelect={setSelectedYear} />
-                   </div>
-
-                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
-                       <div>
-                           {displayStats.plenary ? (
-                               <PresenceBar 
-                                   label="Presença em Plenário" 
-                                   present={displayStats.plenary.present} 
-                                   justified={displayStats.plenary.justified} 
-                                   unjustified={displayStats.plenary.unjustified} 
-                                   total={displayStats.plenary.total}
-                               />
-                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de plenário indisponíveis para este período.</div>}
-                       </div>
-
-                       <div>
-                           {displayStats.commissions ? (
-                               <PresenceBar 
-                                   label="Presença em Comissões" 
-                                   present={displayStats.commissions.present} 
-                                   justified={displayStats.commissions.justified} 
-                                   unjustified={displayStats.commissions.unjustified} 
-                                   total={displayStats.commissions.total}
-                               />
-                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de comissão indisponíveis para este período.</div>}
-                       </div>
-
-                       <div className="flex flex-col gap-8">
-                            <div>
-                                <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mb-3"><Users size={12}/> Integrante das Comissões</span>
-                                <div className="space-y-3">
-                                    {commissionGroups.titular.length > 0 ? (
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-1">Titular em {commissionGroups.titular.length}</p>
-                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-3 leading-relaxed" title={commissionGroups.titular.join(', ')}>{commissionGroups.titular.join(', ')}</p>
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-gray-400 italic">Nenhuma titularidade.</p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="pt-4 border-t border-gray-100/50 dark:border-white/10">
-                               <p className="text-xs text-gray-500 font-black uppercase mb-1 tracking-widest">{selectedYear === 'total' ? 'Gasto Total Acumulado' : `Gasto Total em ${selectedYear}`}</p>
-                               <p className="text-2xl font-black text-blue-900 dark:text-white">R$ {displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                           </div>
-                       </div>
-                   </div>
-              </section>
-          )}
+      <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-6 relative z-20 space-y-6 px-safe">
+          
+          {/* EXPOSED SECTIONS (BIO & STATS) - Previously Hidden Modals */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+              <BioCard candidate={candidate} isLoading={isLoadingDetails} />
+              
+              <StatsCard 
+                  displayStats={displayStats} 
+                  selectedYear={selectedYear} 
+                  setSelectedYear={setSelectedYear} 
+                  availableYears={availableYears} 
+                  commissionGroups={commissionGroups}
+                  isLoading={isLoadingDetails}
+              />
+          </div>
 
           <div className="min-w-0">
               {/* Tab Selector */}
               <div className="sticky top-0 z-40 bg-white/70 dark:bg-midnight/90 backdrop-blur-3xl p-1.5 rounded-2xl md:rounded-full border border-white/50 dark:border-white/10 shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
                  {(['activities', 'money', 'cabinet', 'agenda'] as const).map(tab => (
                      <button key={tab} id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-[10px] md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
-                        {tab === 'money' ? 'Custos' : tab === 'cabinet' ? 'Equipe' : tab === 'activities' ? 'Atuação' : tab === 'agenda' ? 'Agenda' : 'Leis'}
+                        {tab === 'money' ? 'Custos Detalhados' : tab === 'cabinet' ? 'Equipe' : tab === 'activities' ? 'Atuação & Votos' : tab === 'agenda' ? 'Agenda' : 'Leis'}
                      </button>
                  ))}
               </div>
