@@ -39,6 +39,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, darkMode, to
         <span className={`relative z-10 hidden xl:block text-lg tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
             {label}
         </span>
+        
+        {/* Tooltip */}
+        <span className="absolute left-full ml-3 px-3 py-1.5 bg-midnight dark:bg-white text-white dark:text-midnight text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-xl xl:hidden whitespace-nowrap z-50 border border-white/10 scale-95 group-hover:scale-100 origin-left">
+            {label}
+        </span>
       </button>
   );
 
@@ -71,12 +76,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, darkMode, to
       <div className="mt-auto pt-4 relative">
          <button 
             onClick={() => setShowAccessMenu(!showAccessMenu)}
-            className={`flex items-center xl:justify-start justify-center gap-4 p-3.5 rounded-full backdrop-blur-sm transition-all duration-300 w-full group border border-white/20 active:scale-95 ${showAccessMenu ? 'bg-white text-black shadow-lg dark:bg-midnight dark:text-white dark:border-white/20 dark:shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'}`}
+            className={`flex items-center xl:justify-start justify-center gap-4 p-3.5 rounded-full backdrop-blur-sm transition-all duration-300 w-full group relative border border-white/20 active:scale-95 ${showAccessMenu ? 'bg-white text-black shadow-lg dark:bg-midnight dark:text-white dark:border-white/20 dark:shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'}`}
             aria-label="Menu de Acessibilidade"
             aria-expanded={showAccessMenu}
          >
             {showAccessMenu ? <X size={24}/> : <Settings size={24} />}
             <span className="hidden xl:block text-base font-medium">Acessibilidade</span>
+            
+            {/* Tooltip */}
+            <span className="absolute left-full ml-3 px-3 py-1.5 bg-midnight dark:bg-white text-white dark:text-midnight text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-xl xl:hidden whitespace-nowrap z-50 border border-white/10 scale-95 group-hover:scale-100 origin-left">
+                Acessibilidade
+            </span>
          </button>
 
          {showAccessMenu && (
