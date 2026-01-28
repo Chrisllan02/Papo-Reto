@@ -387,8 +387,13 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             }
             return staticContent;
         }
-    } catch (error) { 
-        console.error("Educational Content Gen Error:", error);
+    } catch (error: any) { 
+        // 429 Error Handling
+        if (error.message?.includes('429') || error.status === 429 || error.message?.includes('RESOURCE_EXHAUSTED')) {
+            console.warn("Educational Content: Quota exceeded (429), using static fallback.");
+        } else {
+            console.error("Educational Content Gen Error:", error);
+        }
         return staticContent; 
     }
 };
