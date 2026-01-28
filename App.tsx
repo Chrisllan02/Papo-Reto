@@ -179,6 +179,7 @@ function App() {
               content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} preselectedState={explorePreselectedState} />;
               break;
           case 'parties':
+              // Contrast Fix: from-spring to yellow-500
               content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} />;
               break;
           case 'articles':
@@ -192,7 +193,7 @@ function App() {
   const fontStyle = { fontSize: `${fontSizeLevel * 100}%` };
 
   return (
-    <div className={`flex h-screen w-full bg-praxeti dark:bg-midnight overflow-hidden font-sans transition-colors duration-500 ${darkMode ? 'dark' : ''} ${highContrast ? 'high-contrast' : ''}`} style={fontStyle}>
+    <div className={`flex h-screen w-full overflow-hidden font-sans transition-colors duration-500 ${darkMode ? 'dark' : ''} ${highContrast ? 'high-contrast' : ''}`} style={fontStyle}>
         <style>{`
             .high-contrast { background-color: #000 !important; color: #fff !important; }
             .high-contrast * { background-color: transparent !important; color: #fff !important; border-color: #fff !important; box-shadow: none !important; text-shadow: none !important; }
@@ -200,12 +201,12 @@ function App() {
             .high-contrast button:hover, .high-contrast a:hover { background-color: #fff !important; color: #000 !important; }
             .high-contrast .bg-blue-600, .high-contrast .bg-nuit { background-color: #ffff00 !important; color: #000 !important; }
             
-            body { background: fixed; }
+            body { background-attachment: fixed; }
         `}</style>
         
         {showOnboarding && <OnboardingModal onFinish={() => setShowOnboarding(false)} />}
 
-        <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 bg-white/40 dark:bg-midnight/90 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300 shadow-[0_20px_50px_rgba(0,31,63,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+        <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 glass rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300 shadow-xl dark:shadow-none border border-white/20 dark:border-white/5">
              <Sidebar 
                 activeTab={activeTab} 
                 setActiveTab={(tab) => { 

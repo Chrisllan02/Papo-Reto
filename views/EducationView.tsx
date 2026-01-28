@@ -31,7 +31,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   const readingTime = Math.max(1, Math.ceil((item.text || "").split(' ').length / 200));
 
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-black font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
         
         {/* HERO SECTION / COVER BAR */}
         <div className={`relative w-full min-h-[35vh] shrink-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} overflow-hidden flex flex-col`}>

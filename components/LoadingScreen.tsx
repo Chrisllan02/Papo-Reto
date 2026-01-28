@@ -3,7 +3,7 @@ import React from 'react';
 
 const LoadingScreen: React.FC = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-50 dark:bg-[#000000] transition-colors duration-500">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-500">
       <style>{`
         .loader-wrapper {
             display: flex;
@@ -187,9 +187,9 @@ const LoadingScreen: React.FC = () => {
       `}</style>
       <div className="loader-wrapper">
         <div className="flag-container">
-            <div className="flag-green"></div>
-            <div className="flag-yellow"></div>
-            <div className="flag-blue">
+            <div class="flag-green"></div>
+            <div class="flag-yellow"></div>
+            <div class="flag-blue">
                 <svg className="flag-details-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <path id="textCurve" d="M -50,265 Q 250,145 550,265" />
@@ -204,25 +204,25 @@ const LoadingScreen: React.FC = () => {
                         <circle cx="80" cy="325" r="6" />
                         <circle cx="110" cy="340" r="6" />
                         <circle cx="155" cy="380" r="8" /> 
-                        <circle cx="225" cy="270" r="8" />
-                        <circle cx="225" cy="340" r="8" />
-                        <circle cx="190" cy="305" r="8" />
-                        <circle cx="260" cy="305" r="8" />
-                        <circle cx="240" cy="315" r="6" />
+                        <circle cx="225" cy="270" r="8" /> 
+                        <circle cx="225" cy="340" r="8" /> 
+                        <circle cx="190" cy="305" r="8" /> 
+                        <circle cx="260" cy="305" r="8" /> 
+                        <circle cx="240" cy="315" r="6" /> 
                         <circle cx="280" cy="400" r="6" />
                         <circle cx="300" cy="410" r="5" />
                         <circle cx="330" cy="390" r="7" />
-                        <circle cx="355" cy="405" r="7" />
+                        <circle cx="355" cy="405" r="7" /> 
                         <circle cx="330" cy="420" r="7" />
                         <circle cx="250" cy="450" r="5" />
-                        <circle cx="380" cy="300" r="9" />
+                        <circle cx="380" cy="300" r="9" /> 
                         <circle cx="395" cy="315" r="7" /> 
                         <circle cx="410" cy="335" r="7" /> 
                         <circle cx="420" cy="355" r="7" /> 
-                        <circle cx="415" cy="375" r="7" />
-                        <circle cx="400" cy="385" r="7" />
-                        <circle cx="385" cy="380" r="6" />
-                        <circle cx="370" cy="285" r="7" />
+                        <circle cx="415" cy="375" r="7" /> 
+                        <circle cx="400" cy="385" r="7" /> 
+                        <circle cx="385" cy="380" r="6" /> 
+                        <circle cx="370" cy="285" r="7" /> 
                     </g>
 
                     <path d="M -20,240 Q 250,120 520,240 L 520,285 Q 250,165 -20,285 Z" fill="#ffffff" />

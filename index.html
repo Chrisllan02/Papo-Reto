@@ -26,7 +26,8 @@
                 100: '#EBECE6',
                 200: '#DBE64C',
                 800: '#1E488F',
-                900: '#001F3F',
+                900: '#0F172A', // Slate-900 override for smoother dark mode
+                950: '#020617',
               },
               blue: {
                 50: '#F0F4FF',
@@ -94,12 +95,73 @@
       body {
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
-        background-color: #F6F7ED;
+        background-color: #F6F7ED; /* Fallback Solid Color */
+        /* Gradient Background with Fixed Attachment */
+        background-image: radial-gradient(circle at top left, #F6F7ED, #E0E7FF);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
         color: #001F3F;
       }
       .dark body { 
-        background-color: #001F3F;
+        background-color: #0F172A; /* Fallback Solid Color */
+        /* Softer Midnight Gradient: Blue-800 to Slate-900 (No Pure Black) */
+        background-image: radial-gradient(circle at 50% 0%, #1e40af 0%, #1e3a8a 40%, #0f172a 100%);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
         color: #F6F7ED; 
+      }
+
+      /* Noise Texture for Realism */
+      .bg-noise {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        opacity: 0.04;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      }
+
+      /* World-Class Glassmorphism Utilities */
+      .glass {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+      }
+      .dark .glass {
+        background: rgba(15, 23, 42, 0.6); /* Slate-900 alpha */
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        transition: all 0.3s ease;
+      }
+      .dark .glass-card {
+        /* Richer Navy Glass for Dark Mode */
+        background: rgba(15, 23, 42, 0.75); /* Slate-900 alpha */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+      }
+      .glass-card:hover {
+        background: rgba(255, 255, 255, 0.85);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12);
+        border-color: rgba(255, 255, 255, 0.8);
+      }
+      .dark .glass-card:hover {
+        background: rgba(30, 41, 59, 0.85); /* Slate-800 alpha */
+        box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.7);
+        border-color: rgba(255, 255, 255, 0.2);
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -126,7 +188,8 @@
 }
 </script>
 </head>
-  <body class="bg-praxeti dark:bg-midnight overflow-hidden selection:bg-spring selection:text-midnight text-midnight dark:text-praxeti">
+  <body class="overflow-hidden selection:bg-spring selection:text-midnight text-midnight dark:text-praxeti">
+    <div class="bg-noise"></div>
     <a href="#main-content" class="skip-link font-bold">Pular para o conteúdo</a>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

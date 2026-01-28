@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, BrainCircuit, Check, X, SkipForward, Flame, Compass, Loader2, PieChart, Sparkles, HelpCircle, ArrowRight, BookOpen, FileText, ExternalLink } from 'lucide-react';
 import { Politician, QuizQuestion } from '../types';
@@ -225,71 +226,71 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
   if (mode === 'menu') {
       return (
         <div className="w-full h-full font-sans overflow-y-auto pb-32 animate-in fade-in duration-300">
-            <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-6 space-y-8">
+            <div className="max-w-[1800px] mx-auto px-6 md:px-12 py-10 space-y-10">
                 
-                <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
+                <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm">
-                                <BrainCircuit size={20} />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl text-blue-600 shadow-sm">
+                                <BrainCircuit size={24} />
                             </div>
-                            <span className="text-sm font-bold text-blue-400 uppercase tracking-widest">Teste de Afinidade</span>
+                            <span className="text-sm font-black text-blue-500 uppercase tracking-[0.2em]">Teste de Afinidade</span>
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                        <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight leading-none">
                             Descubra sua <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-500">Bancada Ideal</span>
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 font-medium text-lg mt-2 max-w-2xl leading-relaxed">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium text-lg md:text-xl mt-4 max-w-3xl leading-relaxed">
                             Responda a questões reais do Congresso e veja quem vota como você.
                         </p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <button 
                         onClick={() => startGame('dynamic')} 
-                        className="group relative text-left h-[300px] w-full transition-all hover:-translate-y-1 outline-none overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-2xl hover:border-orange-200 dark:hover:border-orange-900/50 flex flex-col justify-between p-8"
+                        className="group relative text-left h-[340px] w-full transition-all hover:-translate-y-2 outline-none overflow-hidden rounded-[3rem] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl hover:border-orange-200 dark:hover:border-orange-900/50 flex flex-col justify-between p-10"
                     >
-                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Flame size={180} className="text-orange-500"/>
+                        <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Flame size={200} className="text-orange-500"/>
                         </div>
                         
                         <div className="relative z-10">
-                             <div className="w-14 h-14 bg-orange-50 dark:bg-orange-900/20 text-orange-500 rounded-2xl flex items-center justify-center border border-orange-100 dark:border-orange-900/30 group-hover:scale-110 transition-transform shadow-sm mb-6">
-                                 <Flame size={28} className="fill-current" />
+                             <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 text-orange-500 rounded-3xl flex items-center justify-center border border-orange-100 dark:border-orange-900/30 group-hover:scale-110 transition-transform shadow-md mb-8">
+                                 <Flame size={32} className="fill-current" />
                              </div>
 
-                             <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Em Alta <span className="text-orange-500 text-lg align-top">🔥</span></h3>
-                             <p className="text-gray-500 dark:text-gray-400 text-sm font-medium leading-relaxed max-w-[90%]">
+                             <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">Em Alta <span className="text-orange-500 text-xl align-top">🔥</span></h3>
+                             <p className="text-gray-500 dark:text-gray-400 text-base font-medium leading-relaxed max-w-[90%]">
                                  Baseado nas polêmicas que <strong>acabaram de acontecer</strong> no Plenário. Votos reais e quentes.
                              </p>
                         </div>
 
                         <div className="relative z-10 flex items-center gap-3 text-orange-600 font-black text-xs uppercase tracking-widest group-hover:gap-5 transition-all mt-4">
-                             Começar Agora <ArrowRight size={16}/>
+                             Começar Agora <ArrowRight size={18}/>
                         </div>
                     </button>
 
                      <button 
                         onClick={() => startGame('static')} 
-                        className="group relative text-left h-[300px] w-full transition-all hover:-translate-y-1 outline-none overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-900/50 flex flex-col justify-between p-8"
+                        className="group relative text-left h-[340px] w-full transition-all hover:-translate-y-2 outline-none overflow-hidden rounded-[3rem] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-900/50 flex flex-col justify-between p-10"
                     >
-                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Compass size={180} className="text-blue-500"/>
+                        <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Compass size={200} className="text-blue-500"/>
                         </div>
                         
                         <div className="relative z-10">
-                             <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30 group-hover:scale-110 transition-transform shadow-sm mb-6">
-                                 <Compass size={28} className="fill-current" />
+                             <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-3xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30 group-hover:scale-110 transition-transform shadow-md mb-8">
+                                 <Compass size={32} className="fill-current" />
                              </div>
 
-                             <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Clássico</h3>
-                             <p className="text-gray-500 dark:text-gray-400 text-sm font-medium leading-relaxed max-w-[90%]">
+                             <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">Clássico</h3>
+                             <p className="text-gray-500 dark:text-gray-400 text-base font-medium leading-relaxed max-w-[90%]">
                                  Perguntas atemporais sobre Economia, Social e Costumes para definir seu perfil ideológico.
                              </p>
                         </div>
 
                         <div className="relative z-10 flex items-center gap-3 text-blue-600 dark:text-blue-400 font-black text-xs uppercase tracking-widest group-hover:gap-5 transition-all mt-4">
-                             Começar Agora <ArrowRight size={16}/>
+                             Começar Agora <ArrowRight size={18}/>
                         </div>
                     </button>
                 </div>
@@ -311,6 +312,7 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
         
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, #888 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
+        {/* Feedback visual durante swipe */}
         <div 
             className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-orange-500/10 to-transparent flex items-center justify-start pl-6 transition-opacity duration-200 pointer-events-none z-10"
             style={{ opacity: opacityNo }}
@@ -329,24 +331,24 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
             </div>
         </div>
 
-        <div className="w-full max-w-[1800px] mx-auto px-4 md:px-6 pt-6 pb-2 z-20 shrink-0">
-            <div className="flex justify-between items-center mb-4">
+        <div className="w-full max-w-[1800px] mx-auto px-6 pt-8 pb-4 z-20 shrink-0">
+            <div className="flex justify-between items-center mb-6">
                 <button onClick={() => setMode('menu')} className="p-3 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm transition-all active:scale-95 text-gray-500 hover:text-blue-600 dark:hover:text-white">
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={22} />
                 </button>
                 
                 <div className="flex flex-col items-center">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Progresso</span>
-                     <div className="flex items-center gap-2">
-                         <div className="w-32 h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                             <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Progresso</span>
+                     <div className="flex items-center gap-3">
+                         <div className="w-48 h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                             <div className="h-full bg-blue-600 transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
                          </div>
-                         <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{step + 1}/{questions.length}</span>
+                         <span className="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{step + 1}/{questions.length}</span>
                      </div>
                 </div>
 
                 <div className="p-3 opacity-0 pointer-events-none">
-                     <ChevronLeft size={20} />
+                     <ChevronLeft size={22} />
                 </div>
             </div>
         </div>
@@ -355,7 +357,7 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
             
             {step < questions.length - 1 && (
                 <div 
-                    className="absolute w-full max-w-md aspect-[3/4.5] bg-gray-200 dark:bg-gray-800 rounded-[2.5rem] border border-gray-300 dark:border-gray-700 shadow-sm pointer-events-none transition-transform duration-300 ease-out top-1/2 -translate-y-1/2"
+                    className="absolute w-full max-w-lg aspect-[3/4.2] bg-gray-200 dark:bg-gray-800 rounded-[3rem] border border-gray-300 dark:border-gray-700 shadow-sm pointer-events-none transition-transform duration-300 ease-out top-1/2 -translate-y-1/2"
                     style={{ 
                         transform: `translate(-50%, -50%) scale(${0.92 + (Math.abs(dragPercentage) * 0.04)}) translateY(${30 - (Math.abs(dragPercentage) * 15)}px)`,
                         left: '50%'
@@ -365,11 +367,11 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
 
             <div 
                 ref={cardRef}
-                className="w-full max-w-md bg-white dark:bg-gray-900 text-blue-900 dark:text-white rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700 p-6 md:p-8 flex flex-col relative cursor-grab active:cursor-grabbing touch-none select-none will-change-transform"
+                className="w-full max-w-lg bg-white dark:bg-gray-900 text-blue-900 dark:text-white rounded-[3rem] shadow-2xl border border-gray-100 dark:border-gray-700 p-8 md:p-10 flex flex-col relative cursor-grab active:cursor-grabbing touch-none select-none will-change-transform"
                 style={{ 
                     transform: `translateX(${dragX}px) rotate(${rotate}deg)`, 
                     transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                    aspectRatio: '3/4.5' 
+                    aspectRatio: '3/4.2' 
                 }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -377,99 +379,99 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
                 onPointerLeave={handlePointerUp}
             >
                 <div 
-                    className="absolute top-8 left-8 z-30 pointer-events-none border-[3px] border-blue-500 rounded-xl px-4 py-1 opacity-0 transition-opacity"
+                    className="absolute top-10 left-10 z-30 pointer-events-none border-[4px] border-blue-500 rounded-2xl px-6 py-2 opacity-0 transition-opacity"
                     style={{ opacity: opacityYes }}
                 >
-                     <span className="text-blue-500 font-black text-3xl uppercase tracking-tighter -rotate-12 block drop-shadow-sm">SIM</span>
+                     <span className="text-blue-500 font-black text-4xl uppercase tracking-tighter -rotate-12 block drop-shadow-sm">SIM</span>
                 </div>
 
                 <div 
-                    className="absolute top-8 right-8 z-30 pointer-events-none border-[3px] border-orange-500 rounded-xl px-4 py-1 opacity-0 transition-opacity"
+                    className="absolute top-10 right-10 z-30 pointer-events-none border-[4px] border-orange-500 rounded-2xl px-6 py-2 opacity-0 transition-opacity"
                     style={{ opacity: opacityNo }}
                 >
-                     <span className="text-orange-500 font-black text-3xl uppercase tracking-tighter rotate-12 block drop-shadow-sm">NÃO</span>
+                     <span className="text-orange-500 font-black text-4xl uppercase tracking-tighter rotate-12 block drop-shadow-sm">NÃO</span>
                 </div>
 
                 <div className="relative z-10 flex flex-col h-full pointer-events-none select-none">
                     
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300 flex items-center gap-1.5 border border-blue-100 dark:border-blue-900/30">
-                            <Compass size={12}/> {currentQ.tema}
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300 flex items-center gap-2 border border-blue-100 dark:border-blue-900/30">
+                            <Compass size={14}/> {currentQ.tema}
                         </div>
                         {currentQ.realVoteId && (
-                            <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full border border-purple-100 dark:border-purple-900/30">
-                                <Sparkles size={10} />
-                                <span className="text-[8px] font-bold uppercase tracking-wide">Traduzido por IA</span>
+                            <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-full border border-purple-100 dark:border-purple-900/30">
+                                <Sparkles size={12} />
+                                <span className="text-[9px] font-bold uppercase tracking-wide">Traduzido por IA</span>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                         {currentQ.context && (
-                            <div className="mb-4 animate-in fade-in slide-in-from-bottom-2">
-                                <div className="flex items-center gap-2 mb-1.5 text-gray-400 dark:text-gray-500">
-                                    <BookOpen size={12} />
+                            <div className="mb-6 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="flex items-center gap-2 mb-2 text-gray-400 dark:text-gray-500">
+                                    <BookOpen size={14} />
                                     <span className="text-[10px] font-bold uppercase tracking-widest">O Cenário</span>
                                 </div>
-                                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">
+                                <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">
                                     "{currentQ.context}"
                                 </p>
                             </div>
                         )}
 
                         {currentQ.proposal && (
-                            <div className="mb-6 animate-in fade-in slide-in-from-bottom-3 delay-100">
-                                <div className="flex items-center gap-2 mb-1.5 text-blue-400 dark:text-blue-500">
-                                    <FileText size={12} />
+                            <div className="mb-8 animate-in fade-in slide-in-from-bottom-3 delay-100">
+                                <div className="flex items-center gap-2 mb-2 text-blue-400 dark:text-blue-500">
+                                    <FileText size={14} />
                                     <span className="text-[10px] font-bold uppercase tracking-widest">A Proposta</span>
                                 </div>
-                                <p className="text-base md:text-lg font-black text-blue-900 dark:text-white leading-tight">
+                                <p className="text-xl font-black text-blue-900 dark:text-white leading-tight">
                                     {currentQ.proposal}
                                 </p>
                             </div>
                         )}
 
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-300 delay-200">
-                            <div className="flex justify-center mb-2 text-blue-500">
-                                <HelpCircle size={24} />
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-300 delay-200">
+                            <div className="flex justify-center mb-3 text-blue-500">
+                                <HelpCircle size={28} />
                             </div>
-                            <h2 className="text-center text-xl md:text-2xl font-black text-blue-600 dark:text-blue-400 leading-tight">
+                            <h2 className="text-center text-2xl font-black text-blue-600 dark:text-blue-400 leading-tight">
                                 <Glossary term={currentQ.tema}>{currentQ.description}</Glossary>
                             </h2>
                         </div>
 
                         {/* NOVO: Raio-X da Votação */}
                         {currentQ.stats && (
-                            <div className="mt-6 border-t border-gray-100 dark:border-gray-700/50 pt-4 animate-in slide-in-from-bottom-4 delay-300">
-                                <div className="flex items-center gap-2 mb-3 text-gray-400 dark:text-gray-500">
-                                    <PieChart size={12} />
+                            <div className="mt-8 border-t border-gray-100 dark:border-gray-700/50 pt-6 animate-in slide-in-from-bottom-4 delay-300">
+                                <div className="flex items-center gap-2 mb-4 text-gray-400 dark:text-gray-500">
+                                    <PieChart size={14} />
                                     <span className="text-[10px] font-bold uppercase tracking-widest">Raio-X da Votação</span>
                                 </div>
                                 
                                 {/* Approval Bar */}
-                                <div className="flex items-center gap-3 mb-3">
-                                    <span className="text-xs font-black text-green-600 dark:text-green-400">{currentQ.stats.approvalRate}% Aprovaram</span>
-                                    <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-green-500 rounded-full" style={{ width: `${currentQ.stats.approvalRate}%` }}></div>
+                                <div className="flex items-center gap-4 mb-4">
+                                    <span className="text-xs font-black text-green-600 dark:text-green-400 whitespace-nowrap">{currentQ.stats.approvalRate}% Aprovaram</span>
+                                    <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-green-500 rounded-full shadow-inner" style={{ width: `${currentQ.stats.approvalRate}%` }}></div>
                                     </div>
                                 </div>
 
                                 {/* Parties Context */}
-                                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                    <div className="bg-green-50 dark:bg-green-900/10 p-2 rounded-lg border border-green-100 dark:border-green-900/20">
-                                        <p className="font-black text-green-700 dark:text-green-400 uppercase mb-1">A Favor</p>
-                                        <p className="text-gray-600 dark:text-gray-300 font-bold">{currentQ.stats.partiesYes.join(', ') || 'N/A'}</p>
+                                <div className="grid grid-cols-2 gap-3 text-[10px]">
+                                    <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl border border-green-100 dark:border-green-900/20">
+                                        <p className="font-black text-green-700 dark:text-green-400 uppercase mb-1">Quem apoiou</p>
+                                        <p className="text-gray-600 dark:text-gray-300 font-bold text-xs">{currentQ.stats.partiesYes.join(', ') || 'N/A'}</p>
                                     </div>
-                                    <div className="bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100 dark:border-red-900/20">
-                                        <p className="font-black text-red-600 dark:text-red-400 uppercase mb-1">Contra</p>
-                                        <p className="text-gray-600 dark:text-gray-300 font-bold">{currentQ.stats.partiesNo.join(', ') || 'N/A'}</p>
+                                    <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-xl border border-red-100 dark:border-red-900/20">
+                                        <p className="font-black text-red-600 dark:text-red-400 uppercase mb-1">Quem rejeitou</p>
+                                        <p className="text-gray-600 dark:text-gray-300 font-bold text-xs">{currentQ.stats.partiesNo.join(', ') || 'N/A'}</p>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
                     
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
                         {currentQ.sourceUrl && (
                             <a 
                                 href={currentQ.sourceUrl} 
@@ -478,7 +480,7 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
                                 className="pointer-events-auto inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-blue-500 transition-colors"
                                 onPointerDown={(e) => e.stopPropagation()} 
                             >
-                                <ExternalLink size={10} /> Fonte Oficial
+                                <ExternalLink size={12} /> Fonte Oficial
                             </a>
                         )}
                         <div className="text-[9px] font-bold text-gray-300 dark:text-gray-700 uppercase tracking-widest">
@@ -489,29 +491,31 @@ const MatchView: React.FC<MatchViewProps> = ({ politicians, onFinish, onCancel }
             </div>
         </div>
 
-        <div className="px-6 pb-24 md:pb-8 pt-6 flex items-center justify-center gap-6 md:gap-10 z-20 shrink-0">
+        {/* Optical Alignment applied here: slightly offset icons */}
+        <div className="px-6 pb-24 md:pb-12 pt-8 flex items-center justify-center gap-8 md:gap-12 z-20 shrink-0">
             <button 
                 onClick={() => handleVote('NAO')}
-                className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 border-2 border-orange-100 dark:border-orange-900/30 text-orange-500 flex items-center justify-center hover:scale-110 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all shadow-lg group active:scale-95"
+                className="w-20 h-20 rounded-full bg-white dark:bg-gray-800 border-2 border-orange-100 dark:border-orange-900/30 text-orange-500 flex items-center justify-center hover:scale-110 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all shadow-xl group active:scale-95"
                 aria-label="Discordo"
             >
-                <X size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform"/>
+                <X size={40} strokeWidth={3} className="group-hover:rotate-90 transition-transform"/>
             </button>
 
             <button 
                 onClick={() => handleVote('SKIP')}
-                className="px-6 py-3 rounded-full bg-white dark:bg-gray-800 text-blue-400 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-md active:scale-95 transition-all flex flex-col items-center gap-1"
+                className="px-8 py-4 rounded-full bg-white dark:bg-gray-800 text-blue-400 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-lg active:scale-95 transition-all flex flex-col items-center gap-1.5"
             >
-                <SkipForward size={20}/>
+                <SkipForward size={24} className="ml-0.5"/>
                 Pular
             </button>
 
             <button 
                 onClick={() => handleVote('SIM')}
-                className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-100 dark:border-blue-900/30 text-blue-500 flex items-center justify-center hover:scale-110 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all shadow-lg group active:scale-95"
+                className="w-20 h-20 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-100 dark:border-blue-900/30 text-blue-500 flex items-center justify-center hover:scale-110 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all shadow-xl group active:scale-95"
                 aria-label="Concordo"
             >
-                <Check size={32} strokeWidth={3} className="group-hover:scale-125 transition-transform"/>
+                {/* Check icon usually looks better slightly offset to left due to its shape */}
+                <Check size={40} strokeWidth={3} className="group-hover:scale-125 transition-transform -ml-1"/>
             </button>
         </div>
     </div>

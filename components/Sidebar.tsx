@@ -68,7 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, darkMode, to
         <div className="flex flex-col gap-3 items-center xl:items-start w-full">
           <NavItem id="feed" icon={ScrollText} label="Mural" isActive={activeTab === 'feed'} />
           <NavItem id="explore" icon={Users} label="Políticos" isActive={activeTab === 'explore'} />
-          <NavItem id="parties" icon={BarChart3} label="Gráficos" isActive={activeTab === 'parties'} colorClass="bg-gradient-to-r from-spring to-yellow-600" />
+          {/* Enhanced Contrast: yellow-500 instead of spring */}
+          <NavItem id="parties" icon={BarChart3} label="Gráficos" isActive={activeTab === 'parties'} colorClass="bg-gradient-to-r from-yellow-500 to-yellow-600" />
           <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" isActive={activeTab === 'articles'} colorClass="bg-gradient-to-r from-picture to-green-900" />
         </div>
       </div>

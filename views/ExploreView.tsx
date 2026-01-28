@@ -36,7 +36,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative bg-white/90 dark:bg-midnight/95 backdrop-blur-2xl rounded-[2.5rem] p-5 md:p-6 text-left border border-white/40 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
+            className="group relative glass rounded-[2.5rem] p-5 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
 
@@ -214,7 +214,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
             <div className="sticky top-0 z-30 pt-4 px-3 md:px-6 pb-2">
-                <div className="w-full bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl border border-white/30 dark:border-white/10 rounded-[3rem] p-4 md:p-6 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] space-y-5 max-w-[2000px] mx-auto">
+                <div className="w-full glass rounded-[3rem] p-4 md:p-6 shadow-lg space-y-5 max-w-[2000px] mx-auto">
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
                          {selectedParty ? (
                              <button 
@@ -369,7 +369,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-4 md:gap-6">
                                 {(selectedParty ? currentPartyMembers : filteredPoliticians).map(pol => (
-                                    <div key={pol.id} onClick={() => onSelectCandidate(pol)} className="bg-white/90 dark:bg-midnight/90 backdrop-blur-xl rounded-[2.5rem] p-4 md:p-6 border border-white/20 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden">
+                                    <div key={pol.id} onClick={() => onSelectCandidate(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden rounded-[2.5rem] p-4 md:p-6">
                                         {followingIds.includes(pol.id) && (
                                             <div className="absolute top-3 left-3 z-20">
                                                 <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
