@@ -466,10 +466,9 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                             <div 
                                 key={pol.id} 
                                 onClick={() => onSelectCandidate(pol)}
-                                // AJUSTE 1: Sombra removida para 'shadow-none' (apenas hover) para máxima leveza visual
-                                className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-none border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-md transition-all duration-300"
+                                className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-2xl transition-all duration-300"
                             >
-                                <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-sm">
+                                <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
                                     <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" />
                                 </div>
                                 <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-1.5 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
@@ -485,12 +484,6 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
 
 const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, onSelectCandidate, onEducationClick, onSeeMore, onGoToExplore }) => {
     const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItem | null>(null);
-
-    // AJUSTE 2: Lógica de Saudação (Bom dia, Boa tarde, Boa noite)
-    const currentHour = new Date().getHours();
-    let greeting = 'Boa noite';
-    if (currentHour < 12) greeting = 'Bom dia';
-    else if (currentHour < 18) greeting = 'Boa tarde';
 
     return (
         <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32 animate-in fade-in duration-500">
@@ -509,8 +502,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                 <header className="mb-10 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl md:text-5xl font-black text-midnight dark:text-white tracking-tight leading-none mb-2">
-                            {/* AJUSTE 2: Substituição do título Mural Cidadão pela saudação */}
-                            {greeting}, Cidadão!
+                            Mural Cidadão
                         </h1>
                         <p className="text-sm md:text-base font-medium text-gray-500 dark:text-gray-400">
                             Fiscalização em tempo real do Congresso.

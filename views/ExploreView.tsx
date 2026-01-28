@@ -112,8 +112,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
 };
 
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => (
-    // AJUSTE 4: Removido 'overflow-hidden' do container principal para evitar cortes na imagem/sombra
-    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[2.5rem] p-4 md:p-6 h-full border border-white/40 dark:border-white/5">
+    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden rounded-[2.5rem] p-4 md:p-6 h-full border border-white/40 dark:border-white/5">
         {isFollowing && (
             <div className="absolute top-3 left-3 z-20">
                 <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
@@ -121,11 +120,11 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
                 </div>
             </div>
         )}
-        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg shrink-0">
+        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg">
             <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"/>
         </div>
-        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1 w-full">{pol.name}</h3>
-        <div className="mt-2 flex flex-wrap justify-center gap-1 w-full">
+        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1">{pol.name}</h3>
+        <div className="mt-2 flex flex-wrap justify-center gap-1">
             <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
             <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
         </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText } from 'lucide-react';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2 } from 'lucide-react';
 import { Politician, FeedItem, YearStats } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
@@ -79,36 +79,6 @@ const PresenceBar = ({ label, present, justified, unjustified, total }: { label:
     );
 };
 
-const YearFilter = ({ years, selected, onSelect }: { years: number[], selected: number | 'total', onSelect: (y: number | 'total') => void }) => (
-    <div className="w-full">
-        <div className="bg-gray-100/50 dark:bg-white/5 p-1 rounded-xl flex gap-1 overflow-x-auto scrollbar-hide shadow-inner border border-gray-200/50 dark:border-white/10 backdrop-blur-sm">
-            <button
-                onClick={() => onSelect('total')}
-                className={`flex-1 min-w-[70px] px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                    selected === 'total'
-                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-            >
-                Mandato
-            </button>
-            {years.map(year => (
-                <button
-                    key={year}
-                    onClick={() => onSelect(year)}
-                    className={`flex-1 min-w-[50px] px-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                        selected === year
-                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200 dark:border-gray-600 scale-[1.02]'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                >
-                    {year}
-                </button>
-            ))}
-        </div>
-    </div>
-);
-
 // --- NEW EXPOSED SECTIONS (REPLACING MODALS) ---
 
 const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: boolean }) => (
@@ -171,63 +141,130 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
     </div>
 );
 
-const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading }: any) => (
-    <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
-        <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
-            <div className="flex items-center gap-3">
+const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo }: any) => {
+    // Determine which years to show.
+    const sortedYears = [...availableYears].sort((a,b) => a - b);
+    const currentYear = new Date().getFullYear();
+
+    return (
+        <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
                 <div className="p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400">
                     <BarChart3 size={20} />
                 </div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Desempenho</h3>
+                <div>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Desempenho</h3>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mt-1">Evolução do Mandato</p>
+                </div>
             </div>
-            <div className="w-40">
-                <YearFilter years={availableYears} selected={selectedYear} onSelect={setSelectedYear} />
-            </div>
-        </div>
 
-        {isLoading && !displayStats.plenary ? (
-            <div className="space-y-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-12 w-full rounded-xl" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-12 w-full rounded-xl" />
-            </div>
-        ) : (
-            <div className="space-y-8 flex-1">
-                <PresenceBar 
-                    label="Presença em Plenário" 
-                    present={displayStats.plenary?.present || 0} 
-                    justified={displayStats.plenary?.justified || 0} 
-                    unjustified={displayStats.plenary?.unjustified || 0} 
-                    total={displayStats.plenary?.total || 0}
-                />
-
-                <PresenceBar 
-                    label="Presença em Comissões" 
-                    present={displayStats.commissions?.present || 0} 
-                    justified={displayStats.commissions?.justified || 0} 
-                    unjustified={displayStats.commissions?.unjustified || 0} 
-                    total={displayStats.commissions?.total || 0}
-                />
-
-                <div className="pt-4 border-t border-gray-100 dark:border-white/5">
-                    <div className="flex justify-between items-end">
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Gasto Acumulado ({selectedYear === 'total' ? 'Total' : selectedYear})</p>
-                            <p className="text-xl font-black text-blue-900 dark:text-white">R$ {displayStats.spending?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}</p>
+            {isLoading && !displayStats.plenary ? (
+                <div className="space-y-4">
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                </div>
+            ) : (
+                <div className="space-y-8 flex-1">
+                    
+                    {/* MANDATE TIMELINE FILTER */}
+                    <div className="bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-white/40 dark:border-white/5 shadow-inner">
+                        <div className="flex justify-between items-center mb-6">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                <Clock size={12} /> Linha do Tempo
+                            </span>
+                            <button 
+                                onClick={() => setSelectedYear('total')}
+                                className={`text-[9px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wide transition-all ${selectedYear === 'total' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/20'}`}
+                            >
+                                Mandato Completo
+                            </button>
                         </div>
+                        
+                        {/* Interactive Timeline Track */}
+                        <div className="relative h-14 flex items-center justify-between px-2 mx-1">
+                            {/* Base Track */}
+                            <div className="absolute left-0 right-0 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full top-1/2 -translate-y-1/2 z-0"></div>
+                            
+                            {/* Active Progress Track */}
+                            <div 
+                                className="absolute left-0 h-1.5 bg-blue-500 rounded-full top-1/2 -translate-y-1/2 z-0 transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                style={{ width: `${Math.max(0, Math.min(100, mandateInfo.percentage))}%` }}
+                            ></div>
+
+                            {/* Year Nodes */}
+                            {sortedYears.map((year: number) => {
+                                const isActive = selectedYear === year;
+                                const isCurrent = year === currentYear;
+                                const isPast = year <= currentYear;
+                                
+                                return (
+                                    <button
+                                        key={year}
+                                        onClick={() => setSelectedYear(year)}
+                                        className={`group relative flex flex-col items-center justify-center w-10 h-10 rounded-full transition-all duration-300 z-10 active:scale-90 ${
+                                            isActive 
+                                            ? 'bg-blue-600 text-white shadow-xl scale-110 ring-4 ring-blue-100 dark:ring-blue-900/30' 
+                                            : isPast 
+                                                ? 'bg-white dark:bg-gray-800 text-blue-600 border-2 border-blue-500 hover:border-blue-400'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-2 border-gray-300 dark:border-gray-600'
+                                        }`}
+                                    >
+                                        <span className={`text-[10px] font-black ${isActive ? 'text-white' : ''}`}>{year}</span>
+                                        {isCurrent && !isActive && <span className="absolute -bottom-6 text-[8px] font-black uppercase text-blue-500 tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">Atual</span>}
+                                        {isActive && <div className="absolute -bottom-1 w-1 h-1 bg-white rounded-full"></div>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="flex justify-between mt-3 text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                            <span>Início: {mandateInfo.startStr}</span>
+                            <span>Fim: {mandateInfo.endStr}</span>
+                        </div>
+                    </div>
+
+                    <PresenceBar 
+                        label={`Presença em Plenário (${selectedYear === 'total' ? 'Total' : selectedYear})`}
+                        present={displayStats.plenary?.present || 0} 
+                        justified={displayStats.plenary?.justified || 0} 
+                        unjustified={displayStats.plenary?.unjustified || 0} 
+                        total={displayStats.plenary?.total || 0}
+                    />
+
+                    <PresenceBar 
+                        label={`Presença em Comissões (${selectedYear === 'total' ? 'Total' : selectedYear})`}
+                        present={displayStats.commissions?.present || 0} 
+                        justified={displayStats.commissions?.justified || 0} 
+                        unjustified={displayStats.commissions?.unjustified || 0} 
+                        total={displayStats.commissions?.total || 0}
+                    />
+
+                    <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                        <div className="bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide group-hover:text-blue-500 transition-colors">Gastos de Gabinete ({selectedYear === 'total' ? 'Total' : selectedYear})</p>
+                                <p className="text-xl font-black text-gray-900 dark:text-white mt-0.5">
+                                    R$ {displayStats.spending?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+                                </p>
+                            </div>
+                            <div className="p-3 bg-green-100/50 dark:bg-green-900/20 text-green-600 rounded-xl">
+                                <Banknote size={24} />
+                            </div>
+                        </div>
+                        
                         {commissionGroups.titular.length > 0 && (
-                            <div className="text-right">
-                                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Comissões (Titular)</p>
-                                <span className="text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-md">{commissionGroups.titular.length} colegiados</span>
+                            <div className="mt-4 flex justify-between items-center text-[10px] font-bold text-gray-500 uppercase tracking-wide px-1">
+                                <span>Titular em Comissões</span>
+                                <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-900/30">{commissionGroups.titular.length} Colegiados</span>
                             </div>
                         )}
                     </div>
                 </div>
-            </div>
-        )}
-    </div>
-);
+            )}
+        </div>
+    );
+};
 
 const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const type = item._type;
@@ -533,7 +570,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                       </p>
                   </div>
                   
-                  {/* Mandate Timer Card (Desktop Only) */}
+                  {/* Mandate Timer Card (Desktop Only) - Mantido para efeito visual */}
                   <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
                       <div className="flex justify-between items-center mb-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5">
@@ -578,6 +615,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   availableYears={availableYears} 
                   commissionGroups={commissionGroups}
                   isLoading={isLoadingDetails}
+                  mandateInfo={mandateInfo}
               />
           </div>
 

@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, MapPin } from 'lucide-react';
+import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, MessageCircle, BookOpen, ChevronRight, PieChart, MapPin } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { ESTADOS_BRASIL } from '../constants';
 
@@ -11,8 +11,8 @@ const MobileNav: React.FC = () => {
 
   const tabs = useMemo(() => [
     { id: 'feed', label: 'Mural', icon: ScrollText },
-    { id: 'explore', label: 'Políticos', icon: Users },
-    { id: 'parties', label: 'Gráficos', icon: BarChart3 },
+    { id: 'explore', label: 'Explorar', icon: Users },
+    { id: 'chat', label: 'PapoReto', icon: MessageCircle, isFab: true }, 
     { id: 'articles', label: 'Guia', icon: BookOpen },
   ], []);
 
@@ -34,13 +34,35 @@ const MobileNav: React.FC = () => {
         >
             <div className="p-6 space-y-6">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Acessibilidade & Ajustes</h3>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Mais Opções</h3>
                     <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-100/50 dark:bg-white/10 rounded-full text-gray-500 dark:text-gray-300 backdrop-blur-md">
                         <X size={20} />
                     </button>
                 </div>
 
+                {/* Secondary Navigation Features */}
+                <div className="space-y-3">
+                    <button 
+                        onClick={() => handleTabClick('parties')}
+                        className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-white/5 rounded-2xl active:scale-95 transition-transform"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 rounded-xl">
+                                <PieChart size={20} />
+                            </div>
+                            <div className="text-left">
+                                <p className="font-bold text-gray-900 dark:text-white text-sm">Cenário Partidário</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Gráficos e estatísticas</p>
+                            </div>
+                        </div>
+                        <ChevronRight size={16} className="text-gray-400" />
+                    </button>
+                </div>
+
+                <div className="h-px bg-gray-100 dark:bg-white/10 w-full"></div>
+
                 {/* Settings Grid */}
+                <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Acessibilidade & Ajustes</h4>
                 <div className="grid grid-cols-2 gap-3">
                     {/* Location Selector */}
                     <div className="col-span-2 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5">
@@ -112,6 +134,24 @@ const MobileNav: React.FC = () => {
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id && !isMenuOpen;
                 
+                if (tab.isFab) {
+                    return (
+                        <div key={tab.id} className="relative -top-5 mx-1">
+                            <button
+                                onClick={() => handleTabClick(tab.id)}
+                                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform duration-200 active:scale-90 border-4 border-white dark:border-midnight ${
+                                    isActive 
+                                    ? 'bg-gradient-to-tr from-blue-600 to-blue-400 text-white shadow-blue-500/40 scale-110' 
+                                    : 'bg-midnight dark:bg-blue-600 text-white shadow-lg'
+                                }`}
+                                aria-label={tab.label}
+                            >
+                                <tab.icon size={24} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    );
+                }
+
                 return (
                     <button
                         key={tab.id}
@@ -153,7 +193,7 @@ const MobileNav: React.FC = () => {
                     <Menu size={20} strokeWidth={2} />
                 )}
                 <span className={`text-[9px] font-bold leading-none ${isMenuOpen ? 'opacity-100' : 'opacity-70'}`}>
-                    Opções
+                    Menu
                 </span>
             </button>
 
