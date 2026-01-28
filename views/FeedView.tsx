@@ -466,8 +466,8 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                             <div 
                                 key={pol.id} 
                                 onClick={() => onSelectCandidate(pol)}
-                                // AJUSTE 1: Sombra reduzida de shadow-[0_15px... para shadow-sm/shadow-md para leveza
-                                className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-sm dark:shadow-[0_4px_12px_rgba(0,0,0,0.4)] border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-md transition-all duration-300"
+                                // AJUSTE 1: Sombra removida para 'shadow-none' (apenas hover) para máxima leveza visual
+                                className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-none border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-md transition-all duration-300"
                             >
                                 <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-sm">
                                     <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" />
@@ -509,9 +509,8 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                 <header className="mb-10 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl md:text-5xl font-black text-midnight dark:text-white tracking-tight leading-none mb-2">
-                            {/* AJUSTE 2: Inserção da saudação */}
-                            <span className="block text-xl md:text-2xl font-medium text-blue-600 dark:text-blue-400 mb-1">{greeting}, Cidadão!</span>
-                            Mural Cidadão
+                            {/* AJUSTE 2: Substituição do título Mural Cidadão pela saudação */}
+                            {greeting}, Cidadão!
                         </h1>
                         <p className="text-sm md:text-base font-medium text-gray-500 dark:text-gray-400">
                             Fiscalização em tempo real do Congresso.

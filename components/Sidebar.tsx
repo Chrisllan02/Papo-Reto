@@ -92,11 +92,11 @@ const Sidebar: React.FC = () => {
                          <MapPin size={18} className="text-nuit dark:text-blue-400"/>
                          <span className="text-sm font-bold text-gray-800 dark:text-white">Localização</span>
                      </div>
-                     {/* AJUSTE 3: max-w e truncate para evitar overflow */}
+                     {/* AJUSTE 3: max-w e w-24 para controle rígido de largura */}
                      <select 
                         value={userLocation}
                         onChange={(e) => actions.updateUserLocation(e.target.value)}
-                        className="bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border-none cursor-pointer max-w-[90px] truncate"
+                        className="bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border-none cursor-pointer max-w-[90px] w-24 truncate"
                      >
                         <option value="">Brasil</option>
                         {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
