@@ -250,8 +250,6 @@ const AudioPlayer = ({ text, isDarkText }: { text: string, isDarkText: boolean }
 const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: FeedItem, politician?: Politician, onClose: () => void, onGoToProfile: (p: Politician) => void }) => {
     const isVote = item.type === 'voto';
     const isExpense = item.type === 'despesa';
-    // If not vote and not expense, it's 'education' or other, which typically uses Spring color.
-    // Spring color is light yellow, so we need dark text for contrast on buttons.
     const isLightBg = !isVote && !isExpense; 
 
     const [visible, setVisible] = useState(false);
@@ -292,13 +290,12 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                     </div>
                 </div>
 
-                {/* Standardized Padding: p-8 for Desktop, p-6 for Mobile */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-12 pb-safe">
                     <div className="flex flex-wrap items-center gap-2 mb-6">
-                        <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm ${isVote ? 'bg-nuit/10 text-nuit' : isExpense ? 'bg-orange-100/50 text-orange-700' : 'bg-spring/30 text-yellow-800'}`}>
+                        <span className={`text-xs font-black uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm ${isVote ? 'bg-nuit/10 text-nuit' : isExpense ? 'bg-orange-100/50 text-orange-700' : 'bg-spring/30 text-yellow-800'}`}>
                             {item.type}
                         </span>
-                        {item.date && <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {item.date}</span>}
+                        {item.date && <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {item.date}</span>}
                     </div>
 
                     <h2 id="modal-title" className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight mb-8 tracking-tight">{item.title}</h2>
@@ -306,7 +303,6 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                     <div className="mb-10 space-y-6">
                         <div className="bg-nuit/5 dark:bg-nuit/10 p-6 rounded-3xl border border-nuit/10 dark:border-nuit/20 backdrop-blur-md relative overflow-hidden shadow-sm">
                             <div className="absolute top-0 left-0 w-1.5 h-full bg-nuit"></div>
-                            {/* Typography Refinement: relaxed leading for easier reading */}
                             <p className="text-midnight dark:text-blue-100 text-base md:text-lg font-medium leading-relaxed">
                                 {didacticContent.text}
                             </p>
@@ -317,7 +313,7 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-spring"></div>
                                 <div className="flex items-center gap-2 mb-3">
                                     <Scale size={16} className="text-yellow-800 dark:text-spring" />
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-yellow-800 dark:text-spring">Na Constituição ({didacticContent.constitution.art})</span>
+                                    <span className="text-xs font-black uppercase tracking-wider text-yellow-800 dark:text-spring">Na Constituição ({didacticContent.constitution.art})</span>
                                 </div>
                                 <p className="text-midnight dark:text-yellow-100 text-sm md:text-base font-medium leading-relaxed italic">
                                     "{didacticContent.constitution.text}"
@@ -329,12 +325,12 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                     {isExpense && item.amount && (
                         <div className="mb-8 p-6 bg-gray-50/50 dark:bg-white/5 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-white/10 flex items-center justify-between">
                             <div>
-                                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Valor</p>
+                                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Valor</p>
                                 <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">{item.amount}</p>
                             </div>
                             {item.provider && (
                                 <div className="text-right max-w-[50%]">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Fornecedor</p>
+                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Fornecedor</p>
                                     <p className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate">{item.provider}</p>
                                 </div>
                             )}
@@ -353,11 +349,11 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                                 aria-label={`Ver perfil completo de ${politician.name}`}
                                 className="flex items-center gap-4 p-5 rounded-3xl border border-gray-200 dark:border-white/10 hover:border-nuit bg-white/50 dark:bg-white/5 cursor-pointer transition-all active:scale-[0.98] text-left backdrop-blur-md shadow-sm hover:shadow-md group"
                             >
-                                <img src={politician.photo} className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-md group-hover:scale-105 transition-transform" alt="" />
+                                <img src={politician.photo} className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-md group-hover:scale-105 transition-transform" alt="" loading="lazy" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Responsável</p>
+                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Responsável</p>
                                     <p className="text-base font-black text-midnight dark:text-white truncate">{politician.name}</p>
-                                    <p className="text-[11px] font-medium text-gray-500">{politician.party} - {politician.state}</p>
+                                    <p className="text-xs font-medium text-gray-500">{politician.party} - {politician.state}</p>
                                 </div>
                                 <div className="p-3 bg-white/50 dark:bg-white/10 rounded-full text-gray-400 shrink-0 group-hover:text-nuit transition-colors">
                                     <ArrowRight size={20} aria-hidden="true" />
@@ -372,7 +368,6 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                                 </a>
                             )}
                             <button aria-label="Compartilhar esta informação" className="px-6 py-4 rounded-2xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 font-bold active:scale-[0.98] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors bg-white/20 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center">
-                                {/* Optical Alignment: Share icon is balanced */}
                                 <Share2 size={22} aria-hidden="true" />
                             </button>
                         </div>
@@ -407,19 +402,15 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         };
 
         if (userLocation) {
-            // Se temos uma localização definida no contexto (manual ou geo), usa ela prioridade máxima
             if (politicians.some(p => p.state === userLocation)) {
                 updateState(userLocation, true);
             } else {
-                // Fallback se a location for válida mas sem políticos (raro)
                 const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
                 if (states.length > 0) updateState(states[Math.floor(Math.random() * states.length)], false);
             }
         } else {
-            // Sem localização, modo "Giro" (Aleatório) apenas se não tivermos nada definido
             const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
             if (states.length > 0) {
-                // Mantém o estado atual se já foi selecionado aleatoriamente para evitar "pulo" visual
                 if (!selectedState) {
                     const random = states[Math.floor(Math.random() * states.length)];
                     updateState(random, false);
@@ -437,7 +428,6 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         <section className="mb-12 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
             <div className="absolute inset-0 glass-card rounded-[3rem] -mx-4 md:mx-0 z-0 border border-white/20 dark:border-white/5 shadow-sm"></div>
 
-            {/* Standardized Padding p-6/p-8 */}
             <div className="relative z-10 p-6 md:p-8">
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -448,21 +438,20 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                             <h2 className="text-xl font-black text-midnight dark:text-white leading-none mb-1">
                                 {selectedState}
                             </h2>
-                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                                 {isLocal ? 'Sua Bancada' : 'Giro pelos Estados'}
                             </span>
                         </div>
                     </div>
                     <button 
                         onClick={() => onGoToExplore(selectedState)}
-                        className="px-5 py-2.5 bg-white/60 dark:bg-midnight/80 backdrop-blur-xl rounded-full text-[10px] font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm border border-white/30 dark:border-white/10 active:scale-95 transition-all hover:bg-white/80 dark:hover:bg-gray-800/80"
+                        className="px-5 py-2.5 bg-white/60 dark:bg-midnight/80 backdrop-blur-xl rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm border border-white/30 dark:border-white/10 active:scale-95 transition-all hover:bg-white/80 dark:hover:bg-gray-800/80"
                     >
                         Ver Todos
                     </button>
                 </div>
 
                 <div className="relative">
-                    {/* Scroll Fade Indicator - Right */}
                     <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white/90 dark:from-midnight/95 to-transparent pointer-events-none z-20 md:hidden rounded-r-[2rem]"></div>
 
                     <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth">
@@ -473,10 +462,10 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                                 className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-2xl transition-all duration-300"
                             >
                                 <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
-                                    <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" />
+                                    <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
                                 </div>
                                 <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-1.5 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
-                                <p className="text-[10px] font-bold text-gray-500 uppercase bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-md">{pol.party}</p>
+                                <p className="text-xs font-bold text-gray-500 uppercase bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-md">{pol.party}</p>
                             </div>
                         ))}
                     </div>
@@ -555,11 +544,11 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                                 >
                                     <div>
                                         <div className="flex justify-between items-start mb-4 relative z-10">
-                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${category.bg} ${category.color} text-[10px] font-black uppercase tracking-wider`}>
+                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${category.bg} ${category.color} text-xs font-black uppercase tracking-wider`}>
                                                 <category.icon size={14} />
                                                 {category.label}
                                             </div>
-                                            <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                                                 {item.date}
                                             </span>
                                         </div>
@@ -571,7 +560,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                                         {isExpense && item.amount && (
                                             <div className="mb-4">
                                                 <p className="text-3xl font-black text-midnight dark:text-white tracking-tighter">{item.amount}</p>
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold truncate tracking-wide">{item.provider}</p>
+                                                <p className="text-xs text-gray-500 uppercase font-bold truncate tracking-wide">{item.provider}</p>
                                             </div>
                                         )}
 
@@ -584,10 +573,10 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
 
                                     {politician ? (
                                         <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-white/5 relative z-10 mt-auto">
-                                            <img src={politician.photo} className="w-10 h-10 rounded-full object-cover border border-white dark:border-gray-700 shadow-sm" alt=""/>
+                                            <img src={politician.photo} className="w-10 h-10 rounded-full object-cover border border-white dark:border-gray-700 shadow-sm" alt="" loading="lazy" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-black text-midnight dark:text-white truncate">{politician.name}</p>
-                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{politician.party} • {politician.state}</p>
+                                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{politician.party} • {politician.state}</p>
                                             </div>
                                         </div>
                                     ) : (
@@ -595,7 +584,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                                             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                                                 <Landmark size={18} className="text-gray-400"/>
                                             </div>
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Congresso Nacional</span>
+                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Congresso Nacional</span>
                                         </div>
                                     )}
                                     

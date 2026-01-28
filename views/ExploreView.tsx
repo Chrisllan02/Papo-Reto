@@ -51,7 +51,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2rem] p-5 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
+            className="group relative glass rounded-[2rem] p-5 pb-7 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[240px]"
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
 
@@ -94,18 +94,18 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
                 </div>
             </div>
 
-            {/* Ajuste de margem (pl-2 mb-1) para evitar corte pelo rounded-corner */}
-            <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10 pl-2 mb-1">
+            {/* Avatar Container with increased space/padding to prevent clipping */}
+            <div className="mt-4 flex -space-x-2.5 relative z-10 h-10 md:h-12 pl-2">
                 {previewMembers.map((m: any) => (
                     <img 
                         key={m.id} 
                         src={m.photo} 
-                        className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 object-cover bg-gray-200 shadow-md" 
+                        className="w-9 h-9 md:w-11 md:h-11 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 object-cover bg-gray-200 shadow-md transform hover:scale-110 hover:z-20 transition-transform" 
                         alt=""
                     />
                 ))}
                 {group.members.length > 3 && (
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] md:text-xs font-bold text-blue-500 shadow-md">
+                    <div className="w-9 h-9 md:w-11 md:h-11 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] md:text-xs font-bold text-blue-500 shadow-md">
                         +{group.members.length - 3}
                     </div>
                 )}
@@ -282,76 +282,76 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
             
-            {/* Header Redesigned for Better Mobile UX & Readability */}
+            {/* Header Redesigned for Mobile Usability */}
             <div className="sticky top-0 z-30 pt-2 px-2 md:pt-4 md:px-6 pb-2">
-                <div className="w-full glass rounded-[2rem] md:rounded-[3rem] p-4 md:p-6 shadow-lg space-y-4 max-w-[2000px] mx-auto bg-white/80 dark:bg-midnight/80 backdrop-blur-xl">
+                <div className="w-full glass rounded-[2rem] md:rounded-[3rem] p-4 shadow-lg space-y-4 max-w-[2000px] mx-auto bg-white/80 dark:bg-midnight/80 backdrop-blur-xl">
                     
                     {/* Row 1: Title & Main Actions */}
-                    <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                    <div className="flex flex-row justify-between items-center">
                          {selectedParty ? (
                              <button 
                                 onClick={() => setSelectedParty(null)}
-                                className="flex items-center justify-center gap-2 px-6 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl md:rounded-3xl font-bold transition-all active:scale-95 text-sm shrink-0 shadow-lg hover:shadow-xl w-full md:w-auto"
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl md:rounded-3xl font-bold transition-all active:scale-95 text-xs md:text-sm shrink-0 shadow-lg hover:shadow-xl w-auto"
                              >
-                                 <ChevronLeft size={20} /> Voltar aos Partidos
+                                 <ChevronLeft size={18} /> Voltar
                              </button>
                          ) : (
-                             <div className="flex items-center justify-between w-full md:w-auto gap-4 text-xl font-black text-blue-900 dark:text-white pt-safe pl-1 md:pl-2">
-                                 <div className="flex items-center gap-3">
-                                     <div className="p-3 bg-white/50 dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 backdrop-blur-md">
-                                         {viewMode === 'parties' ? <LayoutGrid size={24} className="text-blue-600"/> : <Users size={24} className="text-blue-600"/>}
-                                     </div>
-                                     <span className="tracking-tight text-lg md:text-xl">Explorar</span>
+                             <div className="flex items-center gap-3">
+                                 <div className="p-2.5 bg-white/50 dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 backdrop-blur-md">
+                                     {viewMode === 'parties' ? <LayoutGrid size={22} className="text-blue-600"/> : <Users size={22} className="text-blue-600"/>}
                                  </div>
-                                 
-                                 {/* Mobile: View Toggles tucked here */}
-                                 <div className="flex bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl p-1.5 ml-auto md:ml-4 border border-white/30 dark:border-gray-700 backdrop-blur-sm">
-                                     <button 
-                                        onClick={() => setViewMode('parties')}
-                                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'parties' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
-                                        title="Ver Partidos"
-                                    >
-                                         <LayoutGrid size={20} />
-                                     </button>
-                                     <button 
-                                        onClick={() => setViewMode('candidates')}
-                                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
-                                        title="Ver Candidatos"
-                                    >
-                                         <Contact size={20} />
-                                     </button>
-                                 </div>
+                                 <span className="text-lg md:text-xl font-black text-blue-900 dark:text-white tracking-tight">Explorar</span>
                              </div>
                          )}
-
-                         {/* Search Bar - Larger Text & Touch Targets */}
-                         <div className="relative group w-full md:flex-1 md:max-w-xl">
-                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
-                                <Search className="h-5 w-5 text-blue-600 dark:text-blue-400 group-focus-within:scale-110 transition-transform" strokeWidth={3} />
-                            </div>
-                            <input 
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, partido, estado..." : "Buscar partido..."}
-                                className="block w-full pl-12 md:pl-14 pr-12 py-4 bg-gray-50/50 dark:bg-black/20 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 rounded-2xl md:rounded-3xl text-blue-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white/80 dark:focus:bg-gray-800/80 transition-all text-base font-bold shadow-inner"
-                            />
-                            {search && (
-                              <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                <X size={16} strokeWidth={3} />
-                              </button>
-                            )}
-                         </div>
+                         
+                         {/* View Toggles */}
+                         {!selectedParty && (
+                             <div className="flex bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl p-1 border border-white/30 dark:border-gray-700 backdrop-blur-sm">
+                                 <button 
+                                    onClick={() => setViewMode('parties')}
+                                    className={`p-2.5 rounded-xl transition-all ${viewMode === 'parties' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
+                                    title="Ver Partidos"
+                                >
+                                     <LayoutGrid size={20} />
+                                 </button>
+                                 <button 
+                                    onClick={() => setViewMode('candidates')}
+                                    className={`p-2.5 rounded-xl transition-all ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
+                                    title="Ver Candidatos"
+                                >
+                                     <Contact size={20} />
+                                 </button>
+                             </div>
+                         )}
                     </div>
 
-                    {/* Row 2: Filters (Mobile Optimized with Scroll Hint) */}
+                    {/* Row 2: Search Bar - Full Width for Mobile */}
+                    <div className="relative group w-full">
+                        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+                            <Search className="h-5 w-5 text-blue-600 dark:text-blue-400 group-focus-within:scale-110 transition-transform" strokeWidth={3} />
+                        </div>
+                        <input 
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, partido, estado..." : "Buscar partido..."}
+                            className="block w-full pl-12 pr-12 py-4 bg-gray-50/80 dark:bg-black/20 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 rounded-2xl text-blue-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-gray-800 transition-all text-sm font-bold shadow-inner"
+                        />
+                        {search && (
+                          <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                            <X size={16} strokeWidth={3} />
+                          </button>
+                        )}
+                    </div>
+
+                    {/* Row 3: Filters (Horizontal Scroll) */}
                     {!selectedParty && (
                         <div className="relative group/filters">
-                            {/* Gradient Scroll Hint (Right side) */}
-                            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/90 dark:from-black/50 to-transparent pointer-events-none z-20 md:hidden rounded-r-2xl"></div>
+                            {/* Gradient Overlay to indicate scroll */}
+                            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-gray-900 to-transparent pointer-events-none z-10 rounded-r-2xl md:hidden"></div>
                             
-                            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2 pr-8 md:pr-0 snap-x snap-mandatory">
-                                {/* Ideology Chips - Larger Targets */}
+                            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory pr-10">
+                                {/* Ideology Chips - Horizontal Scroll Group */}
                                 <div className="flex items-center gap-2 bg-gray-100/50 dark:bg-white/5 p-1.5 rounded-2xl border border-gray-200/50 dark:border-white/10 backdrop-blur-md shrink-0 snap-start">
                                     {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => (
                                         <button
@@ -368,8 +368,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     ))}
                                 </div>
 
-                                {/* State Filter - Larger Targets */}
-                                <div className="relative shrink-0 snap-start h-full">
+                                {/* State Filter */}
+                                <div className="relative shrink-0 snap-start">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
                                         <MapPin size={16} strokeWidth={2.5}/>
                                     </div>
@@ -384,10 +384,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
                                 </div>
 
-                                {/* Map Toggle - Larger Targets */}
+                                {/* Map Toggle */}
                                 <button 
                                     onClick={() => setShowMap(!showMap)} 
-                                    className={`shrink-0 h-full px-5 py-3 rounded-2xl border font-bold text-xs uppercase flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
+                                    className={`shrink-0 px-5 py-3 rounded-2xl border font-bold text-xs uppercase flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
                                         showMap 
                                         ? 'bg-blue-600 text-white border-blue-600' 
                                         : 'bg-gray-100/50 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border-gray-200/50 dark:border-white/10 hover:bg-white/80'
