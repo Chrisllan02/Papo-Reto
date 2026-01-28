@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -161,7 +161,14 @@ const requestQueue: (() => void)[] = [];
 
 const acquireSemaphore = async () => {
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-        await new Promise<void>(resolve => requestQueue.push(resolve));
+        // Failsafe: Timeout de 8s para evitar deadlock se a fila travar
+        await new Promise<void>(resolve => {
+            const timeout = setTimeout(() => resolve(), 8000);
+            requestQueue.push(() => {
+                clearTimeout(timeout);
+                resolve();
+            });
+        });
     }
     activeRequests++;
 };
@@ -493,7 +500,7 @@ const fetchMapDeVotosReais = async (): Promise<Record<number, Record<number, str
         if (v.includes('não') || v.includes('nao')) return 'NAO';
         return 'ABST';
     };
-    await Promise.all(QUIZ_QUESTIONS.map(async (q) => {
+    await Promise.all(QUIZ_QUESTIONS.map(async (q: QuizQuestion) => {
         if (!q.realVoteId) {
              const votingId = REAL_VOTE_CONFIG[q.id] || "dummy";
              if (votingId === "dummy") return;
@@ -783,13 +790,10 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
     const cacheKey = `fast_profile_${pol.id}`;
     const cached = getRawCache(cacheKey);
     
-    // CACHE ETERNO PARA IDENTIDADE: Se dados de perfil (que não mudam) já foram baixados um dia,
-    // usamos eles para sempre, ignorando TTL. Isso previne perda de identidade se a API cair.
     if (cached && cached.data) {
         return { ...pol, ...cached.data };
     }
 
-    // Logic for Senators (simplified)
     if (pol.role.includes('Senad')) {
         const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
         let fixedBio = pol.bio;

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { NewsArticle } from '../types';
+import { NewsArticle } from '../../types';
 
 // Fix: Always initialize GoogleGenAI strictly using process.env.API_KEY as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -165,6 +165,10 @@ export const getNewsHistory = (): NewsArticle[] => {
     return getCache(NEWS_HISTORY_KEY, 0) || [];
 };
 
+export const getBestAvailableNews = (): NewsArticle[] | null => {
+    return getCache(NEWS_CACHE_KEY, 0);
+};
+
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     // 1. PERFORMANCE: Cache Rigoroso (Verifica antes de qualquer coisa)
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
@@ -186,6 +190,8 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             - Use APENAS fontes oficiais (Agência Câmara, Senado, Gov) ou veículos de hard news.
             - IGNORE colunas de opinião.
             
+            Para cada notícia, forneça um resumo ("summary") de 2 a 3 frases, explicativo e direto.
+            
             Formate a saída estritamente como um JSON Array.`,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -199,16 +205,25 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                             source: { type: Type.STRING },
                             url: { type: Type.STRING },
                             time: { type: Type.STRING, description: "Ex: 'Há 2 horas' ou 'Hoje'" },
+                            summary: { type: Type.STRING, description: "Resumo jornalístico direto e imparcial da notícia em 2 a 3 frases." },
                             imageUrl: { type: Type.STRING, description: "Deixe vazio." }
                         },
-                        required: ["title", "source", "url", "time"]
+                        required: ["title", "source", "url", "time", "summary"]
                     }
                 }
             }
         });
 
-        const jsonStr = response.text?.trim();
+        let jsonStr = response.text?.trim();
         if (!jsonStr) throw new Error("Empty AI response");
+
+        // CLEANUP: Remove markdown code blocks if present (fixes parsing errors)
+        if (jsonStr.startsWith('```json')) {
+            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        } else if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        }
+
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
         // 3. Processamento de Imagens (Apenas para o que veio novo)
@@ -263,6 +278,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                 source: "Agência Câmara", 
                 url: "https://www.camara.leg.br", 
                 time: "Hoje",
+                summary: "Deputados debatem pautas prioritárias e votações de projetos de lei em sessão no plenário da Câmara.",
                 imageUrl: STATIC_FALLBACK_IMAGES[0]
             },
             { 
@@ -270,6 +286,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                 source: "Agência Senado", 
                 url: "https://www12.senado.leg.br", 
                 time: "Hoje",
+                summary: "Senadores analisam medidas provisórias e indicações de autoridades em dia movimentado no Congresso.",
                 imageUrl: STATIC_FALLBACK_IMAGES[1]
             },
             {
@@ -277,6 +294,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                 source: "Portal da Câmara",
                 url: "https://www.camara.leg.br/noticias/",
                 time: "Recente",
+                summary: "Discussões sobre orçamento e reformas fiscais dominam a agenda legislativa desta semana.",
                 imageUrl: STATIC_FALLBACK_IMAGES[2]
             }
         ];
@@ -292,7 +310,7 @@ export const getNewsSummary = async (title: string, source: string): Promise<str
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Pesquise e gere um resumo detalhado sobre a notícia: "${title}" (Fonte original: ${source}).
+            contents: `Resumo detalhado sobre a notícia: "${title}" (Fonte original: ${source}).
             
             Estrutura da resposta:
             - Escreva 2 parágrafos informativos e neutros.
@@ -480,7 +498,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Atue como um Professor de Direito Constitucional e Cidadania.
-            Gere 6 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
+            Gere 4 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
             
             Temas sugeridos (variar): Orçamento Público, Tramitação de Leis (PEC vs PL), Funções do STF, O que faz um Deputado, Direitos do Consumidor, Reforma Tributária.
 
@@ -512,8 +530,17 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
                 }
             }
         });
-        const jsonStr = response.text?.trim();
+        
+        let jsonStr = response.text?.trim();
         if (!jsonStr) return [];
+
+        // CLEANUP: Remove markdown code blocks if present (fixes parsing errors)
+        if (jsonStr.startsWith('```json')) {
+            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        } else if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        }
+
         return JSON.parse(jsonStr) as GeneratedArticle[];
     } catch (error) {
         console.error("Educational Content Gen Error:", error);

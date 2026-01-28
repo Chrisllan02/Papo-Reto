@@ -213,8 +213,16 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             }
         });
 
-        const jsonStr = response.text?.trim();
+        let jsonStr = response.text?.trim();
         if (!jsonStr) throw new Error("Empty AI response");
+
+        // CLEANUP: Remove markdown code blocks if present (fixes parsing errors)
+        if (jsonStr.startsWith('```json')) {
+            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        } else if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        }
+
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
         // 3. Processamento de Imagens: SUBSTITUÍDO POR FALLBACKS ESTÁTICOS PARA ECONOMIZAR TOKENS
@@ -457,7 +465,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Atue como um Professor de Direito Constitucional e Cidadania.
-            Gere 6 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
+            Gere 4 artigos educativos curtos e diretos sobre temas fundamentais da política brasileira e Direitos do Cidadão.
             
             Temas sugeridos (variar): Orçamento Público, Tramitação de Leis (PEC vs PL), Funções do STF, O que faz um Deputado, Direitos do Consumidor, Reforma Tributária.
 
@@ -489,8 +497,17 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
                 }
             }
         });
-        const jsonStr = response.text?.trim();
+        
+        let jsonStr = response.text?.trim();
         if (!jsonStr) return [];
+
+        // CLEANUP: Remove markdown code blocks if present (fixes parsing errors)
+        if (jsonStr.startsWith('```json')) {
+            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        } else if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        }
+
         return JSON.parse(jsonStr) as GeneratedArticle[];
     } catch (error) {
         console.error("Educational Content Gen Error:", error);
