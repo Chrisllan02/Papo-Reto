@@ -232,7 +232,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         const rowItems = items.slice(startIndex, startIndex + numColumns);
 
         return (
-            <div style={style} className="flex gap-4 md:gap-6 px-1">
+            <div style={style} className="flex gap-4 md:gap-6 px-1 pb-6">
                 {rowItems.map((pol: Politician) => (
                     <div key={pol.id} className="flex-1 min-w-0">
                         <PoliticianCard 
@@ -425,7 +425,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            const itemHeight = 220; // Altura fixa do cartão + gap
+                                            const itemHeight = 280; // Aumentado para 280px para criar espaçamento
 
                                             return (
                                                 <List
