@@ -103,7 +103,7 @@ export const formatText = (text: string) => {
 const CACHE_PREFIX = 'paporeto_v22_';
 const TTL_STATIC = 1000 * 60 * 60 * 24 * 30;
 const TTL_DYNAMIC = 1000 * 60 * 60 * 4;
-const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano
+const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365;
 const TTL_PROFILE = 1000 * 60 * 60 * 24;
 
 const getRawCache = (key: string) => {
@@ -118,14 +118,19 @@ const getRawCache = (key: string) => {
 const setInCache = (key: string, data: any) => {
     try {
         const payload = JSON.stringify({ data, timestamp: Date.now() });
-        localStorage.setItem(CACHE_PREFIX + key, payload);
-    } catch (e) {
         try {
+            localStorage.setItem(CACHE_PREFIX + key, payload);
+        } catch (e) {
             console.warn('LocalStorage cheio. Tentando limpar cache antigo...');
-            localStorage.clear();
-        } catch (clearErr) {
-            console.error('Falha crítica no cache', clearErr);
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith(CACHE_PREFIX + 'req_') || k.startsWith(CACHE_PREFIX + 'dynamic_')) {
+                    localStorage.removeItem(k);
+                }
+            });
+            localStorage.setItem(CACHE_PREFIX + key, payload);
         }
+    } catch (e) {
+        console.error('Falha crítica no cache', e);
     }
 };
 
@@ -140,7 +145,6 @@ const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, tt
         if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
             setInCache(cacheKey, data);
         }
-        // Se a busca falhou e retornou nulo, tenta usar o cache antigo se existir
         if (!data && cached) return cached.data;
         return data;
     } catch (e) {
@@ -155,7 +159,14 @@ const requestQueue: (() => void)[] = [];
 
 const acquireSemaphore = async () => {
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-        await new Promise<void>(resolve => requestQueue.push(resolve));
+        // Failsafe: Timeout de 8s para evitar deadlock se a fila travar
+        await new Promise<void>(resolve => {
+            const timeout = setTimeout(() => resolve(), 8000);
+            requestQueue.push(() => {
+                clearTimeout(timeout);
+                resolve();
+            });
+        });
     }
     activeRequests++;
 };
@@ -213,7 +224,7 @@ const fetchAPI = async (url: string, retries = 2, useCache = true, silent = fals
 export let GLOBAL_VOTE_CACHE: Record<number, Record<number, string>> | null = null;
 export let DYNAMIC_VOTE_CACHE: Record<string, Record<number, string>> = {};
 
-// --- INTERNAL HELPERS & SUB-FETCHERS ---
+// --- INTERNAL HELPERS ---
 
 const fetchSenadorDetalhes = async (id: number) => {
     const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 2, true);
@@ -269,19 +280,16 @@ const fetchPresencaReal = async (id: number) => {
     
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        const ttl = isPast ? TTL_STATIC : TTL_DYNAMIC;
+        const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         
-        // Fetch all events for the year
         const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
             return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/eventos?dataInicio=${year}-01-01&dataFim=${year}-12-31&ordem=DESC&ordenarPor=dataHoraInicio&itens=500`, 2, true);
         }, ttl);
 
         const allEvents = data && data.dados ? data.dados : [];
 
-        // Filter Plenary Sessions
         const plenaryEvents = allEvents.filter((e: any) => e.descricaoTipo.includes('Sessão Deliberativa'));
         
-        // Filter Commission Meetings
         const commissionEvents = allEvents.filter((e: any) => 
             e.descricaoTipo.includes('Reunião Deliberativa') || 
             e.descricaoTipo.includes('Reunião de Comissão') || 
@@ -365,7 +373,7 @@ const fetchDespesasAggregated = async (id: number) => {
 
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        const ttl = isPast ? TTL_STATIC : TTL_DYNAMIC;
+        const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         let yearTotal = 0;
         const yearData = await fetchWithCache(`despesas_${id}_${year}`, async () => {
             return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${year}&ordem=DESC&ordenarPor=valorDocumento&itens=100`, 2, true);
@@ -394,7 +402,7 @@ const fetchProposicoesAggregated = async (id: number) => {
     const yearlyMap: Record<number, number> = {};
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        const ttl = isPast ? TTL_STATIC : TTL_DYNAMIC;
+        const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         const yearData = await fetchWithCache(`proposicoes_${id}_${year}`, async () => {
              const data = await fetchAPI(`${BASE_URL_CAMARA}/proposicoes?idDeputadoAutor=${id}&ano=${year}&itens=10`, 2, true);
              return data ? data.dados : [];
@@ -457,7 +465,7 @@ const fetchDeputadoAgenda = async (id: number) => {
 const fetchTimeline = async (id: number) => {
     const currentYear = new Date().getFullYear();
     const rawExpenses = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${currentYear}&ordem=DESC&ordenarPor=dataDocumento&itens=10`, 2, true);
-    let timeline: any[] = []; // TimelineItem inferred
+    let timeline: any[] = [];
     if (rawExpenses && rawExpenses.dados) {
         timeline = rawExpenses.dados.map((e: any) => ({
             id: `exp-${e.codDocumento}`,
@@ -573,7 +581,7 @@ export const fetchPartidos = async (): Promise<Party[]> => {
             urlLogo: PM[p.sigla]?.logo,
             ideology: PM[p.sigla]?.ideology || 'Centro'
         }));
-    }, TTL_STATIC);
+    }, TTL_PERMANENT);
     return result || getStaticParties();
 };
 
@@ -707,7 +715,6 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
             const v = realVotes[i];
             const qId = 100 + i;
             
-            // Fetch votes for specific aggregation
             const votesData = await fetchAPI(`${BASE_URL_CAMARA}/votacoes/${v.id}/votos`, 2, true);
             
             let stats: QuizVoteStats = { totalYes: 0, totalNo: 0, totalAbstain: 0, partiesYes: [], partiesNo: [], approvalRate: 0 };
@@ -737,7 +744,6 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
                     voteMap[v.id][vote.deputado_.id] = sVoto;
                 });
 
-                // Calculate Top Parties
                 stats.partiesYes = Object.entries(partyYesCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
@@ -771,12 +777,10 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
     const cacheKey = `fast_profile_${pol.id}`;
     const cached = getRawCache(cacheKey);
     
-    // PERMANENT CACHE CHECK: If data exists, return it regardless of TTL
     if (cached && cached.data) {
-        return cached.data;
+        return { ...pol, ...cached.data };
     }
 
-    // Logic for Senators (simplified)
     if (pol.role.includes('Senad')) {
         const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
         let fixedBio = pol.bio;
@@ -784,13 +788,10 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República...`;
         }
         const result = { ...pol, ...details, bio: fixedBio };
-        // Senators endpoint is reliable, cache immediately
         setInCache(cacheKey, result);
         return result;
     }
 
-    // Logic for Deputies
-    // We execute this manually instead of via fetchWithCache to control caching conditions
     const [detailsResult, profissoes, orgaos] = await Promise.all([
         fetchDeputadoDetalhes(pol.id).catch(() => null),
         fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
@@ -815,9 +816,6 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
         roles: orgaos,
     };
 
-    // CONDITIONAL CACHING: Only cache permanently if we got meaningful details.
-    // If detailsResult is null (API error/empty), we return the fallback object BUT we do NOT save it to cache.
-    // This allows the app to retry fetching on the next visit/reload instead of being stuck with empty data forever.
     if (detailsResult) {
         setInCache(cacheKey, result);
     }
@@ -826,7 +824,14 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 };
 
 export const enrichPoliticianData = async (pol: Politician): Promise<Politician> => {
-    return fetchWithCache(`full_profile_${pol.id}`, async () => {
+    const result = await fetchWithCache(`full_profile_${pol.id}`, async () => {
+        // Force fast enrich first to ensure identity data if missing
+        let staticData = pol;
+        if (!pol.civilName) {
+             const fast = await enrichPoliticianFast(pol);
+             staticData = { ...pol, ...fast };
+        }
+
         if (pol.role.includes('Senad')) {
             try {
                 const [detailsResult, timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
@@ -840,13 +845,13 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
                 const speeches = speechesResult.status === 'fulfilled' ? speechesResult.value : [];
                 const roles = comissoesResult.status === 'fulfilled' ? comissoesResult.value : [];
                 
-                let fixedBio = pol.bio;
+                let fixedBio = staticData.bio;
                 if ((details as any).civilName) {
                     fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República pelo estado do ${pol.state} (${pol.party}). Natural de ${(details as any).birthCity || 'sua cidade natal'}, atua no Congresso Nacional defendendo as pautas de seu partido e estado.`;
                 }
 
                 return {
-                    ...pol,
+                    ...staticData,
                     ...(details || {}), 
                     bio: fixedBio,
                     timeline: timelineVotes || [],
@@ -858,32 +863,11 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
                     },
                     agenda: [] 
                 };
-            } catch (e) { return pol; }
+            } catch (e) { return staticData; }
         }
+
         try {
-            // Check if we already have detailed basic info from fast enrich
-            let safeDetails: PoliticianDetails;
-            if (pol.civilName && pol.birthCity) {
-                // If fast enrich worked, use existing data
-                safeDetails = {
-                    civilName: pol.civilName,
-                    birthDate: pol.birthDate,
-                    birthCity: pol.birthCity,
-                    birthState: pol.birthState,
-                    education: pol.education,
-                    socials: pol.socials || [],
-                    cabinet: pol.cabinet
-                };
-            } else {
-                // Fetch again if needed (rare case if fast failed or wasn't called properly)
-                const details = await fetchDeputadoDetalhes(pol.id).catch(() => null);
-                safeDetails = details || { civilName: pol.name, socials: [] };
-            }
-            
             const currentYear = new Date().getFullYear();
-            const profissoes = pol.profession || await fetchProfissoes(pol.id).catch(() => 'Parlamentar');
-            
-            // USE PROMISE.ALLSETTLED for robustness
             const results = await Promise.allSettled([
                 fetchPresencaReal(pol.id),
                 fetchDespesasAggregated(pol.id),
@@ -901,7 +885,6 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
                 fetchMapDeVotosReais()
             ]);
 
-            // Helper to safely extract results
             const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
 
             const presenca = getValue(results[0], { pct: 0, total: 0, presente: 0, falta: 0, yearly: {}, plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }, commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 } });
@@ -919,8 +902,7 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
             const timeline = getValue(results[12], []);
             const allVotesResult = getValue(results[13], {});
 
-            // Organs usually come from fast enrich, but if missing, try again
-            const roles = pol.roles && pol.roles.length > 0 ? pol.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
+            const roles = staticData.roles && staticData.roles.length > 0 ? staticData.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
 
             const myVotes: Record<number, string> = {};
             
@@ -933,15 +915,6 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
                 if (votesMap[pol.id]) myVotes[parseInt(voteId)] = votesMap[pol.id];
             });
             
-            let bio = pol.bio;
-            // Only regenerate bio if not already set by fast enrich or if incomplete
-            if (safeDetails.civilName && (!bio || bio.length < 50)) {
-                bio = `${safeDetails.civilName}, eleito(a) como ${pol.name}, é ${getGenderedRole(pol.role, pol.sex)} pelo estado de ${pol.state}. Filiado(a) ao ${pol.party}.`;
-                if (safeDetails.birthCity) bio += ` Natural de ${safeDetails.birthCity}-${safeDetails.birthState || ''}.`;
-                if (safeDetails.education) bio += ` Possui formação em ${safeDetails.education}.`;
-                if (profissoes && profissoes !== 'Parlamentar') bio += ` Atua profissionalmente como ${profissoes.toLowerCase()}.`;
-            }
-
             const yearlyStats: Record<number, YearStats> = {};
             for (let y = MANDATE_START_YEAR; y <= currentYear; y++) {
                 yearlyStats[y] = {
@@ -958,10 +931,7 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
             }
             
             return {
-                ...pol,
-                ...(safeDetails || {}), 
-                bio: bio, 
-                profession: profissoes, 
+                ...staticData, 
                 speeches: speeches,
                 fronts: fronts,
                 bills: bills,
@@ -992,8 +962,10 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
                 }
             };
         } catch (e) {
-            console.warn("Erro parcial ao enriquecer dados:", e);
-            return pol;
+            console.warn("Error enriching profile:", e);
+            return staticData;
         }
     }, TTL_PROFILE);
+
+    return result || pol; // Failsafe: return original politician object if null
 };

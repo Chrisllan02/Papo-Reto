@@ -112,8 +112,8 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
 };
 
 export const generateNewsImage = async (headline: string): Promise<string | null> => {
+    // FUNÇÃO MANTIDA PARA USO NO CHAT/OUTROS, MAS NÃO SERÁ CHAMADA NO FETCH DE NOTÍCIAS PARA ECONOMIA
     try {
-        // Tenta gerar imagem única com o modelo Flash
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image', 
             contents: {
@@ -135,7 +135,6 @@ export const generateNewsImage = async (headline: string): Promise<string | null
         }
         return null;
     } catch (e: any) {
-        // Apenas aviso se falhar imagem, pois temos fallback
         if (!e.message?.includes('429')) {
              console.warn("Falha na geração de imagem (usando fallback):", e.message);
         }
@@ -173,7 +172,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     // 1. PERFORMANCE: Cache Rigoroso (Verifica antes de qualquer coisa)
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     
-    // Se temos cache válido e com imagens, RETORNA IMEDIATAMENTE (Zero Delay)
+    // Se temos cache válido, RETORNA IMEDIATAMENTE (Zero Delay)
     if (cachedNews && cachedNews.length > 0) {
         return cachedNews;
     }
@@ -218,31 +217,13 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
         if (!jsonStr) throw new Error("Empty AI response");
         const data = JSON.parse(jsonStr) as NewsArticle[];
         
-        // 3. Processamento de Imagens (Apenas para o que veio novo)
-        // Se falhar o Gemini, usa o Array de Fallback estático
-        const enrichedData = await Promise.all(data.map(async (item, index) => {
-            let img = null;
-            
-            // Tenta gerar com Gemini Nano/Flash
-            if (index < 3) { // Limita a 3 gerações para economizar quota
-                try {
-                    // Timeout curto de 6s para não travar a UI
-                    img = await Promise.race([
-                        generateNewsImage(item.title),
-                        new Promise<string | null>(resolve => setTimeout(() => resolve(null), 6000))
-                    ]);
-                } catch (e) {
-                    console.warn(`Image skip for ${item.title}`);
-                }
-            }
-
-            // Fallback Garantido: Se não gerou, pega uma imagem bonita do Unsplash
-            if (!img) {
-                img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
-            }
-            
+        // 3. Processamento de Imagens: SUBSTITUÍDO POR FALLBACKS ESTÁTICOS PARA ECONOMIZAR TOKENS
+        // O novo design usa gradientes, então não precisamos gastar cota gerando imagens que não são destaque.
+        const enrichedData = data.map((item, index) => {
+            // Usa imagens rotativas do Unsplash de alta qualidade como fallback visual para o histórico
+            const img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
             return { ...item, imageUrl: img };
-        }));
+        });
 
         if (enrichedData.length > 0) {
             // Salva no Cache Diário
@@ -263,7 +244,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
              console.error("News Fetch Error:", error);
         }
         
-        // Fallback de Emergência (Caso a API falhe totalmente ou esteja sem cota)
+        // Fallback de Emergência
         const emergencyData = [
             { 
                 title: "Sessão Deliberativa no Plenário da Câmara", 
