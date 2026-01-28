@@ -51,7 +51,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2rem] p-5 pb-7 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[240px]"
+            className="group relative glass rounded-[2rem] p-5 pb-9 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[220px] md:min-h-[260px]"
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
 
@@ -95,17 +95,17 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
             </div>
 
             {/* Avatar Container with increased space/padding to prevent clipping */}
-            <div className="mt-4 flex -space-x-2.5 relative z-10 h-10 md:h-12 pl-2">
+            <div className="mt-2 flex -space-x-2.5 relative z-10 pl-2 py-2 items-center">
                 {previewMembers.map((m: any) => (
                     <img 
                         key={m.id} 
                         src={m.photo} 
-                        className="w-9 h-9 md:w-11 md:h-11 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 object-cover bg-gray-200 shadow-md transform hover:scale-110 hover:z-20 transition-transform" 
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 object-cover bg-gray-200 shadow-md transform hover:scale-110 hover:z-20 transition-transform duration-200" 
                         alt=""
                     />
                 ))}
                 {group.members.length > 3 && (
-                    <div className="w-9 h-9 md:w-11 md:h-11 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] md:text-xs font-bold text-blue-500 shadow-md">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] md:text-xs font-bold text-blue-500 shadow-md transform hover:scale-110 hover:z-20 transition-transform duration-200">
                         +{group.members.length - 3}
                     </div>
                 )}
