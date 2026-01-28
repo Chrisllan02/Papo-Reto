@@ -388,9 +388,12 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             return staticContent;
         }
     } catch (error: any) { 
-        // 429 Error Handling
-        if (error.message?.includes('429') || error.status === 429 || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        // 429 Error Handling or Network Error
+        const msg = error.message || '';
+        if (msg.includes('429') || error.status === 429 || msg.includes('RESOURCE_EXHAUSTED')) {
             console.warn("Educational Content: Quota exceeded (429), using static fallback.");
+        } else if (msg.includes('xhr error') || msg.includes('Rpc failed')) {
+             console.warn("Educational Content: Network/API connection failed, using static fallback.");
         } else {
             console.error("Educational Content Gen Error:", error);
         }
