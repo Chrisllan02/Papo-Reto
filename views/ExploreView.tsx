@@ -114,7 +114,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
 };
 
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => (
-    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden rounded-[2.5rem] p-4 md:p-6 h-full border border-white/40 dark:border-white/5">
+    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[2.5rem] p-4 md:p-6 h-full border border-white/40 dark:border-white/5">
         {isFollowing && (
             <div className="absolute top-3 left-3 z-20">
                 <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
@@ -122,10 +122,10 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
                 </div>
             </div>
         )}
-        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg">
-            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"/>
+        <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg relative z-10">
+            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700"/>
         </div>
-        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1">{pol.name}</h3>
+        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1 w-full">{pol.name}</h3>
         <div className="mt-2 flex flex-wrap justify-center gap-1">
             <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
             <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
@@ -161,16 +161,12 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
     const filteredPoliticians = useMemo(() => {
         const normalizedQuery = normalizeString(deferredSearch);
-        // Dividir a busca em termos (tokens) para permitir "Tabata PSB" ou "Silva SP"
         const searchTokens = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
         
         return politicians.filter(p => {
-            // 1. Filtro de Estado
             if (selectedUF && p.state !== selectedUF) return false;
             
-            // 2. Filtro de Busca (Tokens)
             if (searchTokens.length > 0) {
-                // Monta uma string única com todos os dados relevantes para busca
                 const searchableContent = normalizeString(`
                     ${p.name} 
                     ${p.civilName || ''} 
@@ -179,14 +175,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                     ${p.state} 
                     ${p.role}
                 `);
-
-                // Verifica se TODOS os termos digitados estão presentes nos dados do político (Lógica AND)
                 const matches = searchTokens.every(token => searchableContent.includes(token));
-                
                 if (!matches) return false;
             }
 
-            // 3. Filtro de Ideologia
             if (selectedIdeology !== 'Todos') {
                 const pIdeology = getIdeology(p.party);
                 if (pIdeology !== selectedIdeology) return false;
@@ -251,7 +243,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         return 'from-amber-400 to-amber-600'; 
     };
 
-    // Virtualization Helper
     const VirtualRow = ({ index, style, data }: any) => {
         const { items, numColumns } = data;
         const startIndex = index * numColumns;
@@ -268,7 +259,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                         />
                     </div>
                 ))}
-                {/* Spacer for last row alignment */}
                 {rowItems.length < numColumns && 
                     Array.from({ length: numColumns - rowItems.length }).map((_, i) => (
                         <div key={`spacer-${i}`} className="flex-1"></div>
@@ -279,11 +269,11 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     };
 
     const getColumnCount = (width: number) => {
-        if (width >= 1536) return 7; // 2xl
-        if (width >= 1280) return 6; // xl
-        if (width >= 1024) return 4; // lg
-        if (width >= 768) return 3; // md
-        return 2; // base
+        if (width >= 1536) return 7; 
+        if (width >= 1280) return 6; 
+        if (width >= 1024) return 4; 
+        if (width >= 768) return 3; 
+        return 2; 
     };
 
     const itemsToRender = selectedParty ? currentPartyMembers : filteredPoliticians;
@@ -413,7 +403,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             <div className="flex-1 p-4 md:p-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-hidden">
                 <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
-                    {/* VIEW MODE: PARTIES (DEFAULT) */}
                     {viewMode === 'parties' && !selectedParty && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 overflow-y-auto pb-32">
                             {partiesData.map((group) => (
@@ -427,7 +416,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                         </div>
                     )}
 
-                    {/* VIEW MODE: CANDIDATES LIST (VIRTUALIZED) */}
                     {(viewMode === 'candidates' || selectedParty) && (
                         <div className="h-full flex flex-col">
                             {viewMode === 'candidates' && !selectedParty && (
@@ -451,7 +439,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            const itemHeight = 280; // Aumentado para 280px para criar espaçamento
+                                            const itemHeight = 280; 
 
                                             return (
                                                 <List

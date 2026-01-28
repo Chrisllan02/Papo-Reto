@@ -545,15 +545,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
             transition: translateX === 0 ? 'transform 0.3s ease-out' : 'none' 
         }}
     >
-      {/* Botão Flutuante de Retorno (Mobile Only - Canto Inferior Esquerdo) */}
-      <button 
-          onClick={onBack}
-          className="md:hidden fixed bottom-28 left-5 z-50 p-4 bg-black/80 dark:bg-white/90 text-white dark:text-black rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/20 active:scale-90 transition-all animate-in fade-in slide-in-from-left-10 duration-700 hover:scale-110"
-          aria-label="Voltar (Botão Flutuante)"
-      >
-          <ChevronLeft size={24} strokeWidth={3} />
-      </button>
-
       {/* FEEDBACK DE CARREGAMENTO GLOBAL (TOAST) - Mantido como backup */}
       {isLoadingDetails && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
