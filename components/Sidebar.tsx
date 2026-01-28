@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
-import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin } from 'lucide-react';
+import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { ESTADOS_BRASIL } from '../constants';
 
 const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
-  const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation } = state;
+  const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
   const [showAccessMenu, setShowAccessMenu] = useState(false);
 
   const NavItem = ({ id, icon: Icon, label, colorClass = "bg-gradient-to-r from-nuit to-midnight" }: any) => (
@@ -86,20 +86,30 @@ const Sidebar: React.FC = () => {
                      <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Ajustes</span>
                  </div>
                  
-                 {/* Seletor de Localização */}
-                 <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full">
-                     <div className="flex items-center gap-3">
-                         <MapPin size={18} className="text-nuit dark:text-blue-400"/>
-                         <span className="text-sm font-bold text-gray-800 dark:text-white">Localização</span>
+                 {/* Seletor de Localização + GPS */}
+                 <div className="flex items-center gap-2 w-full">
+                     <div className="flex-1 flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                         <div className="flex items-center gap-2">
+                             <MapPin size={16} className="text-nuit dark:text-blue-400"/>
+                             <span className="text-xs font-bold text-gray-800 dark:text-white">Estado</span>
+                         </div>
+                         <select 
+                            value={userLocation}
+                            onChange={(e) => actions.updateUserLocation(e.target.value)}
+                            className="bg-transparent text-gray-700 dark:text-gray-200 text-xs font-bold outline-none border-none cursor-pointer text-right w-12"
+                         >
+                            <option value="">BR</option>
+                            {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                         </select>
                      </div>
-                     <select 
-                        value={userLocation}
-                        onChange={(e) => actions.updateUserLocation(e.target.value)}
-                        className="bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border-none cursor-pointer"
+                     <button 
+                        onClick={() => actions.detectLocation()}
+                        disabled={isLocating}
+                        className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                        title="Detectar localização atual"
                      >
-                        <option value="">Brasil</option>
-                        {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                     </select>
+                        {isLocating ? <Loader2 size={16} className="animate-spin"/> : <LocateFixed size={16}/>}
+                     </button>
                  </div>
 
                  <button onClick={actions.cycleFontSize} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left">

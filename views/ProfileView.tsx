@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search } from 'lucide-react';
 import { Politician, FeedItem, YearStats } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
@@ -90,7 +90,13 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
             <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Ficha Parlamentar</h3>
         </div>
 
-        <div className="space-y-6 flex-1">
+        <div className="space-y-6 flex-1 relative">
+            {isLoading && !candidate.email && (
+                <div className="absolute inset-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+                    <Loader2 className="animate-spin text-blue-500" size={24} />
+                </div>
+            )}
+
             {/* Contatos */}
             <div>
                 <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Canais Oficiais</p>
@@ -141,13 +147,13 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
     </div>
 );
 
-const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo }: any) => {
+const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo, loadingStatus }: any) => {
     // Determine which years to show.
-    const sortedYears = [...availableYears].sort((a,b) => a - b);
+    const sortedYears = [...availableYears].sort((a: any, b: any) => a - b);
     const currentYear = new Date().getFullYear();
 
     return (
-        <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
+        <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col relative overflow-hidden">
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
                 <div className="p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400">
                     <BarChart3 size={20} />
@@ -159,14 +165,34 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
             </div>
 
             {isLoading && !displayStats.plenary ? (
-                <div className="space-y-4">
-                    <Skeleton className="h-16 w-full rounded-2xl" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
+                <div className="space-y-4 relative min-h-[300px] flex flex-col justify-center items-center">
+                    {/* Background Skeletons for texture */}
+                    <div className="absolute inset-0 space-y-4 opacity-30 pointer-events-none">
+                        <Skeleton className="h-16 w-full rounded-2xl" />
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                    </div>
+                    
+                    {/* Active Loading Feedback */}
+                    <div className="z-10 flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300 bg-white/80 dark:bg-black/60 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 dark:border-white/10 shadow-xl">
+                        <div className="relative">
+                            <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
+                            <div className="absolute inset-0 w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Search size={16} className="text-blue-500" />
+                            </div>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide animate-pulse">
+                                {loadingStatus || "Carregando..."}
+                            </p>
+                            <p className="text-[10px] font-bold text-gray-400 mt-1">Consultando bases da Câmara</p>
+                        </div>
+                    </div>
                 </div>
             ) : (
-                <div className="space-y-8 flex-1">
+                <div className="space-y-8 flex-1 animate-in fade-in duration-500">
                     
                     {/* MANDATE TIMELINE FILTER */}
                     <div className="bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-white/40 dark:border-white/5 shadow-inner">
@@ -528,7 +554,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           <ChevronLeft size={24} strokeWidth={3} />
       </button>
 
-      {/* FEEDBACK DE CARREGAMENTO (TOAST) */}
+      {/* FEEDBACK DE CARREGAMENTO GLOBAL (TOAST) - Mantido como backup */}
       {isLoadingDetails && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
               <Loader2 size={18} className="animate-spin shrink-0"/>
@@ -616,6 +642,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   commissionGroups={commissionGroups}
                   isLoading={isLoadingDetails}
                   mandateInfo={mandateInfo}
+                  loadingStatus={loadingStatus}
               />
           </div>
 

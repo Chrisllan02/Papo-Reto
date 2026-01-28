@@ -29,6 +29,7 @@ interface AppState {
   
   // Location
   userLocation: string; // UF
+  isLocating: boolean; // Status do GPS
 }
 
 interface AppActions {
@@ -49,6 +50,7 @@ interface AppActions {
   
   updatePolitician: (updated: Politician) => void;
   updateUserLocation: (uf: string) => void;
+  detectLocation: () => Promise<void>; // NOVO: Gatilho manual de GPS
   
   // Navigation Helpers
   resetNavigation: () => void;
@@ -75,31 +77,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [showDataModal, setShowDataModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [readArticleIds, setReadArticleIds] = useState<number[]>([]);
+  
   const [userLocation, setUserLocation] = useState<string>('');
+  const [isLocating, setIsLocating] = useState(false);
 
-  // Initial Location Logic
+  // Geo Logic Refactored for Reusability
+  const detectLocation = async () => {
+      if (!navigator.geolocation) {
+          alert("Geolocalização não suportada neste dispositivo.");
+          return;
+      }
+
+      setIsLocating(true);
+      
+      navigator.geolocation.getCurrentPosition(
+          async (position) => {
+              try {
+                  const { latitude, longitude } = position.coords;
+                  // Usando API Free de Reverse Geocoding (BigDataCloud é bom fallback)
+                  const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
+                  const data = await response.json();
+                  // Tenta extrair UF do código ISO (ex: BR-SP -> SP) ou principalSubdivisionCode
+                  const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
+                  
+                  if (uf && uf.length === 2) {
+                      updateUserLocation(uf);
+                  } else {
+                      console.warn("Não foi possível determinar o estado exato.");
+                  }
+              } catch (e) {
+                  console.warn("Erro na API de geolocalização:", e);
+              } finally {
+                  setIsLocating(false);
+              }
+          },
+          (err) => {
+              console.warn("Permissão de geolocalização negada ou erro:", err);
+              setIsLocating(false);
+          },
+          { timeout: 10000, enableHighAccuracy: false } // Timeout de 10s
+      );
+  };
+
+  // Initial Load Location Check
   useEffect(() => {
       const savedLoc = localStorage.getItem('paporeto_user_location');
       if (savedLoc) {
           setUserLocation(savedLoc);
-      } else if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-              async (position) => {
-                  try {
-                      const { latitude, longitude } = position.coords;
-                      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                      const data = await response.json();
-                      const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
-                      if (uf) {
-                          setUserLocation(uf);
-                          localStorage.setItem('paporeto_user_location', uf);
-                      }
-                  } catch (e) {
-                      console.warn("Auto-geolocation failed", e);
-                  }
-              },
-              (err) => console.warn("Geolocation permission denied", err)
-          );
+      } else {
+          // Se não tem salvo, tenta detectar automaticamente no primeiro boot
+          detectLocation();
       }
   }, []);
 
@@ -180,7 +207,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab, politicians, feedItems, articles, parties, isLoading,
         darkMode, highContrast, fontSizeLevel,
         selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
-        showDataModal, showOnboarding, readArticleIds, userLocation
+        showDataModal, showOnboarding, readArticleIds, 
+        userLocation, isLocating
     },
     actions: {
         setActiveTab: handleSetActiveTab,
@@ -197,6 +225,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowOnboarding,
         updatePolitician,
         updateUserLocation,
+        detectLocation,
         resetNavigation,
         goToExplore
     }

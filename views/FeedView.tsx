@@ -407,22 +407,26 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         };
 
         if (userLocation) {
-            // Se temos uma localização definida no contexto (manual ou geo)
+            // Se temos uma localização definida no contexto (manual ou geo), usa ela prioridade máxima
             if (politicians.some(p => p.state === userLocation)) {
                 updateState(userLocation, true);
             } else {
-                // Fallback se a location não tiver dados
+                // Fallback se a location for válida mas sem políticos (raro)
                 const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
                 if (states.length > 0) updateState(states[Math.floor(Math.random() * states.length)], false);
             }
         } else {
-            // Sem localização, modo "Giro" (Aleatório)
+            // Sem localização, modo "Giro" (Aleatório) apenas se não tivermos nada definido
             const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean)));
             if (states.length > 0) {
-                const random = states[Math.floor(Math.random() * states.length)];
-                updateState(random, false);
+                // Mantém o estado atual se já foi selecionado aleatoriamente para evitar "pulo" visual
+                if (!selectedState) {
+                    const random = states[Math.floor(Math.random() * states.length)];
+                    updateState(random, false);
+                } else {
+                    setIsLoading(false);
+                }
             }
-            setIsLoading(false);
         }
     }, [politicians, userLocation]);
 
@@ -485,6 +489,13 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
 const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, onSelectCandidate, onEducationClick, onSeeMore, onGoToExplore }) => {
     const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItem | null>(null);
 
+    const greeting = useMemo(() => {
+        const h = new Date().getHours();
+        if (h >= 5 && h < 12) return 'Bom dia';
+        if (h >= 12 && h < 18) return 'Boa tarde';
+        return 'Boa noite';
+    }, []);
+
     return (
         <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32 animate-in fade-in duration-500">
             {selectedFeedItem && (
@@ -501,8 +512,10 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
                 {/* Header */}
                 <header className="mb-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl md:text-5xl font-black text-midnight dark:text-white tracking-tight leading-none mb-2">
-                            Mural Cidadão
+                        <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-none mb-2">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-nuit to-blue-500 dark:from-white dark:to-blue-300">
+                                {greeting}, Cidadão
+                            </span>
                         </h1>
                         <p className="text-sm md:text-base font-medium text-gray-500 dark:text-gray-400">
                             Fiscalização em tempo real do Congresso.

@@ -27,11 +27,13 @@ type IdeologyFilter = 'Todos' | 'Esquerda' | 'Centro' | 'Direita';
 type ViewMode = 'parties' | 'candidates';
 
 // Helper de Normalização para Busca (Remove acentos e lowercase)
-const normalizeString = (str: string) => {
+const normalizeString = (str: string | undefined | null) => {
+    if (!str) return "";
     return str
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
+        .toLowerCase()
+        .trim();
 };
 
 interface PartyCardProps {
@@ -158,24 +160,33 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     }, [politicians]);
 
     const filteredPoliticians = useMemo(() => {
-        const searchNorm = normalizeString(deferredSearch);
+        const normalizedQuery = normalizeString(deferredSearch);
+        // Dividir a busca em termos (tokens) para permitir "Tabata PSB" ou "Silva SP"
+        const searchTokens = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
         
         return politicians.filter(p => {
+            // 1. Filtro de Estado
             if (selectedUF && p.state !== selectedUF) return false;
             
-            if (searchNorm) {
-                const nameNorm = normalizeString(p.name);
-                const partyNorm = normalizeString(p.party);
-                const stateNorm = normalizeString(p.state);
-                
-                // Busca abrangente: Nome, Partido ou Estado (Sigla ou Nome)
-                const matchesName = nameNorm.includes(searchNorm);
-                const matchesParty = partyNorm.includes(searchNorm);
-                const matchesState = stateNorm.includes(searchNorm);
+            // 2. Filtro de Busca (Tokens)
+            if (searchTokens.length > 0) {
+                // Monta uma string única com todos os dados relevantes para busca
+                const searchableContent = normalizeString(`
+                    ${p.name} 
+                    ${p.civilName || ''} 
+                    ${p.party} 
+                    ${p.partyShort || ''} 
+                    ${p.state} 
+                    ${p.role}
+                `);
 
-                if (!matchesName && !matchesParty && !matchesState) return false;
+                // Verifica se TODOS os termos digitados estão presentes nos dados do político (Lógica AND)
+                const matches = searchTokens.every(token => searchableContent.includes(token));
+                
+                if (!matches) return false;
             }
 
+            // 3. Filtro de Ideologia
             if (selectedIdeology !== 'Todos') {
                 const pIdeology = getIdeology(p.party);
                 if (pIdeology !== selectedIdeology) return false;
@@ -323,7 +334,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Buscar nome ou estado..." : "Buscar partido..."}
+                                placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, partido, estado..." : "Buscar partido..."}
                                 className="block w-full pl-14 pr-12 py-4 bg-white/60 dark:bg-black/40 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl text-blue-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/80 dark:focus:bg-gray-800/80 transition-all text-sm font-bold shadow-inner"
                             />
                             {search && (
