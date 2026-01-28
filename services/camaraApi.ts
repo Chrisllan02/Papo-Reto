@@ -101,10 +101,10 @@ export const formatText = (text: string) => {
 };
 
 const CACHE_PREFIX = 'paporeto_v22_';
-const TTL_STATIC = 1000 * 60 * 60 * 24 * 30;
-const TTL_DYNAMIC = 1000 * 60 * 60 * 4;
-const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365;
-const TTL_PROFILE = 1000 * 60 * 60 * 24;
+const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias (Listas de Políticos)
+const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas (Votações do Dia)
+const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano (Histórico Fechado)
+const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas (Refresh Perfil Completo)
 
 const getRawCache = (key: string) => {
     try {
@@ -122,6 +122,7 @@ const setInCache = (key: string, data: any) => {
             localStorage.setItem(CACHE_PREFIX + key, payload);
         } catch (e) {
             console.warn('LocalStorage cheio. Tentando limpar cache antigo...');
+            // Estratégia de limpeza simples: remove chaves dinâmicas antigas
             Object.keys(localStorage).forEach(k => {
                 if (k.startsWith(CACHE_PREFIX + 'req_') || k.startsWith(CACHE_PREFIX + 'dynamic_')) {
                     localStorage.removeItem(k);
@@ -145,6 +146,7 @@ const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, tt
         if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
             setInCache(cacheKey, data);
         }
+        // Se a busca falhou e retornou nulo, tenta usar o cache antigo se existir (Stale-while-revalidate logic)
         if (!data && cached) return cached.data;
         return data;
     } catch (e) {
@@ -181,6 +183,8 @@ const pendingRequests = new Map<string, Promise<any>>();
 const fetchAPI = async (url: string, retries = 2, useCache = true, silent = false): Promise<any> => {
     if (useCache) {
         const cachedEntry = getRawCache(url);
+        // Se temos cache, retornamos imediatamente, mesmo que seja "Dynamic"
+        // A invalidação é feita pelo fetchWithCache que chama o fetchAPI
         if (cachedEntry && (Date.now() - cachedEntry.timestamp < TTL_DYNAMIC)) return cachedEntry.data;
     }
     if (pendingRequests.has(url)) return pendingRequests.get(url);
@@ -224,7 +228,7 @@ const fetchAPI = async (url: string, retries = 2, useCache = true, silent = fals
 export let GLOBAL_VOTE_CACHE: Record<number, Record<number, string>> | null = null;
 export let DYNAMIC_VOTE_CACHE: Record<string, Record<number, string>> = {};
 
-// --- INTERNAL HELPERS ---
+// --- INTERNAL HELPERS & SUB-FETCHERS ---
 
 const fetchSenadorDetalhes = async (id: number) => {
     const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 2, true);
@@ -247,6 +251,7 @@ const fetchSenadorDiscursos = async (id: number) => { return []; };
 const fetchSenadorComissoes = async (id: number) => { return []; };
 
 const fetchDeputadoDetalhes = async (id: number): Promise<PoliticianDetails | null> => {
+    // Detalhes básicos (Nascimento, Bio) raramente mudam. Cache longo via fetchAPI.
     const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}`, 2, true);
     if (!data || !data.dados) return null;
     const d = data.dados;
@@ -280,6 +285,7 @@ const fetchPresencaReal = async (id: number) => {
     
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
+        // LOGICA INTELIGENTE: Se o ano já acabou (ex: 2023), usa TTL_PERMANENT. Se é atual, TTL_DYNAMIC.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         
         const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
@@ -373,11 +379,14 @@ const fetchDespesasAggregated = async (id: number) => {
 
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
+        // LOGICA INTELIGENTE: Gastos de anos passados não mudam. Cache Permanente.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
+        
         let yearTotal = 0;
         const yearData = await fetchWithCache(`despesas_${id}_${year}`, async () => {
             return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${year}&ordem=DESC&ordenarPor=valorDocumento&itens=100`, 2, true);
         }, ttl);
+        
         if (yearData && yearData.dados) {
             yearData.dados.forEach((d: any) => {
                 const val = d.valorDocumento;
@@ -402,7 +411,9 @@ const fetchProposicoesAggregated = async (id: number) => {
     const yearlyMap: Record<number, number> = {};
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
+        // LOGICA INTELIGENTE: Projetos de anos passados são fixos.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
+        
         const yearData = await fetchWithCache(`proposicoes_${id}_${year}`, async () => {
              const data = await fetchAPI(`${BASE_URL_CAMARA}/proposicoes?idDeputadoAutor=${id}&ano=${year}&itens=10`, 2, true);
              return data ? data.dados : [];
@@ -465,7 +476,7 @@ const fetchDeputadoAgenda = async (id: number) => {
 const fetchTimeline = async (id: number) => {
     const currentYear = new Date().getFullYear();
     const rawExpenses = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${currentYear}&ordem=DESC&ordenarPor=dataDocumento&itens=10`, 2, true);
-    let timeline: any[] = [];
+    let timeline: any[] = []; 
     if (rawExpenses && rawExpenses.dados) {
         timeline = rawExpenses.dados.map((e: any) => ({
             id: `exp-${e.codDocumento}`,
@@ -489,7 +500,7 @@ const fetchMapDeVotosReais = async (): Promise<Record<number, Record<number, str
         if (v.includes('não') || v.includes('nao')) return 'NAO';
         return 'ABST';
     };
-    await Promise.all(QUIZ_QUESTIONS.map(async (q) => {
+    await Promise.all(QUIZ_QUESTIONS.map(async (q: QuizQuestion) => {
         if (!q.realVoteId) {
              const votingId = REAL_VOTE_CONFIG[q.id] || "dummy";
              if (votingId === "dummy") return;
@@ -581,7 +592,7 @@ export const fetchPartidos = async (): Promise<Party[]> => {
             urlLogo: PM[p.sigla]?.logo,
             ideology: PM[p.sigla]?.ideology || 'Centro'
         }));
-    }, TTL_PERMANENT);
+    }, TTL_PERMANENT); // LOGICA: Lista de partidos é praticamente estática
     return result || getStaticParties();
 };
 
@@ -613,7 +624,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             hasApiIntegration: true
         };
       });
-  }, TTL_STATIC);
+  }, TTL_STATIC); // Lista básica é segura por 30 dias
   return result || [];
 };
 
@@ -647,7 +658,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 hasApiIntegration: true
             };
         });
-    }, TTL_STATIC);
+    }, TTL_STATIC); // Lista básica segura por 30 dias
     return result || [];
 };
 
@@ -715,6 +726,7 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
             const v = realVotes[i];
             const qId = 100 + i;
             
+            // Fetch votes for specific aggregation
             const votesData = await fetchAPI(`${BASE_URL_CAMARA}/votacoes/${v.id}/votos`, 2, true);
             
             let stats: QuizVoteStats = { totalYes: 0, totalNo: 0, totalAbstain: 0, partiesYes: [], partiesNo: [], approvalRate: 0 };
@@ -744,6 +756,7 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
                     voteMap[v.id][vote.deputado_.id] = sVoto;
                 });
 
+                // Calculate Top Parties
                 stats.partiesYes = Object.entries(partyYesCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
@@ -773,199 +786,219 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
     return { questions, voteMap };
 };
 
+// --- ROBUST FAST ENRICH (FAIL-SAFE IDENTITY CACHE) ---
+// Função blindada: Se o cache existe e é válido, USA O CACHE e IGNORA A API.
 export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
-    const cacheKey = `fast_profile_${pol.id}`;
-    const cached = getRawCache(cacheKey);
+    const permanentKey = `permanent_identity_${pol.id}`;
     
-    if (cached && cached.data) {
-        return { ...pol, ...cached.data };
+    // 1. CARREGAMENTO BLINDADO DO CACHE
+    // Se já existe no LocalStorage com dados cruciais, USE-O e ABORTE qualquer fetch.
+    try {
+        const stored = localStorage.getItem(permanentKey);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // Verificação de Integridade: Se tiver nome civil ou cidade, consideramos válido e final.
+            if (parsed.civilName || parsed.birthCity || parsed.education || (parsed.cabinet && parsed.cabinet.email)) {
+                // Mescla o que veio da lista (pol) com o que está salvo (parsed)
+                // Prioriza o salvo para detalhes estáticos.
+                return { ...pol, ...parsed };
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to read permanent cache", e);
     }
 
+    // 2. SE CHEGOU AQUI, O CACHE NÃO EXISTE OU ESTÁ INCOMPLETO.
+    // Vamos buscar na API.
+    
+    let baseData = pol;
+
+    // Senadores logic remains simple (API is stable)
     if (pol.role.includes('Senad')) {
         const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
-        let fixedBio = pol.bio;
+        let fixedBio = baseData.bio;
         if ((details as any).civilName) {
-                fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República...`;
+            fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República...`;
         }
-        const result = { ...pol, ...details, bio: fixedBio };
-        setInCache(cacheKey, result);
+        const result = { ...baseData, ...details, bio: fixedBio };
+        localStorage.setItem(permanentKey, JSON.stringify(result));
         return result;
     }
 
-    const [detailsResult, profissoes, orgaos] = await Promise.all([
-        fetchDeputadoDetalhes(pol.id).catch(() => null),
-        fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
-        fetchDeputadoOrgaos(pol.id).catch(() => [])
-    ]);
+    // Deputies Logic: TRY to fetch fresh data
+    try {
+        const [detailsResult, profissoes, orgaos] = await Promise.all([
+            fetchDeputadoDetalhes(pol.id).catch(() => null), // Can fail
+            fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
+            fetchDeputadoOrgaos(pol.id).catch(() => [])
+        ]);
 
-    const details = detailsResult || { civilName: pol.name } as PoliticianDetails;
-    
-    let bio = pol.bio;
-    if (details.civilName) {
-        bio = `${details.civilName}, eleito(a) como ${pol.name}...`;
-        if (details.birthCity) bio += ` Natural de ${details.birthCity}-${details.birthState || ''}.`;
-        if (details.education) bio += ` Possui formação em ${details.education}.`;
-        if (profissoes && profissoes !== 'Parlamentar') bio += ` Atua profissionalmente como ${profissoes.toLowerCase()}.`;
+        // If API returned valid details, update everything and save to permanent cache
+        if (detailsResult) {
+            let bio = pol.bio;
+            if (detailsResult.civilName) {
+                bio = `${detailsResult.civilName}, eleito(a) como ${pol.name}...`;
+                if (detailsResult.birthCity) bio += ` Natural de ${detailsResult.birthCity}-${detailsResult.birthState || ''}.`;
+                if (detailsResult.education) bio += ` Possui formação em ${detailsResult.education}.`;
+                if (profissoes && profissoes !== 'Parlamentar') bio += ` Atua profissionalmente como ${profissoes.toLowerCase()}.`;
+            }
+
+            const freshData = {
+                ...baseData,
+                ...(detailsResult || {}),
+                bio: bio,
+                profession: profissoes,
+                roles: orgaos,
+            };
+
+            // Save to Permanent Storage (Never Expires)
+            localStorage.setItem(permanentKey, JSON.stringify(freshData));
+            return freshData;
+        }
+    } catch (e) {
+        console.warn(`Fast enrich failed for ${pol.name}, but since no cache existed, returning base.`);
     }
 
-    const result = {
-        ...pol,
-        ...(details || {}),
-        bio: bio,
-        profession: profissoes,
-        roles: orgaos,
-    };
-
-    if (detailsResult) {
-        setInCache(cacheKey, result);
-    }
-
-    return result;
+    // If API failed or returned null AND no cache existed, return the baseData (better than nothing)
+    return baseData;
 };
 
 export const enrichPoliticianData = async (pol: Politician): Promise<Politician> => {
-    const result = await fetchWithCache(`full_profile_${pol.id}`, async () => {
-        // Force fast enrich first to ensure identity data if missing
-        let staticData = pol;
-        if (!pol.civilName) {
-             const fast = await enrichPoliticianFast(pol);
-             staticData = { ...pol, ...fast };
-        }
+    // 1. Always start with the Robust Identity from enrichPoliticianFast
+    // This ensures we don't start with a blank slate if the full profile fetch fails
+    const robustPol = await enrichPoliticianFast(pol);
 
-        if (pol.role.includes('Senad')) {
-            try {
-                const [detailsResult, timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
-                    fetchSenadorDetalhes(pol.id),
-                    fetchSenadorVotacoes(pol.id),
-                    fetchSenadorDiscursos(pol.id),
-                    fetchSenadorComissoes(pol.id)
-                ]);
-                const details = detailsResult.status === 'fulfilled' ? detailsResult.value : {};
-                const timelineVotes = timelineResult.status === 'fulfilled' ? timelineResult.value : [];
-                const speeches = speechesResult.status === 'fulfilled' ? speechesResult.value : [];
-                const roles = comissoesResult.status === 'fulfilled' ? comissoesResult.value : [];
-                
-                let fixedBio = staticData.bio;
-                if ((details as any).civilName) {
-                    fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República pelo estado do ${pol.state} (${pol.party}). Natural de ${(details as any).birthCity || 'sua cidade natal'}, atua no Congresso Nacional defendendo as pautas de seu partido e estado.`;
-                }
+    const profileCacheKey = `full_profile_${pol.id}`;
+    const cachedProfile = getRawCache(profileCacheKey);
+    if (cachedProfile && (Date.now() - cachedProfile.timestamp < TTL_PROFILE)) {
+        return { ...robustPol, ...cachedProfile.data }; // Merge just in case
+    }
 
-                return {
-                    ...staticData,
-                    ...(details || {}), 
-                    bio: fixedBio,
-                    timeline: timelineVotes || [],
-                    speeches: speeches || [],
-                    roles: roles,
-                    stats: { 
-                        ...pol.stats, 
-                        projects: timelineVotes ? timelineVotes.length : 0 
-                    },
-                    agenda: [] 
-                };
-            } catch (e) { return staticData; }
-        }
-
+    // Senators Logic
+    if (pol.role.includes('Senad')) {
         try {
-            const currentYear = new Date().getFullYear();
-            const results = await Promise.allSettled([
-                fetchPresencaReal(pol.id),
-                fetchDespesasAggregated(pol.id),
-                fetchProposicoesAggregated(pol.id),
-                fetchDiscursos(pol.id),
-                fetchFrentes(pol.id),
-                fetchProposicoes(pol.id),
-                fetchViagens(pol.id),
-                fetchRemuneracaoAtual(pol.id),
-                fetchDeputadoAgenda(pol.id),
-                fetchRelatorias(pol.id, currentYear),
-                fetchVotacoesPorAno(pol.id, currentYear),
-                fetchEmendasStats(pol.id),
-                fetchTimeline(pol.id),
-                fetchMapDeVotosReais()
+            const [timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
+                fetchSenadorVotacoes(pol.id),
+                fetchSenadorDiscursos(pol.id),
+                fetchSenadorComissoes(pol.id)
             ]);
-
-            const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
-
-            const presenca = getValue(results[0], { pct: 0, total: 0, presente: 0, falta: 0, yearly: {}, plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }, commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 } });
-            const expensesData = getValue(results[1], { total: 0, breakdown: [], yearly: {}, history: [] });
-            const projectsYearly = getValue(results[2], {});
-            const speeches = getValue(results[3], []);
-            const fronts = getValue(results[4], []);
-            const bills = getValue(results[5], []);
-            const travels = getValue(results[6], []);
-            const remuneration = getValue(results[7], undefined);
-            const agenda = getValue(results[8], []);
-            const reportedBills = getValue(results[9], []);
-            const votingHistory = getValue(results[10], []);
-            const amendmentStats = getValue(results[11], { authorized: 0 });
-            const timeline = getValue(results[12], []);
-            const allVotesResult = getValue(results[13], {});
-
-            const roles = staticData.roles && staticData.roles.length > 0 ? staticData.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
-
-            const myVotes: Record<number, string> = {};
+            const timelineVotes = timelineResult.status === 'fulfilled' ? timelineResult.value : [];
+            const speeches = speechesResult.status === 'fulfilled' ? speechesResult.value : [];
+            const roles = comissoesResult.status === 'fulfilled' ? comissoesResult.value : [];
             
-            QUIZ_QUESTIONS.forEach((q: QuizQuestion) => {
-                if (allVotesResult && allVotesResult[q.id] && allVotesResult[q.id][pol.id]) myVotes[q.id] = allVotesResult[q.id][pol.id];
-                else myVotes[q.id] = "N/A"; 
-            });
-            
-            Object.entries(DYNAMIC_VOTE_CACHE).forEach(([voteId, votesMap]) => {
-                if (votesMap[pol.id]) myVotes[parseInt(voteId)] = votesMap[pol.id];
-            });
-            
-            const yearlyStats: Record<number, YearStats> = {};
-            for (let y = MANDATE_START_YEAR; y <= currentYear; y++) {
-                yearlyStats[y] = {
-                    year: y,
-                    attendancePct: presenca.yearly[y]?.attendancePct || 0,
-                    totalSessions: presenca.yearly[y]?.totalSessions || 0,
-                    presentSessions: presenca.yearly[y]?.presentSessions || 0,
-                    absentSessions: presenca.yearly[y]?.absentSessions || 0,
-                    spending: expensesData.yearly[y] || 0,
-                    projects: projectsYearly[y] || 0,
-                    plenary: presenca.yearly[y]?.plenary || { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-                    commissions: presenca.yearly[y]?.commissions || { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }
-                };
-            }
-            
-            return {
-                ...staticData, 
-                speeches: speeches,
-                fronts: fronts,
-                bills: bills,
-                reportedBills: reportedBills,
-                votingHistory: votingHistory,
-                votes: myVotes,
+            const result = {
+                ...robustPol,
+                timeline: timelineVotes || [],
+                speeches: speeches || [],
                 roles: roles,
-                travels: travels,
-                remuneration: remuneration,
-                agenda: agenda, 
-                amendmentStats: amendmentStats, 
-                assets: [],
-                donors: [],
-                expensesBreakdown: expensesData.breakdown,
-                expensesHistory: expensesData.history,
-                timeline: timeline, 
-                yearlyStats: yearlyStats, 
-                stats: {
-                    ...pol.stats,
-                    spending: expensesData.total,
-                    projects: bills?.length || 0,
-                    attendancePct: presenca.pct,
-                    totalSessions: presenca.total,
-                    presentSessions: presenca.presente,
-                    absentSessions: presenca.falta,
-                    plenary: presenca.plenary,
-                    commissions: presenca.commissions
-                }
+                stats: { ...pol.stats, projects: timelineVotes ? timelineVotes.length : 0 },
+                agenda: [] 
             };
-        } catch (e) {
-            console.warn("Error enriching profile:", e);
-            return staticData;
-        }
-    }, TTL_PROFILE);
+            
+            setInCache(profileCacheKey, result);
+            return result;
+        } catch (e) { return robustPol; }
+    }
 
-    return result || pol; // Failsafe: return original politician object if null
+    // Deputies Logic
+    try {
+        const currentYear = new Date().getFullYear();
+        
+        const results = await Promise.allSettled([
+            fetchPresencaReal(pol.id),
+            fetchDespesasAggregated(pol.id),
+            fetchProposicoesAggregated(pol.id),
+            fetchDiscursos(pol.id),
+            fetchFrentes(pol.id),
+            fetchProposicoes(pol.id),
+            fetchViagens(pol.id),
+            fetchRemuneracaoAtual(pol.id),
+            fetchDeputadoAgenda(pol.id),
+            fetchRelatorias(pol.id, currentYear),
+            fetchVotacoesPorAno(pol.id, currentYear),
+            fetchEmendasStats(pol.id),
+            fetchTimeline(pol.id),
+            fetchMapDeVotosReais()
+        ]);
+
+        const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
+
+        const presenca = getValue(results[0], { pct: 0, total: 0, presente: 0, falta: 0, yearly: {}, plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }, commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 } });
+        const expensesData = getValue(results[1], { total: 0, breakdown: [], yearly: {}, history: [] });
+        const projectsYearly = getValue(results[2], {});
+        const speeches = getValue(results[3], []);
+        const fronts = getValue(results[4], []);
+        const bills = getValue(results[5], []);
+        const travels = getValue(results[6], []);
+        const remuneration = getValue(results[7], undefined);
+        const agenda = getValue(results[8], []);
+        const reportedBills = getValue(results[9], []);
+        const votingHistory = getValue(results[10], []);
+        const amendmentStats = getValue(results[11], { authorized: 0 });
+        const timeline = getValue(results[12], []);
+        const allVotesResult = getValue(results[13], {});
+
+        const roles = robustPol.roles && robustPol.roles.length > 0 ? robustPol.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
+
+        const myVotes: Record<number, string> = {};
+        QUIZ_QUESTIONS.forEach((q: QuizQuestion) => {
+            if (allVotesResult && allVotesResult[q.id] && allVotesResult[q.id][pol.id]) myVotes[q.id] = allVotesResult[q.id][pol.id];
+            else myVotes[q.id] = "N/A"; 
+        });
+        Object.entries(DYNAMIC_VOTE_CACHE).forEach(([voteId, votesMap]) => {
+            if (votesMap[pol.id]) myVotes[parseInt(voteId)] = votesMap[pol.id];
+        });
+        
+        const yearlyStats: Record<number, YearStats> = {};
+        for (let y = MANDATE_START_YEAR; y <= currentYear; y++) {
+            yearlyStats[y] = {
+                year: y,
+                attendancePct: presenca.yearly[y]?.attendancePct || 0,
+                totalSessions: presenca.yearly[y]?.totalSessions || 0,
+                presentSessions: presenca.yearly[y]?.presentSessions || 0,
+                absentSessions: presenca.yearly[y]?.absentSessions || 0,
+                spending: expensesData.yearly[y] || 0,
+                projects: projectsYearly[y] || 0,
+                plenary: presenca.yearly[y]?.plenary || { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+                commissions: presenca.yearly[y]?.commissions || { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }
+            };
+        }
+        
+        const finalProfile = {
+            ...robustPol, // Uses robust identity
+            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats,
+            assets: [], donors: [],
+            expensesBreakdown: expensesData.breakdown,
+            expensesHistory: expensesData.history,
+            timeline, yearlyStats,
+            stats: {
+                ...pol.stats,
+                spending: expensesData.total,
+                projects: bills?.length || 0,
+                attendancePct: presenca.pct,
+                totalSessions: presenca.total,
+                presentSessions: presenca.presente,
+                absentSessions: presenca.falta,
+                plenary: presenca.plenary,
+                commissions: presenca.commissions
+            }
+        };
+
+        const hasExpenses = expensesData.total > 0;
+        const hasPresence = presenca.total > 0;
+        const isNewYear = new Date().getMonth() < 1; 
+
+        // Only cache if data seems reasonably complete to avoid caching errors
+        if (hasExpenses || hasPresence || isNewYear) {
+            setInCache(profileCacheKey, finalProfile);
+        } else {
+            console.warn(`Profile for ${pol.name} incomplete (API error?). Not caching full profile to allow retry.`);
+        }
+
+        return finalProfile;
+
+    } catch (e) {
+        console.warn("Error enriching profile:", e);
+        return robustPol; // Return what we have (Identity) rather than crashing
+    }
 };

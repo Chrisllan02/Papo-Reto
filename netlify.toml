@@ -1,8 +1,3 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Configuração descontinuada.
+# O projeto foi migrado para Vercel.
+# Consulte vercel.json para regras de deploy.

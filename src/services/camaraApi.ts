@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -786,128 +786,116 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
     return { questions, voteMap };
 };
 
-export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
-    const cacheKey = `fast_profile_${pol.id}`;
-    const cached = getRawCache(cacheKey);
-    
-    if (cached && cached.data) {
-        return { ...pol, ...cached.data };
-    }
+// --- FIX: ROBUST FAST ENRICH (FAIL-SAFE IDENTITY CACHE) ---
+// This function ensures that once we know a politician's static details,
+// we NEVER lose them, even if the API fails or returns null later.
 
+export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
+    const permanentKey = `permanent_identity_${pol.id}`;
+    
+    // 1. Load Permanent Cache (Indestructible Identity)
+    let baseData = pol;
+    try {
+        const stored = localStorage.getItem(permanentKey);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // Merge cached identity into base pol object
+            baseData = { ...pol, ...parsed };
+        }
+    } catch (e) { console.warn("Failed to read permanent cache", e); }
+
+    // Senadores logic remains simple (API is stable)
     if (pol.role.includes('Senad')) {
         const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
-        let fixedBio = pol.bio;
+        let fixedBio = baseData.bio;
         if ((details as any).civilName) {
-                fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República...`;
+            fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República...`;
         }
-        const result = { ...pol, ...details, bio: fixedBio };
-        // Senators endpoint is reliable, cache immediately
-        setInCache(cacheKey, result);
+        const result = { ...baseData, ...details, bio: fixedBio };
+        localStorage.setItem(permanentKey, JSON.stringify(result));
         return result;
     }
 
-    // Logic for Deputies
-    // CRITICAL: Fetch details without using `fetchWithCache` wrapper to manually control caching logic
-    const [detailsResult, profissoes, orgaos] = await Promise.all([
-        fetchDeputadoDetalhes(pol.id).catch(() => null),
-        fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
-        fetchDeputadoOrgaos(pol.id).catch(() => [])
-    ]);
+    // Deputies Logic: TRY to fetch fresh data, but fallback to baseData on failure
+    try {
+        const [detailsResult, profissoes, orgaos] = await Promise.all([
+            fetchDeputadoDetalhes(pol.id).catch(() => null), // Can fail
+            fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
+            fetchDeputadoOrgaos(pol.id).catch(() => [])
+        ]);
 
-    // Fallback: Se a API falhou, usamos dados básicos para não quebrar a UI
-    const details = detailsResult || { civilName: pol.name } as PoliticianDetails;
-    
-    let bio = pol.bio;
-    if (details.civilName) {
-        bio = `${details.civilName}, eleito(a) como ${pol.name}...`;
-        if (details.birthCity) bio += ` Natural de ${details.birthCity}-${details.birthState || ''}.`;
-        if (details.education) bio += ` Possui formação em ${details.education}.`;
-        if (profissoes && profissoes !== 'Parlamentar') bio += ` Atua profissionalmente como ${profissoes.toLowerCase()}.`;
+        // If API returned valid details, update everything and save to permanent cache
+        if (detailsResult) {
+            let bio = pol.bio;
+            if (detailsResult.civilName) {
+                bio = `${detailsResult.civilName}, eleito(a) como ${pol.name}...`;
+                if (detailsResult.birthCity) bio += ` Natural de ${detailsResult.birthCity}-${detailsResult.birthState || ''}.`;
+                if (detailsResult.education) bio += ` Possui formação em ${detailsResult.education}.`;
+                if (profissoes && profissoes !== 'Parlamentar') bio += ` Atua profissionalmente como ${profissoes.toLowerCase()}.`;
+            }
+
+            const freshData = {
+                ...baseData,
+                ...(detailsResult || {}),
+                bio: bio,
+                profession: profissoes,
+                roles: orgaos,
+            };
+
+            // Save to Permanent Storage (Never Expires)
+            localStorage.setItem(permanentKey, JSON.stringify(freshData));
+            return freshData;
+        }
+    } catch (e) {
+        console.warn(`Fast enrich failed for ${pol.name}, using cached identity.`);
     }
 
-    const result = {
-        ...pol,
-        ...(details || {}),
-        bio: bio,
-        profession: profissoes,
-        roles: orgaos,
-    };
-
-    // CACHE CONDICIONAL: Só salva no cache se realmente conseguimos detalhes (sucesso da API).
-    // Se detailsResult foi null (erro 429/500), NÃO salvamos, forçando o app a tentar de novo.
-    if (detailsResult) {
-        setInCache(cacheKey, result);
-    }
-
-    return result;
+    // If API failed or returned null, return the robust baseData (cached identity)
+    // This prevents the UI from "blinking" or showing empty fields
+    return baseData;
 };
 
 export const enrichPoliticianData = async (pol: Politician): Promise<Politician> => {
-    // 1. Check Full Profile Cache directly (manually, not via generic wrapper)
+    // 1. Always start with the Robust Identity from enrichPoliticianFast
+    // This ensures we don't start with a blank slate if the full profile fetch fails
+    const robustPol = await enrichPoliticianFast(pol);
+
     const profileCacheKey = `full_profile_${pol.id}`;
     const cachedProfile = getRawCache(profileCacheKey);
     if (cachedProfile && (Date.now() - cachedProfile.timestamp < TTL_PROFILE)) {
-        return cachedProfile.data;
+        return { ...robustPol, ...cachedProfile.data }; // Merge just in case
     }
 
-    // 2. Ensure Static Identity (Fast Enrich Cache) is available as fallback
-    let staticData = pol;
-    const fastCacheKey = `fast_profile_${pol.id}`;
-    const cachedFast = getRawCache(fastCacheKey);
-    
-    if (cachedFast && cachedFast.data) {
-         staticData = { ...pol, ...cachedFast.data };
-    } else if (!pol.civilName) {
-         const details = await fetchDeputadoDetalhes(pol.id).catch(() => null);
-         if (details) {
-             setInCache(fastCacheKey, { ...pol, ...details });
-             staticData = { ...pol, ...details };
-         }
-    }
-
-    // Senators Logic (Simpler)
+    // Senators Logic
     if (pol.role.includes('Senad')) {
         try {
-            const [detailsResult, timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
-                fetchSenadorDetalhes(pol.id),
+            const [timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
                 fetchSenadorVotacoes(pol.id),
                 fetchSenadorDiscursos(pol.id),
                 fetchSenadorComissoes(pol.id)
             ]);
-            const details = detailsResult.status === 'fulfilled' ? detailsResult.value : {};
             const timelineVotes = timelineResult.status === 'fulfilled' ? timelineResult.value : [];
             const speeches = speechesResult.status === 'fulfilled' ? speechesResult.value : [];
             const roles = comissoesResult.status === 'fulfilled' ? comissoesResult.value : [];
             
-            let fixedBio = staticData.bio;
-            if ((details as any).civilName) {
-                fixedBio = `${(details as any).civilName}, conhecido como ${pol.name}, é Senador da República pelo estado do ${pol.state} (${pol.party}). Natural de ${(details as any).birthCity || 'sua cidade natal'}, atua no Congresso Nacional defendendo as pautas de seu partido e estado.`;
-            }
-
             const result = {
-                ...staticData,
-                ...(details || {}), 
-                bio: fixedBio,
+                ...robustPol,
                 timeline: timelineVotes || [],
                 speeches: speeches || [],
                 roles: roles,
-                stats: { 
-                    ...pol.stats, 
-                    projects: timelineVotes ? timelineVotes.length : 0 
-                },
+                stats: { ...pol.stats, projects: timelineVotes ? timelineVotes.length : 0 },
                 agenda: [] 
             };
             
             setInCache(profileCacheKey, result);
             return result;
-        } catch (e) { return staticData; }
+        } catch (e) { return robustPol; }
     }
 
-    // Deputies Logic (Complex)
+    // Deputies Logic
     try {
         const currentYear = new Date().getFullYear();
         
-        // USE PROMISE.ALLSETTLED for robustness - Partial failures shouldn't break the profile
         const results = await Promise.allSettled([
             fetchPresencaReal(pol.id),
             fetchDespesasAggregated(pol.id),
@@ -925,7 +913,6 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
             fetchMapDeVotosReais()
         ]);
 
-        // Helper to safely extract results with defaults
         const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
 
         const presenca = getValue(results[0], { pct: 0, total: 0, presente: 0, falta: 0, yearly: {}, plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 }, commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 } });
@@ -943,15 +930,13 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
         const timeline = getValue(results[12], []);
         const allVotesResult = getValue(results[13], {});
 
-        const roles = staticData.roles && staticData.roles.length > 0 ? staticData.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
+        const roles = robustPol.roles && robustPol.roles.length > 0 ? robustPol.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
 
         const myVotes: Record<number, string> = {};
-        
         QUIZ_QUESTIONS.forEach((q: QuizQuestion) => {
             if (allVotesResult && allVotesResult[q.id] && allVotesResult[q.id][pol.id]) myVotes[q.id] = allVotesResult[q.id][pol.id];
             else myVotes[q.id] = "N/A"; 
         });
-        
         Object.entries(DYNAMIC_VOTE_CACHE).forEach(([voteId, votesMap]) => {
             if (votesMap[pol.id]) myVotes[parseInt(voteId)] = votesMap[pol.id];
         });
@@ -972,24 +957,12 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
         }
         
         const finalProfile = {
-            ...staticData, 
-            speeches: speeches,
-            fronts: fronts,
-            bills: bills,
-            reportedBills: reportedBills,
-            votingHistory: votingHistory,
-            votes: myVotes,
-            roles: roles,
-            travels: travels,
-            remuneration: remuneration,
-            agenda: agenda, 
-            amendmentStats: amendmentStats, 
-            assets: [],
-            donors: [],
+            ...robustPol, // Uses robust identity
+            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats,
+            assets: [], donors: [],
             expensesBreakdown: expensesData.breakdown,
             expensesHistory: expensesData.history,
-            timeline: timeline, 
-            yearlyStats: yearlyStats, 
+            timeline, yearlyStats,
             stats: {
                 ...pol.stats,
                 spending: expensesData.total,
@@ -1003,23 +976,20 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
             }
         };
 
-        // QUALITY CHECK BEFORE CACHING
-        // Only cache if we successfully retrieved significant data (expenses or presence).
-        // This prevents caching "empty" profiles caused by API rate limits/errors for 24h.
         const hasExpenses = expensesData.total > 0;
         const hasPresence = presenca.total > 0;
-        const isNewYear = new Date().getMonth() < 1; // In Jan, data might be empty legitimately
+        const isNewYear = new Date().getMonth() < 1; 
 
         if (hasExpenses || hasPresence || isNewYear) {
             setInCache(profileCacheKey, finalProfile);
         } else {
-            console.warn(`Profile for ${pol.name} incomplete (API error?). Not caching to allow retry.`);
+            console.warn(`Profile for ${pol.name} incomplete (API error?). Not caching full profile to allow retry.`);
         }
 
         return finalProfile;
 
     } catch (e) {
         console.warn("Error enriching profile:", e);
-        return staticData;
+        return robustPol;
     }
 };
