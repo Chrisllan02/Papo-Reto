@@ -94,7 +94,8 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
                 </div>
             </div>
 
-            <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10 pl-1">
+            {/* Ajuste de margem (pl-2 mb-1) para evitar corte pelo rounded-corner */}
+            <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10 pl-2 mb-1">
                 {previewMembers.map((m: any) => (
                     <img 
                         key={m.id} 
