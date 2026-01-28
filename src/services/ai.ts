@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { NewsArticle } from '../../types';
+import { NewsArticle } from '../types';
 
 // --- CONFIGURAÇÃO SEGURA DO CLIENTE AI ---
 // Inicialização Lazy: Só cria a instância quando for usada.
@@ -11,7 +12,7 @@ const getAi = () => {
     
     const key = process.env.API_KEY;
     if (!key || key.trim() === "") {
-        console.error("CRITICAL: API_KEY do Google Gemini não encontrada. Verifique as variáveis de ambiente.");
+        console.warn("Aviso: API_KEY do Google Gemini não encontrada. Funcionalidades de IA usarão fallback.");
         return null;
     }
     
@@ -28,9 +29,6 @@ const getAi = () => {
 const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
 const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas
-
-// Helper para rate limiting
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -161,7 +159,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             config: {
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json",
-                maxOutputTokens: 2000, // Prevent runaway loops
+                maxOutputTokens: 2000,
                 responseSchema: {
                     type: Type.ARRAY,
                     items: {
@@ -314,7 +312,34 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
     const ai = getAi();
-    if (!ai) return [];
+    
+    // Conteúdo estático de fallback em caso de falha da API
+    const staticContent: GeneratedArticle[] = [
+        {
+            title: "O Orçamento Público",
+            text: "O Orçamento Público estima as receitas e fixa as despesas do governo para um ano. É a lei que define onde seu dinheiro será gasto: saúde, educação, segurança. Sem ele, o governo não pode funcionar.",
+            topic: "Orçamento",
+            legislation: "Art. 165 da Constituição Federal",
+            impact: "Define a qualidade dos serviços públicos que você usa."
+        },
+        {
+            title: "PEC vs Projeto de Lei",
+            text: "PEC (Proposta de Emenda à Constituição) altera a Constituição e exige 3/5 dos votos em dois turnos. PL (Projeto de Lei) cria leis comuns e exige maioria simples. PECs mudam as regras do jogo; PLs jogam o jogo.",
+            topic: "Legislação",
+            legislation: "Art. 59 a 69 da CF/88",
+            impact: "PECs geralmente trazem mudanças profundas e duradouras."
+        },
+        {
+            title: "O Papel do STF",
+            text: "O Supremo Tribunal Federal é o guardião da Constituição. Ele não cria leis, mas julga se as leis criadas pelo Congresso e atos do Presidente respeitam a Constituição. É a última instância da Justiça.",
+            topic: "Poder Judiciário",
+            legislation: "Art. 101 da CF/88",
+            impact: "Garante que seus direitos fundamentais não sejam violados."
+        }
+    ];
+
+    if (!ai) return staticContent;
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
@@ -329,7 +354,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             Temas sugeridos: Orçamento Público, Tramitação de Leis, STF, Papel do Deputado.`,
             config: {
                 responseMimeType: "application/json",
-                maxOutputTokens: 2000, // Important: prevents infinite loops
+                maxOutputTokens: 4000, 
                 responseSchema: {
                     type: Type.ARRAY,
                     items: {
@@ -340,14 +365,30 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
                 }
             }
         });
+        
         let jsonStr = response.text?.trim();
-        if (!jsonStr) return [];
+        if (!jsonStr) return staticContent;
+
         if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
         else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
         
-        return JSON.parse(jsonStr) as GeneratedArticle[];
+        try {
+            return JSON.parse(jsonStr) as GeneratedArticle[];
+        } catch (e) {
+            console.warn("JSON Parse Error in Ed Content, attempting fix", e);
+            const lastBracket = jsonStr.lastIndexOf(']');
+            if (lastBracket !== -1) {
+                try {
+                    const fixedStr = jsonStr.substring(0, lastBracket + 1);
+                    return JSON.parse(fixedStr) as GeneratedArticle[];
+                } catch (e2) {
+                    return staticContent;
+                }
+            }
+            return staticContent;
+        }
     } catch (error) { 
         console.error("Educational Content Gen Error:", error);
-        return []; 
+        return staticContent; 
     }
 };
