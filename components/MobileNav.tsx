@@ -1,43 +1,22 @@
 
 import React, { useMemo, useState } from 'react';
-import { ScrollText, Users, BarChart3, Menu, X, Sun, Moon, Eye, Type, HelpCircle, MessageCircle, BookOpen, ChevronRight, PieChart } from 'lucide-react';
+import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, MessageCircle, BookOpen, ChevronRight, PieChart } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
-interface MobileNavProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  darkMode: boolean;
-  toggleDarkMode: () => void;
-  highContrast?: boolean;
-  onToggleHighContrast?: () => void;
-  onStartTour?: () => void;
-  fontSizeLevel?: number;
-  onCycleFontSize?: () => void;
-}
-
-const MobileNav: React.FC<MobileNavProps> = ({ 
-    activeTab, 
-    setActiveTab, 
-    darkMode, 
-    toggleDarkMode, 
-    highContrast, 
-    onToggleHighContrast, 
-    onStartTour,
-    fontSizeLevel = 1,
-    onCycleFontSize
-}) => {
+const MobileNav: React.FC = () => {
+  const { state, actions } = useAppContext();
+  const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // New Structure: 5 slots. Center is FAB.
-  // Parties (Gráficos) moves to the Overlay Menu to make space for Education (Articles) and Chat.
   const tabs = useMemo(() => [
     { id: 'feed', label: 'Mural', icon: ScrollText },
     { id: 'explore', label: 'Explorar', icon: Users },
-    { id: 'chat', label: 'PapoReto', icon: MessageCircle, isFab: true }, // Central Highlight
+    { id: 'chat', label: 'PapoReto', icon: MessageCircle, isFab: true }, 
     { id: 'articles', label: 'Guia', icon: BookOpen },
   ], []);
 
   const handleTabClick = (id: string) => {
-      setActiveTab(id);
+      actions.setActiveTab(id);
       setIsMenuOpen(false);
   };
 
@@ -85,44 +64,38 @@ const MobileNav: React.FC<MobileNavProps> = ({
                 <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Acessibilidade & Ajustes</h4>
                 <div className="grid grid-cols-2 gap-3">
                     <button 
-                        onClick={toggleDarkMode}
+                        onClick={actions.toggleDarkMode}
                         className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
                     >
                         {darkMode ? <Sun size={20} className="text-yellow-500"/> : <Moon size={20} className="text-blue-600"/>}
                         <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{darkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
                     </button>
 
-                    {onToggleHighContrast && (
-                        <button 
-                            onClick={onToggleHighContrast}
-                            className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border active:scale-95 transition-transform ${highContrast ? 'bg-black text-white border-black' : 'bg-white/60 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-white/5'}`}
-                        >
-                            <Eye size={20} />
-                            <span className="text-[10px] font-bold">Alto Contraste</span>
-                        </button>
-                    )}
+                    <button 
+                        onClick={actions.toggleHighContrast}
+                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border active:scale-95 transition-transform ${highContrast ? 'bg-black text-white border-black' : 'bg-white/60 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-white/5'}`}
+                    >
+                        <Eye size={20} />
+                        <span className="text-[10px] font-bold">Alto Contraste</span>
+                    </button>
 
-                    {onCycleFontSize && (
-                        <button 
-                            onClick={onCycleFontSize}
-                            className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
-                        >
-                            <Type size={20} className="text-blue-600 dark:text-blue-400" />
-                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
-                                Fonte: {fontSizeLevel === 1 ? '1x' : fontSizeLevel === 1.1 ? '1.1x' : '1.2x'}
-                            </span>
-                        </button>
-                    )}
+                    <button 
+                        onClick={actions.cycleFontSize}
+                        className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                    >
+                        <Type size={20} className="text-blue-600 dark:text-blue-400" />
+                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                            Fonte: {fontSizeLevel === 1 ? '1x' : fontSizeLevel === 1.1 ? '1.1x' : '1.2x'}
+                        </span>
+                    </button>
 
-                    {onStartTour && (
-                        <button 
-                            onClick={() => { onStartTour(); setIsMenuOpen(false); }}
-                            className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
-                        >
-                            <HelpCircle size={20} className="text-green-600 dark:text-green-400" />
-                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Ajuda</span>
-                        </button>
-                    )}
+                    <button 
+                        onClick={() => { actions.setShowOnboarding(true); setIsMenuOpen(false); }}
+                        className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                    >
+                        <HelpCircle size={20} className="text-green-600 dark:text-green-400" />
+                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Ajuda</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -144,7 +117,6 @@ const MobileNav: React.FC<MobileNavProps> = ({
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id && !isMenuOpen;
                 
-                // Special Styling for Central FAB (Chat)
                 if (tab.isFab) {
                     return (
                         <div key={tab.id} className="relative -top-5 mx-1">

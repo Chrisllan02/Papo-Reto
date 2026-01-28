@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import FeedView from './views/FeedView';
@@ -14,146 +14,32 @@ import ChatView from './views/ChatView';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
-import { fetchDeputados, fetchSenadores, fetchGlobalVotacoes, fetchPartidos, getStaticParties } from './services/camaraApi';
-import { generateEducationalContent } from './services/ai';
-import { Politician, FeedItem, Party } from './types';
-import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from './constants';
-
-const mapArticleStyle = (index: number, topic: string) => {
-    const styles = [
-        { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb', activeColor: 'bg-spring/20 text-picture' },
-        { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote', activeColor: 'bg-nuit/10 text-nuit' },
-        { colorFrom: 'from-spring', colorTo: 'to-mantis', icon: 'ScrollText', activeColor: 'bg-praxeti text-midnight border border-spring' },
-        { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb', activeColor: 'bg-praxeti text-midnight' },
-        { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote', activeColor: 'bg-blue-50 text-nuit' },
-        { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-green-50 text-picture' }
-    ];
-    let base = styles[index % styles.length];
-    let icon = base.icon;
-    const t = topic ? topic.toLowerCase() : '';
-    if (t.includes('orçamento') || t.includes('dinheiro') || t.includes('fundo') || t.includes('gasto')) icon = 'Banknote';
-    if (t.includes('lei') || t.includes('pec') || t.includes('pl') || t.includes('constituição')) icon = 'ScrollText';
-    return { ...base, icon };
-};
+import { useAppContext } from './contexts/AppContext';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('feed');
-  const [politicians, setPoliticians] = useState<Politician[]>(POLITICIANS_DB);
-  const [feedItems, setFeedItems] = useState<FeedItem[]>(FEED_ITEMS);
-  // Fix: Use any[] or union type to allow optional properties from generated content
-  const [articles, setArticles] = useState<any[]>(EDUCATION_CAROUSEL); 
-  const [parties, setParties] = useState<Party[]>(getStaticParties());
+  const { state, actions } = useAppContext();
   
-  const [darkMode, setDarkMode] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
-  const [fontSizeLevel, setFontSizeLevel] = useState(1); 
+  // Extraindo do contexto para facilitar leitura
+  const { 
+      activeTab, politicians, feedItems, articles, parties, isLoading,
+      darkMode, highContrast, fontSizeLevel,
+      selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
+      showDataModal, showOnboarding, readArticleIds
+  } = state;
 
-  const [selectedCandidate, setSelectedCandidate] = useState<Politician | null>(null);
-  const [readArticleIds, setReadArticleIds] = useState<number[]>([]); 
-  
-  const [showDataModal, setShowDataModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false); 
-  const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
-  const [isFullFeed, setIsFullFeed] = useState(false);
-  const [isNewsHistory, setIsNewsHistory] = useState(false);
-  const [explorePreselectedState, setExplorePreselectedState] = useState<string>(''); 
-  
-  const [isLoading, setIsLoading] = useState(true);
-  
-  const toggleDarkMode = () => {
-    if (highContrast) setHighContrast(false);
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark');
-    document.documentElement.classList.remove('high-contrast');
-  };
-
-  const toggleHighContrast = () => {
-      const newVal = !highContrast;
-      setHighContrast(newVal);
-      if (newVal) {
-          setDarkMode(false);
-          document.documentElement.classList.remove('dark');
-          document.documentElement.classList.add('high-contrast');
-      } else {
-          document.documentElement.classList.remove('high-contrast');
-      }
-  };
-
-  const cycleFontSize = () => {
-      setFontSizeLevel(prev => {
-          if (prev === 1) return 1.1;
-          if (prev === 1.1) return 1.25;
-          return 1;
-      });
-  };
-
-  const markArticleAsRead = (id: number) => {
-      if (!readArticleIds.includes(id)) {
-          setReadArticleIds(prev => [...prev, id]);
-      }
-      setSelectedEducationId(id);
-  };
-
-  useEffect(() => {
-    const loadData = async () => {
-        try {
-            const [deps, sens, feeds, parts] = await Promise.all([
-                fetchDeputados(),
-                fetchSenadores(),
-                fetchGlobalVotacoes().catch(() => []), 
-                fetchPartidos()
-            ]);
-            setPoliticians([...deps, ...sens]);
-            if (feeds && feeds.length > 0) setFeedItems(feeds);
-            else setFeedItems(FEED_ITEMS);
-            setParties(parts);
-            generateEducationalContent().then(eduContent => {
-                if (eduContent && eduContent.length > 0) {
-                     const newArticles = eduContent.map((item, index) => ({
-                         id: index + 100,
-                         title: item.title,
-                         text: item.text,
-                         topic: item.topic, 
-                         legislation: item.legislation, 
-                         impact: item.impact,           
-                         ...mapArticleStyle(index, item.topic)
-                     }));
-                     setArticles(newArticles);
-                }
-            });
-        } catch (error) {
-            console.error("Failed to load data", error);
-        } finally {
-            setTimeout(() => setIsLoading(false), 2500);
-        }
-    };
-    loadData();
-  }, []);
-
-  const handleSelectCandidate = (pol: Politician) => {
-      setSelectedCandidate(pol);
-  };
-
-  const handleGoToExplore = (state: string) => {
-      setExplorePreselectedState(state);
-      setActiveTab('explore');
-  };
-  
   if (isLoading) return <LoadingScreen />;
 
+  // Lógica de Roteamento de Views
   let content;
   if (selectedCandidate) {
       content = (
         <ProfileView 
             candidate={selectedCandidate} 
-            onBack={() => setSelectedCandidate(null)} 
+            onBack={() => actions.selectCandidate(null)} 
             onShare={() => {}}
             feedItems={feedItems.filter(f => f.candidateId === selectedCandidate.id)}
             allPoliticians={politicians}
-            onUpdate={(updated) => {
-                setPoliticians(prev => prev.map(p => p.id === updated.id ? updated : p));
-                setSelectedCandidate(updated);
-            }}
+            onUpdate={actions.updatePolitician}
             isFollowing={false}
             onToggleFollow={() => {}}
         />
@@ -163,34 +49,33 @@ function App() {
         <EducationView 
             educationId={selectedEducationId} 
             articles={articles} 
-            onBack={() => setSelectedEducationId(null)}
-            onSelectArticle={markArticleAsRead}
+            onBack={() => actions.selectEducation(null)}
+            onSelectArticle={actions.markArticleAsRead}
         />
       );
   } else if (isFullFeed) {
-      content = <FullFeedView feedItems={feedItems} politicians={politicians} onBack={() => setIsFullFeed(false)} onSelectCandidate={handleSelectCandidate} />;
+      content = <FullFeedView feedItems={feedItems} politicians={politicians} onBack={() => actions.setFullFeed(false)} onSelectCandidate={actions.selectCandidate} />;
   } else if (isNewsHistory) {
-      content = <NewsHistoryView onBack={() => setIsNewsHistory(false)} />;
+      content = <NewsHistoryView onBack={() => actions.setNewsHistory(false)} />;
   } else {
       switch (activeTab) {
           case 'feed':
-              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={actions.selectCandidate} onEducationClick={actions.markArticleAsRead} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
               break;
           case 'explore':
-              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} preselectedState={explorePreselectedState} />;
+              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} />;
               break;
           case 'parties':
-              // Contrast Fix: from-spring to yellow-500
-              content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} />;
+              content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} />;
               break;
           case 'articles':
-              content = <ArticlesListView articles={articles} onSelectArticle={markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => setIsNewsHistory(true)} />;
+              content = <ArticlesListView articles={articles} onSelectArticle={actions.markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => actions.setNewsHistory(true)} />;
               break;
           case 'chat':
-              content = <ChatView onBack={() => setActiveTab('feed')} />;
+              content = <ChatView onBack={() => actions.setActiveTab('feed')} />;
               break;
           default:
-              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={actions.selectCandidate} onEducationClick={actions.markArticleAsRead} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
       }
   }
 
@@ -208,52 +93,18 @@ function App() {
             body { background-attachment: fixed; }
         `}</style>
         
-        {showOnboarding && <OnboardingModal onFinish={() => setShowOnboarding(false)} />}
+        {showOnboarding && <OnboardingModal onFinish={() => actions.setShowOnboarding(false)} />}
 
         <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 glass rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300 shadow-xl dark:shadow-none border border-white/20 dark:border-white/5">
-             <Sidebar 
-                activeTab={activeTab} 
-                setActiveTab={(tab) => { 
-                    setActiveTab(tab); 
-                    setSelectedCandidate(null); 
-                    setSelectedEducationId(null); 
-                    setIsFullFeed(false);
-                    setIsNewsHistory(false);
-                    if (tab !== 'explore') setExplorePreselectedState('');
-                }} 
-                darkMode={darkMode}
-                toggleDarkMode={toggleDarkMode}
-                onShowData={() => setShowDataModal(true)}
-                onStartTour={() => setShowOnboarding(true)}
-                highContrast={highContrast}
-                onToggleHighContrast={toggleHighContrast}
-                fontSizeLevel={fontSizeLevel}
-                onCycleFontSize={cycleFontSize}
-             />
+             <Sidebar />
         </aside>
 
         <main id="main-content" className="flex-1 h-full relative overflow-hidden outline-none">
-             {showDataModal && <DataTransparencyModal onClose={() => setShowDataModal(false)} />}
+             {showDataModal && <DataTransparencyModal onClose={() => actions.setShowDataModal(false)} />}
              {content}
         </main>
 
-        <MobileNav 
-            activeTab={activeTab} 
-            setActiveTab={(tab) => { 
-                setActiveTab(tab); 
-                setSelectedCandidate(null); 
-                setIsFullFeed(false); 
-                setIsNewsHistory(false);
-                if (tab !== 'explore') setExplorePreselectedState('');
-            }} 
-            darkMode={darkMode}
-            toggleDarkMode={toggleDarkMode}
-            highContrast={highContrast}
-            onToggleHighContrast={toggleHighContrast}
-            onStartTour={() => setShowOnboarding(true)}
-            fontSizeLevel={fontSizeLevel}
-            onCycleFontSize={cycleFontSize}
-        />
+        <MobileNav />
     </div>
   );
 }

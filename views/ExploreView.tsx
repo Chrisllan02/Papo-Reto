@@ -1,10 +1,15 @@
 
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
-import { Search, Users, ChevronLeft, MapPin, Building2, Heart, LayoutGrid, Compass, Map, ChevronDown, Filter, X, Contact, LayoutList } from 'lucide-react';
+import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart } from 'lucide-react';
 import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { PARTY_METADATA } from '../services/camaraApi';
 import BrazilMap from '../components/BrazilMap';
+import { FixedSizeList as List } from 'react-window';
+import * as AutoSizerModule from 'react-virtualized-auto-sizer';
+
+// Fix for "module does not provide an export named 'default'" error in some ESM environments
+const AutoSizer = (AutoSizerModule as any).default || AutoSizerModule;
 
 interface ExploreViewProps {
   politicians: Politician[];
@@ -98,6 +103,26 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     );
 };
 
+const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => (
+    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden rounded-[2.5rem] p-4 md:p-6 h-full border border-white/40 dark:border-white/5">
+        {isFollowing && (
+            <div className="absolute top-3 left-3 z-20">
+                <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
+                    <Heart size={10} className="fill-white text-white"/>
+                </div>
+            </div>
+        )}
+        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg">
+            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"/>
+        </div>
+        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1">{pol.name}</h3>
+        <div className="mt-2 flex flex-wrap justify-center gap-1">
+            <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
+            <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
+        </div>
+    </div>
+);
+
 const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], onSelectCandidate, followingIds = [], preselectedState }) => {
     const [search, setSearch] = useState("");
     const deferredSearch = useDeferredValue(search);
@@ -107,14 +132,11 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
     const [showMap, setShowMap] = useState(false);
     
-    // Novo estado para controlar o modo de visualização (Partidos vs Lista de Pessoas)
     const [viewMode, setViewMode] = useState<ViewMode>('parties');
 
-    // Efeito para atualizar o estado quando a prop preselectedState mudar (vindo do Feed)
     useEffect(() => {
         if (preselectedState) {
             setSelectedUF(preselectedState);
-            // Se vier um estado pré-selecionado (do botão "Ver Todos"), muda automaticamente para lista de candidatos
             setViewMode('candidates');
         }
     }, [preselectedState]);
@@ -127,29 +149,25 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         return counts;
     }, [politicians]);
 
-    // Lógica de filtragem unificada com Ordenação Alfabética
     const filteredPoliticians = useMemo(() => {
         const searchLower = deferredSearch.toLowerCase();
         
         return politicians.filter(p => {
-            // Filtro de Estado
             if (selectedUF && p.state !== selectedUF) return false;
             
-            // Filtro de Busca
             if (searchLower) {
                 const matchesName = p.name.toLowerCase().includes(searchLower);
                 const matchesParty = p.party.toLowerCase().includes(searchLower);
                 if (!matchesName && !matchesParty) return false;
             }
 
-            // Filtro de Ideologia (se estiver no modo candidatos e quiser filtrar)
             if (selectedIdeology !== 'Todos') {
                 const pIdeology = getIdeology(p.party);
                 if (pIdeology !== selectedIdeology) return false;
             }
 
             return true;
-        }).sort((a, b) => a.name.localeCompare(b.name)); // Garante ordem alfabética unificada
+        }).sort((a, b) => a.name.localeCompare(b.name));
     }, [politicians, selectedUF, deferredSearch, selectedIdeology]);
 
     const partiesData = useMemo(() => {
@@ -174,7 +192,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             }
         });
 
-        // Usa a lista já filtrada para popular os grupos
         filteredPoliticians.forEach(p => {
             const sigla = p.party ? p.party.trim().toUpperCase() : 'OUTROS';
             if (!groups[sigla]) groups[sigla] = { name: sigla, members: [] };
@@ -187,7 +204,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                 const ideology = group.officialData?.ideology || getIdeology(group.name);
                 const logo = group.officialData?.urlLogo || group.officialData?.logo;
                 const matchesIdeology = selectedIdeology === 'Todos' || ideology === selectedIdeology;
-                // Exibe apenas grupos que têm membros após os filtros (ou se nenhum filtro aplicado, mostra todos com membros)
                 const visible = matchesIdeology && group.members.length > 0;
                 
                 return { name: group.name, officialName, members: group.members, logo, ideology, visible };
@@ -200,16 +216,51 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         if (!selectedParty) return [];
         const partyGroup = partiesData.find(p => p.name === selectedParty);
         if (!partyGroup) return [];
-        // Garante ordenação alfabética dentro do partido também
         return partyGroup.members.sort((a, b) => a.name.localeCompare(b.name));
     }, [partiesData, selectedParty]);
 
-    // Updated colors to avoid conflicts
     const getPartyColor = (ideology: string) => {
         if (ideology === 'Esquerda') return 'from-rose-500 to-rose-700';
         if (ideology === 'Direita') return 'from-indigo-600 to-indigo-800';
         return 'from-amber-400 to-amber-600'; 
     };
+
+    // Virtualization Helper
+    const VirtualRow = ({ index, style, data }: any) => {
+        const { items, numColumns } = data;
+        const startIndex = index * numColumns;
+        const rowItems = items.slice(startIndex, startIndex + numColumns);
+
+        return (
+            <div style={style} className="flex gap-4 md:gap-6 px-1">
+                {rowItems.map((pol: Politician) => (
+                    <div key={pol.id} className="flex-1 min-w-0">
+                        <PoliticianCard 
+                            pol={pol} 
+                            onSelect={onSelectCandidate} 
+                            isFollowing={followingIds.includes(pol.id)}
+                        />
+                    </div>
+                ))}
+                {/* Spacer for last row alignment */}
+                {rowItems.length < numColumns && 
+                    Array.from({ length: numColumns - rowItems.length }).map((_, i) => (
+                        <div key={`spacer-${i}`} className="flex-1"></div>
+                    ))
+                }
+            </div>
+        );
+    };
+
+    const getColumnCount = (width: number) => {
+        if (width >= 1536) return 7; // 2xl
+        if (width >= 1280) return 6; // xl
+        if (width >= 1024) return 4; // lg
+        if (width >= 768) return 3; // md
+        return 2; // base
+    };
+
+    const itemsToRender = selectedParty ? currentPartyMembers : filteredPoliticians;
 
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
@@ -230,7 +281,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                  </div>
                                  <span className="hidden sm:inline tracking-tight">Explorar</span>
                                  
-                                 {/* View Mode Toggle */}
                                  <div className="flex bg-white/30 dark:bg-gray-800/30 rounded-2xl p-1 ml-2 border border-white/30 dark:border-gray-700 backdrop-blur-sm">
                                      <button 
                                         onClick={() => setViewMode('parties')}
@@ -271,7 +321,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
                     {!selectedParty && (
                         <div className="flex flex-row items-center gap-4 overflow-x-auto overflow-y-hidden pb-1">
-                            {/* Horizontal Ideology Scroll */}
                             <div className="flex-1 flex flex-row items-center gap-2 bg-white/20 dark:bg-white/5 p-1.5 rounded-3xl border border-white/20 dark:border-white/10 overflow-x-auto scrollbar-hide backdrop-blur-md shadow-inner min-w-[200px] whitespace-nowrap">
                                 {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => (
                                     <button
@@ -288,7 +337,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 ))}
                             </div>
 
-                            {/* Horizontal State Selection on Mobile */}
                             <div className="flex flex-row gap-2 shrink-0">
                                 <div className="relative shrink-0 min-w-[120px] md:min-w-[140px]">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
@@ -315,7 +363,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     aria-label="Alternar visualização do mapa"
                                     aria-pressed={showMap}
                                 >
-                                    <Map size={16}/> <span className="hidden sm:inline">Mapa</span>
+                                    <span className="hidden sm:inline">Mapa</span>
                                 </button>
                             </div>
 
@@ -336,12 +384,12 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe">
-                <div className="w-full max-w-[2000px] mx-auto">
+            <div className="flex-1 p-4 md:p-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-hidden">
+                <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
                     {/* VIEW MODE: PARTIES (DEFAULT) */}
                     {viewMode === 'parties' && !selectedParty && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 overflow-y-auto pb-32">
                             {partiesData.map((group) => (
                                 <PartyCard 
                                     key={group.name} 
@@ -353,45 +401,46 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                         </div>
                     )}
 
-                    {/* VIEW MODE: CANDIDATES LIST (FLAT LIST OR INSIDE PARTY) */}
+                    {/* VIEW MODE: CANDIDATES LIST (VIRTUALIZED) */}
                     {(viewMode === 'candidates' || selectedParty) && (
-                        <div>
+                        <div className="h-full flex flex-col">
                             {viewMode === 'candidates' && !selectedParty && (
-                                <div className="mb-4 flex items-center gap-2">
+                                <div className="mb-4 flex items-center gap-2 shrink-0">
                                     <h3 className="font-black text-gray-900 dark:text-white text-lg">
                                         {selectedUF ? `Bancada de ${selectedUF}` : 'Todos os Parlamentares'}
                                     </h3>
                                     <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full text-xs font-bold">
-                                        {filteredPoliticians.length}
+                                        {itemsToRender.length}
                                     </span>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-4 md:gap-6">
-                                {(selectedParty ? currentPartyMembers : filteredPoliticians).map(pol => (
-                                    <div key={pol.id} onClick={() => onSelectCandidate(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden rounded-[2.5rem] p-4 md:p-6">
-                                        {followingIds.includes(pol.id) && (
-                                            <div className="absolute top-3 left-3 z-20">
-                                                <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
-                                                    <Heart size={10} className="fill-white text-white"/>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg">
-                                            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"/>
-                                        </div>
-                                        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1">{pol.name}</h3>
-                                        <div className="mt-2 flex flex-wrap justify-center gap-1">
-                                            <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
-                                            <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            {(selectedParty ? currentPartyMembers : filteredPoliticians).length === 0 && (
+                            {itemsToRender.length === 0 ? (
                                 <div className="text-center py-20 opacity-50">
                                     <p className="font-bold text-gray-500">Nenhum parlamentar encontrado.</p>
+                                </div>
+                            ) : (
+                                <div className="flex-1">
+                                    <AutoSizer>
+                                        {({ height, width }: { height: number, width: number }) => {
+                                            const numColumns = getColumnCount(width);
+                                            const rowCount = Math.ceil(itemsToRender.length / numColumns);
+                                            const itemHeight = 220; // Altura fixa do cartão + gap
+
+                                            return (
+                                                <List
+                                                    height={height}
+                                                    itemCount={rowCount}
+                                                    itemSize={itemHeight}
+                                                    width={width}
+                                                    itemData={{ items: itemsToRender, numColumns }}
+                                                    className="scrollbar-hide"
+                                                >
+                                                    {VirtualRow}
+                                                </List>
+                                            );
+                                        }}
+                                    </AutoSizer>
                                 </div>
                             )}
                         </div>

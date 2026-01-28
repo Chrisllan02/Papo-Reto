@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin } from 'lucide-react';
 import { Politician, FeedItem, YearStats } from '../types';
-import { enrichPoliticianData, enrichPoliticianFast } from '../services/camaraApi';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
+import { usePoliticianProfile } from '../hooks/useCamaraData';
 
 export interface ProfileViewProps {
   candidate: Politician;
@@ -131,51 +131,24 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
 
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'projects' | 'money' | 'cabinet' | 'agenda'>('activities');
-  const [candidate, setCandidate] = useState<Politician>(initialCandidate);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [selectedYear, setSelectedYear] = useState<number | 'total'>(2025);
-  
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Progressive Loading: Shows basic info immediately (via initialCandidate)
+  // Utilizando o Hook para gerenciar o estado e carregamento do perfil
+  const { candidate: enrichedCandidate, isLoadingDetails } = usePoliticianProfile(initialCandidate);
+  
+  // Se o hook ainda não retornou um candidato (ex: primeira montagem), usa o inicial.
+  // Se retornou, usa o enriquecido.
+  const candidate = enrichedCandidate || initialCandidate;
+
+  // Notifica o pai (App.tsx) quando o candidato é atualizado (para manter cache global)
   useEffect(() => {
-      // If we switched candidates via props (e.g. from similar candidates widget)
-      if (initialCandidate.id !== candidate.id) {
-          setCandidate(initialCandidate);
+      if (enrichedCandidate && enrichedCandidate !== initialCandidate && onUpdate) {
+          onUpdate(enrichedCandidate);
       }
-
-      const loadDetails = async () => {
-          // If we already have full details (expenses, detailed votes), don't show loading
-          const hasFullData = candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0;
-          if (!hasFullData) setLoadingDetails(true);
-
-          try {
-              // 1. Identity Check (Fast)
-              const fastData = await enrichPoliticianFast(initialCandidate);
-              setCandidate(prev => ({ ...prev, ...fastData }));
-              if (onUpdate) onUpdate({ ...initialCandidate, ...fastData });
-
-              // 2. Full History (Slow)
-              const fullData = await enrichPoliticianData(fastData);
-              setCandidate(fullData);
-              if (onUpdate) onUpdate(fullData);
-          } catch (e) {
-              console.error("Erro ao carregar detalhes", e);
-          } finally {
-              setLoadingDetails(false);
-          }
-      };
-      
-      if (initialCandidate.hasApiIntegration) {
-          loadDetails();
-      } else {
-          setLoadingDetails(false);
-      }
-  }, [initialCandidate.id]);
+  }, [enrichedCandidate, initialCandidate, onUpdate]);
 
   useEffect(() => {
       const parseDate = (s: string) => {
@@ -429,7 +402,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                    <div className="space-y-6">
                        <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Canais Oficiais</h4>
                        {/* Granular Loading for Email/Phone/Socials */}
-                       {loadingDetails && !candidate.email ? <Skeleton className="h-10 w-full"/> : (
+                       {isLoadingDetails && !candidate.email ? <Skeleton className="h-10 w-full"/> : (
                            candidate.email && (
                                <div className="min-w-0">
                                    <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Mail size={12} className="text-blue-500" aria-hidden="true" /> E-mail Institucional</p>
@@ -437,7 +410,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                </div>
                            )
                        )}
-                       {loadingDetails && !candidate.cabinet?.phone ? <Skeleton className="h-10 w-3/4"/> : (
+                       {isLoadingDetails && !candidate.cabinet?.phone ? <Skeleton className="h-10 w-3/4"/> : (
                            candidate.cabinet?.phone && (
                                <div>
                                    <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-500" aria-hidden="true" /> Gabinete Legislativo</p>
@@ -492,7 +465,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </section>
 
           {/* SKELETON REPLACEMENT: Check if we have plenary data. If loading and missing data, show Realistic SkeletonStats */}
-          {loadingDetails && !displayStats.plenary ? (
+          {isLoadingDetails && !displayStats.plenary ? (
               <SkeletonStats />
           ) : (
               <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] w-full mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -575,7 +548,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                 ))}
                             </div>
                             <div className="space-y-4">
-                                {loadingDetails && combinedActivities.length === 0 ? (
+                                {isLoadingDetails && combinedActivities.length === 0 ? (
                                     <>
                                         <SkeletonFeedItem />
                                         <SkeletonFeedItem />
@@ -593,7 +566,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                     )}
                     {profileTab === 'agenda' && (
                         <div className="space-y-4">
-                            {loadingDetails && (!candidate.agenda || candidate.agenda.length === 0) ? (
+                            {isLoadingDetails && (!candidate.agenda || candidate.agenda.length === 0) ? (
                                 <Skeleton className="h-32 w-full rounded-[2.5rem]" />
                             ) : (
                                 candidate.agenda && candidate.agenda.length > 0 ? candidate.agenda.map((event, i) => {
@@ -621,7 +594,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                     {profileTab === 'money' && (
                          <div className="space-y-6 md:space-y-10">
                              {/* Big Total Card */}
-                             {loadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-[3rem]" /> : (
+                             {isLoadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-[3rem]" /> : (
                                  <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-[3rem] border border-green-200/50 dark:border-green-800/50 text-center shadow-inner dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden group backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2">
                                      <p className="text-[10px] md:text-xs font-black text-green-700 dark:text-green-300 uppercase mb-3 tracking-[0.3em]">{selectedYear === 'total' ? 'Recursos Públicos Utilizados (Total)' : `Recursos Utilizados em ${selectedYear}`}</p>
                                      <p className="text-4xl md:text-7xl font-black text-green-800 dark:text-green-400 tracking-tighter">R$ {displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -638,7 +611,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              )}
                              
                              {/* Breakdown List */}
-                             {loadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? (
+                             {isLoadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? (
                                 <div className="space-y-2">
                                     <Skeleton className="h-16 w-full rounded-2xl" />
                                     <Skeleton className="h-16 w-full rounded-2xl" />
@@ -686,7 +659,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                         <div className="space-y-6">
                              <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">Equipe de Gabinete</h3>
-                                {loadingDetails && (!candidate.staff || candidate.staff.length === 0) ? (
+                                {isLoadingDetails && (!candidate.staff || candidate.staff.length === 0) ? (
                                     <div className="space-y-4">
                                         <Skeleton className="h-16 w-full rounded-2xl" />
                                         <Skeleton className="h-16 w-full rounded-2xl" />

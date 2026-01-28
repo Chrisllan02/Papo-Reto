@@ -1,9 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { ChevronLeft, Scale, Calculator, ArrowRightLeft, Users, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileQuestion, Loader2 } from 'lucide-react';
+
+import React, { useMemo } from 'react';
+import { ChevronLeft, Scale, HelpCircle, FileQuestion, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Politician } from '../types';
 import { QUIZ_QUESTIONS } from '../constants';
-import { formatPartyName, enrichPoliticianData } from '../services/camaraApi';
+import { formatPartyName } from '../services/camaraApi';
 import { Skeleton } from '../components/Skeleton';
+import { usePoliticianProfile } from '../hooks/useCamaraData';
 
 interface ComparatorViewProps {
   candidateA: Politician | null;
@@ -12,44 +14,11 @@ interface ComparatorViewProps {
 }
 
 const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA: initialA, candidateB: initialB, onBack }) => {
-    // Estado local para dados enriquecidos (completos)
-    const [candidateA, setCandidateA] = useState<Politician | null>(initialA);
-    const [candidateB, setCandidateB] = useState<Politician | null>(initialB);
+    // Usando os hooks para carregar dados completos de forma independente
+    const { candidate: candidateA, isLoadingDetails: loadingA } = usePoliticianProfile(initialA);
+    const { candidate: candidateB, isLoadingDetails: loadingB } = usePoliticianProfile(initialB);
     
-    // Estado de carregamento apenas para os dados profundos
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-    // Efeito para enriquecer dados se estiverem incompletos (Progressive Loading)
-    useEffect(() => {
-        const loadMissingData = async () => {
-            if (!initialA || !initialB) return;
-            
-            // Critério: se não tem votos ou histórico de despesas detalhado, precisa carregar
-            const needsLoadA = initialA.hasApiIntegration && (Object.keys(initialA.votes).length < 2 || !initialA.expensesBreakdown);
-            const needsLoadB = initialB.hasApiIntegration && (Object.keys(initialB.votes).length < 2 || !initialB.expensesBreakdown);
-
-            if (needsLoadA || needsLoadB) {
-                setIsAnalyzing(true);
-                try {
-                    // Carrega em paralelo sem bloquear a UI inicial
-                    const [fullA, fullB] = await Promise.all([
-                        needsLoadA ? enrichPoliticianData(initialA) : Promise.resolve(initialA),
-                        needsLoadB ? enrichPoliticianData(initialB) : Promise.resolve(initialB)
-                    ]);
-                    setCandidateA(fullA);
-                    setCandidateB(fullB);
-                } catch (e) {
-                    console.error("Erro ao carregar dados comparativos", e);
-                } finally {
-                    setIsAnalyzing(false);
-                }
-            } else {
-                setCandidateA(initialA);
-                setCandidateB(initialB);
-            }
-        };
-        loadMissingData();
-    }, [initialA, initialB]);
+    const isAnalyzing = loadingA || loadingB;
 
     // 1. Cálculo de Afinidade (Voting Alignment)
     const { score, totalVotes } = useMemo(() => {
