@@ -10,6 +10,7 @@ import FullFeedView from './views/FullFeedView';
 import EducationView from './views/EducationView';
 import ArticlesListView from './views/ArticlesListView';
 import NewsHistoryView from './views/NewsHistoryView';
+import ChatView from './views/ChatView';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
@@ -184,6 +185,9 @@ function App() {
               break;
           case 'articles':
               content = <ArticlesListView articles={articles} onSelectArticle={markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => setIsNewsHistory(true)} />;
+              break;
+          case 'chat':
+              content = <ChatView onBack={() => setActiveTab('feed')} />;
               break;
           default:
               content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;

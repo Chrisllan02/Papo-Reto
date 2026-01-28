@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin } from 'lucide-react';
 import { Politician, FeedItem, YearStats } from '../types';
 import { enrichPoliticianData, enrichPoliticianFast } from '../services/camaraApi';
-import { Skeleton, SkeletonFeedItem } from '../components/Skeleton';
+import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 
 export interface ProfileViewProps {
   candidate: Politician;
@@ -47,7 +47,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     
     if (type === 'bill') {
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default">
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-start">
                     <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full backdrop-blur-md ${getStatusColor(item.status)}`}>{item.status}</span>
                     <span className="text-[10px] font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
@@ -70,7 +70,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
         const isSim = item.vote.toLowerCase().includes('sim');
         const isNao = item.vote.toLowerCase().includes('não') || item.vote.toLowerCase().includes('nao');
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md ${isSim ? 'bg-green-100/50 text-green-600' : isNao ? 'bg-red-100/50 text-red-600' : 'bg-gray-100/50 text-gray-600'}`}>
                     <Vote size={28} strokeWidth={1.5} />
                 </div>
@@ -88,10 +88,9 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
         );
     }
 
-    // ... (Other cases follow similar pattern of standardized padding p-6) ...
     if (type === 'report') {
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-3xl pointer-events-none"></div>
                 <div className="flex justify-between items-start relative z-10">
                     <span className="bg-purple-100/50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 text-[9px] font-black uppercase px-3 py-1 rounded-full backdrop-blur-md">Relatoria</span>
@@ -107,7 +106,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
 
     if (type === 'speech') {
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2.5 bg-red-100/50 dark:bg-red-900/20 text-red-600 rounded-full backdrop-blur-md">
                         <Mic2 size={18} />
@@ -130,10 +129,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     return null;
 };
 
-// ... PresenceBar and YearFilter components remain mostly same, check padding usage ...
-
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
-  // ... state definitions ...
   const [profileTab, setProfileTab] = useState<'activities' | 'projects' | 'money' | 'cabinet' | 'agenda'>('activities');
   const [candidate, setCandidate] = useState<Politician>(initialCandidate);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -143,24 +139,32 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-  const touchStartRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ... useEffects and logic ...
-  // Re-adding logic placeholders to keep file integrity
+  // Progressive Loading: Shows basic info immediately (via initialCandidate)
   useEffect(() => {
-      setCandidate(initialCandidate);
-      
+      // If we switched candidates via props (e.g. from similar candidates widget)
+      if (initialCandidate.id !== candidate.id) {
+          setCandidate(initialCandidate);
+      }
+
       const loadDetails = async () => {
-          setLoadingDetails(true);
+          // If we already have full details (expenses, detailed votes), don't show loading
+          const hasFullData = candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0;
+          if (!hasFullData) setLoadingDetails(true);
+
           try {
+              // 1. Identity Check (Fast)
               const fastData = await enrichPoliticianFast(initialCandidate);
               setCandidate(prev => ({ ...prev, ...fastData }));
               if (onUpdate) onUpdate({ ...initialCandidate, ...fastData });
 
+              // 2. Full History (Slow)
               const fullData = await enrichPoliticianData(fastData);
               setCandidate(fullData);
               if (onUpdate) onUpdate(fullData);
+          } catch (e) {
+              console.error("Erro ao carregar detalhes", e);
           } finally {
               setLoadingDetails(false);
           }
@@ -204,9 +208,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return () => clearInterval(timerId);
   }, [candidate.mandate.end]);
 
-  // Logic for displayStats, availableYears, combinedActivities, commissionGroups, mandateInfo...
-  // (Assuming these are present as before, abbreviated here for clarity of the XML response focusing on UI changes)
-  
   const displayStats = useMemo(() => {
       if (selectedYear === 'total' || !candidate.yearlyStats || !candidate.yearlyStats[selectedYear]) {
           return candidate.stats;
@@ -281,8 +282,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { percentage, startStr: formatDate(start), endStr: formatDate(end) };
   }, [candidate.mandate]);
 
-  // Helpers components need to be defined or accessible (YearFilter, PresenceBar)
-  // Assuming they are small enough to be inline or imported if separated
   const PresenceBar = ({ label, present, justified, unjustified, total }: { label: string, present: number, justified: number, unjustified: number, total: number }) => {
     if (total === 0) {
         return (
@@ -357,10 +356,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
         ref={containerRef}
         className="w-full h-full overflow-y-auto bg-transparent pb-32 scroll-smooth"
     >
-      {/* Header logic remains, just checking padding */}
-      {/* ... (Header code) ... */}
       <div className="relative w-full overflow-hidden rounded-b-[2.5rem] md:rounded-b-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
-          {/* ... background layers ... */}
+          {/* Background Layers */}
           <div className="absolute inset-0 bg-green-900"></div>
           <div className="absolute inset-0 opacity-50 mix-blend-overlay">
               <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="Bandeira do Brasil" className="w-full h-full object-cover scale-110 brightness-75"/>
@@ -372,10 +369,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
             <button onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg">
                 <ChevronLeft size={24} aria-hidden="true" />
             </button>
-            {/* ... loader ... */}
           </div>
           
-          <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24">
+          <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
               <div className="shrink-0 relative">
                   <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800 border-[4px] border-white/10">
                       <img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} />
@@ -392,7 +388,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   </p>
               </div>
               
-              {/* ... Mandate Timer Card ... */}
+              {/* Mandate Timer Card */}
               <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5">
@@ -424,7 +420,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       </div>
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-8 md:mt-10 relative z-20 space-y-6 px-safe">
-          <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] mb-6">
+          <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                <h3 className="font-black text-blue-900 dark:text-white text-lg border-b border-gray-100/50 dark:border-white/10 pb-4 mb-8 flex items-center gap-2">
                    <Contact size={20} className="text-blue-600"/> Ficha Parlamentar
                </h3>
@@ -432,18 +428,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:divide-x md:divide-gray-100 dark:md:divide-white/10">
                    <div className="space-y-6">
                        <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Canais Oficiais</h4>
-                       {/* ... Content ... */}
-                       {candidate.email && (
-                           <div className="min-w-0">
-                               <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Mail size={12} className="text-blue-500" aria-hidden="true" /> E-mail Institucional</p>
-                               <p className="text-base font-medium text-blue-900 dark:text-white truncate selection:bg-blue-100">{candidate.email}</p>
-                           </div>
+                       {/* Granular Loading for Email/Phone/Socials */}
+                       {loadingDetails && !candidate.email ? <Skeleton className="h-10 w-full"/> : (
+                           candidate.email && (
+                               <div className="min-w-0">
+                                   <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Mail size={12} className="text-blue-500" aria-hidden="true" /> E-mail Institucional</p>
+                                   <p className="text-base font-medium text-blue-900 dark:text-white truncate selection:bg-blue-100">{candidate.email}</p>
+                               </div>
+                           )
                        )}
-                       {candidate.cabinet?.phone && (
-                           <div>
-                               <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-500" aria-hidden="true" /> Gabinete Legislativo</p>
-                               <p className="text-base font-medium text-blue-900 dark:text-white">{candidate.cabinet.phone}</p>
-                           </div>
+                       {loadingDetails && !candidate.cabinet?.phone ? <Skeleton className="h-10 w-3/4"/> : (
+                           candidate.cabinet?.phone && (
+                               <div>
+                                   <p className="text-xs text-gray-500 font-black uppercase flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-500" aria-hidden="true" /> Gabinete Legislativo</p>
+                                   <p className="text-base font-medium text-blue-900 dark:text-white">{candidate.cabinet.phone}</p>
+                               </div>
+                           )
                        )}
                        {candidate.socials && candidate.socials.length > 0 && (
                            <div>
@@ -469,7 +469,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
                    <div className="space-y-6 md:pl-8">
                        <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Bio & Carreira</h4>
-                       {/* ... Content ... */}
                         <div>
                             <p className="text-xs text-gray-500 font-black uppercase mb-1 flex items-center gap-1.5"><GraduationCap size={12} className="text-blue-500" /> Escolaridade</p>
                             <p className="text-base font-medium text-gray-800 dark:text-white">{candidate.education || 'Não informado'}</p>
@@ -483,7 +482,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                         {candidate.cabinet && (
                             <div>
                                 <p className="text-xs text-gray-500 font-black uppercase mb-2 flex items-center gap-1.5"><Building2 size={12} className="text-blue-500" /> Gabinete em Brasília</p>
-                                {/* Adjusted Line Height for Address */}
                                 <p className="text-sm md:text-base font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
                                     Câmara dos Deputados, Anexo {candidate.cabinet.building || 'IV'}, Andar {candidate.cabinet.floor || 'N/A'}, Gabinete {candidate.cabinet.room || 'N/A'}, Brasília - DF
                                 </p>
@@ -493,17 +491,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                </div>
           </section>
 
-          <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] w-full mb-8">
-               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100/50 dark:border-white/10 pb-4 mb-8">
-                   <h3 className="font-black text-blue-900 dark:text-white text-lg">Desempenho & Comissões</h3>
-                   <YearFilter years={availableYears} selected={selectedYear} onSelect={setSelectedYear} />
-               </div>
+          {/* SKELETON REPLACEMENT: Check if we have plenary data. If loading and missing data, show Realistic SkeletonStats */}
+          {loadingDetails && !displayStats.plenary ? (
+              <SkeletonStats />
+          ) : (
+              <section className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.8)] w-full mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100/50 dark:border-white/10 pb-4 mb-8">
+                       <h3 className="font-black text-blue-900 dark:text-white text-lg">Desempenho & Comissões</h3>
+                       <YearFilter years={availableYears} selected={selectedYear} onSelect={setSelectedYear} />
+                   </div>
 
-               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
-                   {/* ... Charts ... */}
-                   <div>
-                       {loadingDetails && !displayStats.plenary ? <Skeleton className="h-24 w-full rounded-2xl" /> : (
-                           displayStats.plenary ? (
+                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
+                       <div>
+                           {displayStats.plenary ? (
                                <PresenceBar 
                                    label="Presença em Plenário" 
                                    present={displayStats.plenary.present} 
@@ -511,13 +511,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                    unjustified={displayStats.plenary.unjustified} 
                                    total={displayStats.plenary.total}
                                />
-                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de plenário indisponíveis para este período.</div>
-                       )}
-                   </div>
+                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de plenário indisponíveis para este período.</div>}
+                       </div>
 
-                   <div>
-                       {loadingDetails && !displayStats.commissions ? <Skeleton className="h-24 w-full rounded-2xl" /> : (
-                           displayStats.commissions ? (
+                       <div>
+                           {displayStats.commissions ? (
                                <PresenceBar 
                                    label="Presença em Comissões" 
                                    present={displayStats.commissions.present} 
@@ -525,38 +523,32 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                    unjustified={displayStats.commissions.unjustified} 
                                    total={displayStats.commissions.total}
                                />
-                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de comissão indisponíveis para este período.</div>
-                       )}
-                   </div>
+                           ) : <div className="text-xs text-gray-400 font-bold mb-4">Dados de comissão indisponíveis para este período.</div>}
+                       </div>
 
-                   <div className="flex flex-col gap-8">
-                        <div>
-                            <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mb-3"><Users size={12}/> Integrante das Comissões</span>
-                            <div className="space-y-3">
-                                {loadingDetails && commissionGroups.titular.length === 0 ? <Skeleton className="h-12 w-full rounded-xl" /> : (
-                                    commissionGroups.titular.length > 0 ? (
+                       <div className="flex flex-col gap-8">
+                            <div>
+                                <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mb-3"><Users size={12}/> Integrante das Comissões</span>
+                                <div className="space-y-3">
+                                    {commissionGroups.titular.length > 0 ? (
                                         <div>
                                             <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-1">Titular em {commissionGroups.titular.length}</p>
                                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-3 leading-relaxed" title={commissionGroups.titular.join(', ')}>{commissionGroups.titular.join(', ')}</p>
                                         </div>
                                     ) : (
                                         <p className="text-xs text-gray-400 italic">Nenhuma titularidade.</p>
-                                    )
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                        <div className="pt-4 border-t border-gray-100/50 dark:border-white/10">
-                           <p className="text-xs text-gray-500 font-black uppercase mb-1 tracking-widest">{selectedYear === 'total' ? 'Gasto Total Acumulado' : `Gasto Total em ${selectedYear}`}</p>
-                           {loadingDetails && displayStats.spending === 0 ? <Skeleton className="h-8 w-32 rounded" /> : (
+                            <div className="pt-4 border-t border-gray-100/50 dark:border-white/10">
+                               <p className="text-xs text-gray-500 font-black uppercase mb-1 tracking-widest">{selectedYear === 'total' ? 'Gasto Total Acumulado' : `Gasto Total em ${selectedYear}`}</p>
                                <p className="text-2xl font-black text-blue-900 dark:text-white">R$ {displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                           )}
+                           </div>
                        </div>
                    </div>
-               </div>
-          </section>
+              </section>
+          )}
 
-          {/* ... Rest of the tabs (activities, money, etc) ... */}
-          {/* Main container logic remains same */}
           <div className="min-w-0">
               {/* Tab Selector */}
               <div className="sticky top-0 z-40 bg-white/70 dark:bg-midnight/90 backdrop-blur-3xl p-1.5 rounded-2xl md:rounded-full border border-white/50 dark:border-white/10 shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
@@ -567,11 +559,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                  ))}
               </div>
               
-              <div className="space-y-6 md:space-y-10 pb-32 animate-in fade-in duration-500">
+              <div className="space-y-6 md:space-y-10 pb-32">
                   <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="outline-none">
                     {profileTab === 'activities' && (
                         <div>
-                            {/* Filter Chips */}
                             <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                                 {['all', 'propositions', 'reported', 'votes', 'speeches'].map(f => (
                                     <button 
@@ -588,6 +579,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     <>
                                         <SkeletonFeedItem />
                                         <SkeletonFeedItem />
+                                        <SkeletonFeedItem />
                                     </>
                                 ) : (
                                     combinedActivities.length > 0 ? combinedActivities.map((item, i) => (
@@ -599,17 +591,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                             </div>
                         </div>
                     )}
-                    {/* ... Other tabs ... */}
                     {profileTab === 'agenda' && (
                         <div className="space-y-4">
-                            {/* Agenda Items */}
                             {loadingDetails && (!candidate.agenda || candidate.agenda.length === 0) ? (
                                 <Skeleton className="h-32 w-full rounded-[2.5rem]" />
                             ) : (
                                 candidate.agenda && candidate.agenda.length > 0 ? candidate.agenda.map((event, i) => {
                                     const isLive = event.status?.toLowerCase().includes('andamento');
                                     return (
-                                        <div key={i} className="bg-white/90 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col md:flex-row gap-6 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+                                        <div key={i} className="bg-white/90 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col md:flex-row gap-6 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 animate-in fade-in">
                                             {isLive && (<div className="absolute top-0 right-0 px-4 py-2 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-lg animate-pulse">Ao Vivo</div>)}
                                             <div className="flex md:flex-col items-center md:justify-center gap-3 shrink-0 md:w-32 md:border-r border-gray-100 dark:border-gray-800">
                                                 <div className="p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl text-blue-600 dark:text-blue-400 backdrop-blur-sm"><CalendarDays size={24} /></div>
@@ -628,37 +618,35 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                             )}
                         </div>
                     )}
-                    {/* ... Money Tab ... */}
                     {profileTab === 'money' && (
                          <div className="space-y-6 md:space-y-10">
-                             {/* ... Big Total Card ... */}
+                             {/* Big Total Card */}
                              {loadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-[3rem]" /> : (
-                                 <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-[3rem] border border-green-200/50 dark:border-green-800/50 text-center shadow-inner dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden group backdrop-blur-2xl">
-                                     {/* ... */}
+                                 <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-[3rem] border border-green-200/50 dark:border-green-800/50 text-center shadow-inner dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden group backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2">
                                      <p className="text-[10px] md:text-xs font-black text-green-700 dark:text-green-300 uppercase mb-3 tracking-[0.3em]">{selectedYear === 'total' ? 'Recursos Públicos Utilizados (Total)' : `Recursos Utilizados em ${selectedYear}`}</p>
                                      <p className="text-4xl md:text-7xl font-black text-green-800 dark:text-green-400 tracking-tighter">R$ {displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                     {/* ... */}
                                  </div>
                              )}
                              
-                             {/* ... Amendments Section ... */}
+                             {/* Amendments Section */}
                              {candidate.amendmentStats && candidate.amendmentStats.authorized > 0 && (
-                                <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden">
+                                <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in">
                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-xl text-purple-600 backdrop-blur-sm"><Wallet size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Emendas Individuais</h4><p className="text-[10px] text-gray-500 font-medium">Orçamento da União (Proposto)</p></div></div>
                                     <div className="space-y-6"><div><div className="flex justify-between items-end mb-2"><span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Valor Apresentado</span><span className="text-lg font-black text-purple-600 dark:text-purple-400">R$ {candidate.amendmentStats.authorized.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div className="w-full h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full"><div className="h-full bg-purple-500 rounded-full w-full"></div></div></div></div>
                                     <div className="mt-6 p-3 bg-gray-50/50 dark:bg-white/5 rounded-xl text-[10px] text-gray-500 italic text-center backdrop-blur-sm">* Valor total das emendas de autoria do parlamentar listadas na API. A execução financeira depende do Poder Executivo.</div>
                                 </section>
                              )}
                              
-                             {/* ... Breakdown List ... */}
+                             {/* Breakdown List */}
                              {loadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? (
                                 <div className="space-y-2">
+                                    <Skeleton className="h-16 w-full rounded-2xl" />
                                     <Skeleton className="h-16 w-full rounded-2xl" />
                                     <Skeleton className="h-16 w-full rounded-2xl" />
                                 </div>
                              ) : (
                                  candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 && (
-                                      <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-12 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                                      <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-12 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4">
                                           <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 mb-8 tracking-[0.4em] border-b border-gray-50 dark:border-white/5 pb-3">Detalhamento dos Gastos</h4>
                                           <div className="space-y-4 md:space-y-6">
                                               {candidate.expensesBreakdown.map((exp, i) => (
@@ -694,20 +682,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                          </div>
                     )}
                     
-                    {/* ... Cabinet Tab ... */}
                     {profileTab === 'cabinet' && (
                         <div className="space-y-6">
-                             <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                             <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">Equipe de Gabinete</h3>
                                 {loadingDetails && (!candidate.staff || candidate.staff.length === 0) ? (
                                     <div className="space-y-4">
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
                                         <Skeleton className="h-16 w-full rounded-2xl" />
                                     </div>
                                 ) : (
                                     candidate.staff && candidate.staff.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {candidate.staff.map((sec, i) => (
-                                                <div key={i} className="flex items-center gap-4 p-5 rounded-3xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10">
+                                                <div key={i} className="flex items-center gap-4 p-5 rounded-3xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
                                                     <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shadow-sm text-lg">
                                                         {sec.name.charAt(0)}
                                                     </div>
