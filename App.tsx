@@ -1,32 +1,31 @@
 
-import React, { useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
+import FeedView from './views/FeedView';
+import ExploreView from './views/ExploreView';
+import ProfileView from './views/ProfileView';
+import PartiesDashboardView from './views/PartiesDashboardView';
+import FullFeedView from './views/FullFeedView';
+import EducationView from './views/EducationView';
+import ArticlesListView from './views/ArticlesListView';
+import NewsHistoryView from './views/NewsHistoryView';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
 import { fetchDeputados, fetchSenadores, fetchGlobalVotacoes, fetchPartidos, getStaticParties } from './services/camaraApi';
 import { generateEducationalContent } from './services/ai';
-import { useAppStore } from './store/useAppStore';
-import { FEED_ITEMS } from './constants';
-
-// --- LAZY LOADED VIEWS ---
-const FeedView = React.lazy(() => import('./views/FeedView'));
-const ExploreView = React.lazy(() => import('./views/ExploreView'));
-const ProfileView = React.lazy(() => import('./views/ProfileView'));
-const PartiesDashboardView = React.lazy(() => import('./views/PartiesDashboardView'));
-const EducationView = React.lazy(() => import('./views/EducationView'));
-const ArticlesListView = React.lazy(() => import('./views/ArticlesListView'));
-const NewsHistoryView = React.lazy(() => import('./views/NewsHistoryView'));
+import { Politician, FeedItem, Party } from './types';
+import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from './constants';
 
 const mapArticleStyle = (index: number, topic: string) => {
     const styles = [
-        { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb' },
-        { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote' },
-        { colorFrom: 'from-spring', colorTo: 'to-mantis', icon: 'ScrollText' },
-        { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb' },
-        { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote' },
-        { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText' }
+        { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb', activeColor: 'bg-spring/20 text-picture' },
+        { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote', activeColor: 'bg-nuit/10 text-nuit' },
+        { colorFrom: 'from-spring', colorTo: 'to-mantis', icon: 'ScrollText', activeColor: 'bg-praxeti text-midnight border border-spring' },
+        { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb', activeColor: 'bg-praxeti text-midnight' },
+        { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote', activeColor: 'bg-blue-50 text-nuit' },
+        { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-green-50 text-picture' }
     ];
     let base = styles[index % styles.length];
     let icon = base.icon;
@@ -37,51 +36,80 @@ const mapArticleStyle = (index: number, topic: string) => {
 };
 
 function App() {
-  // Global State Consumption (Granular Selectors)
-  const activeTab = useAppStore((state) => state.activeTab);
-  const selectedCandidate = useAppStore((state) => state.selectedCandidate);
-  const selectedEducationId = useAppStore((state) => state.selectedEducationId);
-  const isNewsHistoryOpen = useAppStore((state) => state.isNewsHistoryOpen);
-  const showDataModal = useAppStore((state) => state.showDataModal);
-  const showOnboarding = useAppStore((state) => state.showOnboarding);
-  const fontSizeLevel = useAppStore((state) => state.fontSizeLevel);
-  const darkMode = useAppStore((state) => state.darkMode);
-  const highContrast = useAppStore((state) => state.highContrast);
+  const [activeTab, setActiveTab] = useState('feed');
+  const [politicians, setPoliticians] = useState<Politician[]>(POLITICIANS_DB);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>(FEED_ITEMS);
+  // Fix: Use any[] or union type to allow optional properties from generated content
+  const [articles, setArticles] = useState<any[]>(EDUCATION_CAROUSEL); 
+  const [parties, setParties] = useState<Party[]>(getStaticParties());
   
-  const setShowDataModal = useAppStore((state) => state.setShowDataModal);
-  const setShowOnboarding = useAppStore((state) => state.setShowOnboarding);
-  const setIsNewsHistoryOpen = useAppStore((state) => state.setIsNewsHistoryOpen);
-  const setPoliticians = useAppStore((state) => state.setPoliticians);
-  const setFeedItems = useAppStore((state) => state.setFeedItems);
-  const setParties = useAppStore((state) => state.setParties);
-  const setArticles = useAppStore((state) => state.setArticles);
+  const [darkMode, setDarkMode] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  const [fontSizeLevel, setFontSizeLevel] = useState(1); 
 
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [selectedCandidate, setSelectedCandidate] = useState<Politician | null>(null);
+  const [readArticleIds, setReadArticleIds] = useState<number[]>([]); 
+  
+  const [showDataModal, setShowDataModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false); 
+  const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
+  const [isFullFeed, setIsFullFeed] = useState(false);
+  const [isNewsHistory, setIsNewsHistory] = useState(false);
+  const [explorePreselectedState, setExplorePreselectedState] = useState<string>(''); 
+  
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const toggleDarkMode = () => {
+    if (highContrast) setHighContrast(false);
+    setDarkMode(!darkMode);
+    document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.remove('high-contrast');
+  };
 
-  // Initial Data Fetch
+  const toggleHighContrast = () => {
+      const newVal = !highContrast;
+      setHighContrast(newVal);
+      if (newVal) {
+          setDarkMode(false);
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('high-contrast');
+      } else {
+          document.documentElement.classList.remove('high-contrast');
+      }
+  };
+
+  const cycleFontSize = () => {
+      setFontSizeLevel(prev => {
+          if (prev === 1) return 1.1;
+          if (prev === 1.1) return 1.25;
+          return 1;
+      });
+  };
+
+  const markArticleAsRead = (id: number) => {
+      if (!readArticleIds.includes(id)) {
+          setReadArticleIds(prev => [...prev, id]);
+      }
+      setSelectedEducationId(id);
+  };
+
   useEffect(() => {
     const loadData = async () => {
         try {
-            // Set static defaults first to avoid empty screen
-            setParties(getStaticParties());
-            setFeedItems(FEED_ITEMS);
-
             const [deps, sens, feeds, parts] = await Promise.all([
                 fetchDeputados(),
                 fetchSenadores(),
                 fetchGlobalVotacoes().catch(() => []), 
                 fetchPartidos()
             ]);
-            
             setPoliticians([...deps, ...sens]);
             if (feeds && feeds.length > 0) setFeedItems(feeds);
+            else setFeedItems(FEED_ITEMS);
             setParties(parts);
-
-            // Async AI content generation (non-blocking)
             generateEducationalContent().then(eduContent => {
                 if (eduContent && eduContent.length > 0) {
                      const newArticles = eduContent.map((item, index) => ({
-                         id: index + 100, 
+                         id: index + 100,
                          title: item.title,
                          text: item.text,
                          topic: item.topic, 
@@ -101,35 +129,63 @@ function App() {
     loadData();
   }, []);
 
+  const handleSelectCandidate = (pol: Politician) => {
+      setSelectedCandidate(pol);
+  };
+
+  const handleGoToExplore = (state: string) => {
+      setExplorePreselectedState(state);
+      setActiveTab('explore');
+  };
+  
   if (isLoading) return <LoadingScreen />;
 
   let content;
   if (selectedCandidate) {
       content = (
-        <ProfileView />
+        <ProfileView 
+            candidate={selectedCandidate} 
+            onBack={() => setSelectedCandidate(null)} 
+            onShare={() => {}}
+            feedItems={feedItems.filter(f => f.candidateId === selectedCandidate.id)}
+            allPoliticians={politicians}
+            onUpdate={(updated) => {
+                setPoliticians(prev => prev.map(p => p.id === updated.id ? updated : p));
+                setSelectedCandidate(updated);
+            }}
+            isFollowing={false}
+            onToggleFollow={() => {}}
+        />
       );
   } else if (selectedEducationId) {
       content = (
-        <EducationView />
+        <EducationView 
+            educationId={selectedEducationId} 
+            articles={articles} 
+            onBack={() => setSelectedEducationId(null)}
+            onSelectArticle={markArticleAsRead}
+        />
       );
-  } else if (isNewsHistoryOpen) {
-      content = <NewsHistoryView onBack={() => setIsNewsHistoryOpen(false)} />;
+  } else if (isFullFeed) {
+      content = <FullFeedView feedItems={feedItems} politicians={politicians} onBack={() => setIsFullFeed(false)} onSelectCandidate={handleSelectCandidate} />;
+  } else if (isNewsHistory) {
+      content = <NewsHistoryView onBack={() => setIsNewsHistory(false)} />;
   } else {
       switch (activeTab) {
           case 'feed':
-              content = <FeedView />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
               break;
           case 'explore':
-              content = <ExploreView />;
+              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} preselectedState={explorePreselectedState} />;
               break;
           case 'parties':
-              content = <PartiesDashboardView />;
+              content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={handleSelectCandidate} />;
               break;
           case 'articles':
-              content = <ArticlesListView />;
+              content = <ArticlesListView articles={articles} onSelectArticle={markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => setIsNewsHistory(true)} />;
               break;
           default:
-              content = <FeedView />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} articles={articles} onSelectCandidate={handleSelectCandidate} onEducationClick={markArticleAsRead} onSeeMore={() => setIsFullFeed(true)} onGoToExplore={handleGoToExplore} />;
       }
   }
 
@@ -150,18 +206,49 @@ function App() {
         {showOnboarding && <OnboardingModal onFinish={() => setShowOnboarding(false)} />}
 
         <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 bg-white/40 dark:bg-midnight/90 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300 shadow-[0_20px_50px_rgba(0,31,63,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-             <Sidebar />
+             <Sidebar 
+                activeTab={activeTab} 
+                setActiveTab={(tab) => { 
+                    setActiveTab(tab); 
+                    setSelectedCandidate(null); 
+                    setSelectedEducationId(null); 
+                    setIsFullFeed(false);
+                    setIsNewsHistory(false);
+                    if (tab !== 'explore') setExplorePreselectedState('');
+                }} 
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                onShowData={() => setShowDataModal(true)}
+                onStartTour={() => setShowOnboarding(true)}
+                highContrast={highContrast}
+                onToggleHighContrast={toggleHighContrast}
+                fontSizeLevel={fontSizeLevel}
+                onCycleFontSize={cycleFontSize}
+             />
         </aside>
 
         <main id="main-content" className="flex-1 h-full relative overflow-hidden outline-none">
              {showDataModal && <DataTransparencyModal onClose={() => setShowDataModal(false)} />}
-             
-             <Suspense fallback={<LoadingScreen />}>
-                {content}
-             </Suspense>
+             {content}
         </main>
 
-        <MobileNav />
+        <MobileNav 
+            activeTab={activeTab} 
+            setActiveTab={(tab) => { 
+                setActiveTab(tab); 
+                setSelectedCandidate(null); 
+                setIsFullFeed(false); 
+                setIsNewsHistory(false);
+                if (tab !== 'explore') setExplorePreselectedState('');
+            }} 
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+            highContrast={highContrast}
+            onToggleHighContrast={toggleHighContrast}
+            onStartTour={() => setShowOnboarding(true)}
+            fontSizeLevel={fontSizeLevel}
+            onCycleFontSize={cycleFontSize}
+        />
     </div>
   );
 }

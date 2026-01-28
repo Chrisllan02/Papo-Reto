@@ -1,23 +1,31 @@
 
 import React, { useMemo, useState } from 'react';
 import { ScrollText, Users, BarChart3, Menu, X, Sun, Moon, Eye, Type, HelpCircle } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
 
-const MobileNav: React.FC = () => {
+interface MobileNavProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+  highContrast?: boolean;
+  onToggleHighContrast?: () => void;
+  onStartTour?: () => void;
+  fontSizeLevel?: number;
+  onCycleFontSize?: () => void;
+}
+
+const MobileNav: React.FC<MobileNavProps> = ({ 
+    activeTab, 
+    setActiveTab, 
+    darkMode, 
+    toggleDarkMode, 
+    highContrast, 
+    onToggleHighContrast, 
+    onStartTour,
+    fontSizeLevel = 1,
+    onCycleFontSize
+}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  const activeTab = useAppStore((state) => state.activeTab);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const darkMode = useAppStore((state) => state.darkMode);
-  const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
-  const highContrast = useAppStore((state) => state.highContrast);
-  const toggleHighContrast = useAppStore((state) => state.toggleHighContrast);
-  const fontSizeLevel = useAppStore((state) => state.fontSizeLevel);
-  const cycleFontSize = useAppStore((state) => state.cycleFontSize);
-  const setShowOnboarding = useAppStore((state) => state.setShowOnboarding);
-  const setSelectedCandidate = useAppStore((state) => state.setSelectedCandidate);
-  const setSelectedEducationId = useAppStore((state) => state.setSelectedEducationId);
-  const setIsNewsHistoryOpen = useAppStore((state) => state.setIsNewsHistoryOpen);
 
   const tabs = useMemo(() => [
     { id: 'feed', label: 'Mural', icon: ScrollText },
@@ -26,9 +34,6 @@ const MobileNav: React.FC = () => {
   ], []);
 
   const handleTabClick = (id: string) => {
-      setSelectedCandidate(null);
-      setSelectedEducationId(null);
-      setIsNewsHistoryOpen(false);
       setActiveTab(id);
       setIsMenuOpen(false);
   };
@@ -62,31 +67,37 @@ const MobileNav: React.FC = () => {
                         <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{darkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
                     </button>
 
-                    <button 
-                        onClick={toggleHighContrast}
-                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm ${highContrast ? 'bg-black text-white border-black' : 'bg-white/40 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-white/40 dark:border-white/10'}`}
-                    >
-                        <Eye size={24} />
-                        <span className="text-xs font-bold">Alto Contraste</span>
-                    </button>
+                    {onToggleHighContrast && (
+                        <button 
+                            onClick={onToggleHighContrast}
+                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm ${highContrast ? 'bg-black text-white border-black' : 'bg-white/40 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-white/40 dark:border-white/10'}`}
+                        >
+                            <Eye size={24} />
+                            <span className="text-xs font-bold">Alto Contraste</span>
+                        </button>
+                    )}
 
-                    <button 
-                        onClick={cycleFontSize}
-                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm"
-                    >
-                        <Type size={24} className="text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                            Fonte: {fontSizeLevel === 1 ? 'Normal' : fontSizeLevel === 1.1 ? 'Grande' : 'Extra'}
-                        </span>
-                    </button>
+                    {onCycleFontSize && (
+                        <button 
+                            onClick={onCycleFontSize}
+                            className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm"
+                        >
+                            <Type size={24} className="text-blue-600 dark:text-blue-400" />
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                Fonte: {fontSizeLevel === 1 ? 'Normal' : fontSizeLevel === 1.1 ? 'Grande' : 'Extra'}
+                            </span>
+                        </button>
+                    )}
 
-                    <button 
-                        onClick={() => { setShowOnboarding(true); setIsMenuOpen(false); }}
-                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm"
-                    >
-                        <HelpCircle size={24} className="text-green-600 dark:text-green-400" />
-                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Tour Guiado</span>
-                    </button>
+                    {onStartTour && (
+                        <button 
+                            onClick={() => { onStartTour(); setIsMenuOpen(false); }}
+                            className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 active:scale-95 transition-transform shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm"
+                        >
+                            <HelpCircle size={24} className="text-green-600 dark:text-green-400" />
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Tour Guiado</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

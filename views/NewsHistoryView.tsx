@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search, Tag } from 'lucide-react';
+import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search } from 'lucide-react';
 import { getNewsHistory } from '../services/ai';
 import { NewsArticle } from '../types';
 
@@ -13,26 +12,13 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
     const [search, setSearch] = useState('');
 
     useEffect(() => {
-        const load = async () => {
-            const data = await getNewsHistory();
-            setHistory(data);
-        };
-        load();
+        setHistory(getNewsHistory());
     }, []);
 
     const filtered = history.filter(h => 
         h.title.toLowerCase().includes(search.toLowerCase()) || 
         h.source.toLowerCase().includes(search.toLowerCase())
     );
-
-    const getCategoryColor = (cat?: string) => {
-        switch (cat) {
-            case 'economia': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-            case 'justica': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
-            case 'social': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
-            default: return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-        }
-    };
 
     return (
         <div className="w-full h-full bg-gray-50 dark:bg-black font-sans overflow-y-auto pb-32 animate-in slide-in-from-right duration-300">
@@ -47,7 +33,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                         <h1 className="text-xl font-black text-gray-900 dark:text-white leading-none flex items-center gap-2">
                             <Newspaper size={20} className="text-blue-600"/> Galeria de Notícias
                         </h1>
-                        <p className="text-xs text-gray-500 font-bold uppercase mt-1">Acervo do Mês ({history.length})</p>
+                        <p className="text-xs text-gray-500 font-bold uppercase mt-1">Histórico do Plantão ({history.length})</p>
                     </div>
                 </div>
             </div>
@@ -72,37 +58,49 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                         <p className="font-bold text-gray-500">Nenhuma notícia encontrada.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filtered.map((item, index) => (
-                            <div key={index} className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800 group hover:shadow-xl transition-all flex flex-col h-full">
-                                
-                                <div className="flex justify-between items-start mb-4">
-                                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${getCategoryColor(item.category)}`}>
-                                        {item.category || 'Política'}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-gray-400">{item.time}</span>
+                            <div key={index} className="bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 group hover:shadow-xl transition-all">
+                                <div className="relative h-48 overflow-hidden bg-gray-200 dark:bg-gray-800">
+                                    {item.imageUrl ? (
+                                        <img 
+                                            src={item.imageUrl} 
+                                            alt={item.title}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop";
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-400">
+                                            <Newspaper size={40}/>
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                    <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                                        <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg shadow-sm">
+                                            {item.source}
+                                        </span>
+                                    </div>
                                 </div>
-
-                                <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight mb-3 line-clamp-3 group-hover:text-blue-600 transition-colors">
-                                    {item.title}
-                                </h3>
-                                
-                                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3 mb-4 flex-1">
-                                    {item.summary || "Sem resumo disponível."}
-                                </p>
-                                
-                                <div className="pt-4 border-t border-gray-50 dark:border-gray-800 flex justify-between items-center mt-auto">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate max-w-[100px]">
-                                        {item.source}
-                                    </span>
-                                    <a 
-                                        href={item.url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1 hover:underline"
-                                    >
-                                        Ler <ExternalLink size={12}/>
-                                    </a>
+                                <div className="p-6">
+                                    <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight mb-3 line-clamp-3 group-hover:text-blue-600 transition-colors">
+                                        {item.title}
+                                    </h3>
+                                    
+                                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-400 flex items-center gap-1">
+                                            <Calendar size={12}/> Arquivado
+                                        </span>
+                                        <a 
+                                            href={item.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1 hover:underline"
+                                        >
+                                            Ler <ExternalLink size={12}/>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         ))}

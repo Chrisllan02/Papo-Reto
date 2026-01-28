@@ -1,11 +1,9 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { ChevronLeft, Scale, Calculator, ArrowRightLeft, Users, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileQuestion, Loader2 } from 'lucide-react';
 import { Politician } from '../types';
 import { QUIZ_QUESTIONS } from '../constants';
 import { formatPartyName, enrichPoliticianData } from '../services/camaraApi';
 import { Skeleton } from '../components/Skeleton';
-import OptimizedImage from '../components/OptimizedImage';
 
 interface ComparatorViewProps {
   candidateA: Politician | null;
@@ -161,12 +159,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA: initialA, c
                      {/* Candidate A */}
                      <div className="flex flex-col items-center text-center w-1/3">
                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-white dark:border-gray-700 shadow-xl overflow-hidden mb-3 bg-gray-200">
-                             <OptimizedImage 
-                                src={candidateA.photo} 
-                                className="w-full h-full object-cover" 
-                                alt={candidateA.name}
-                                widthParam={200}
-                             />
+                             <img src={candidateA.photo} className="w-full h-full object-cover" alt={candidateA.name}/>
                          </div>
                          <h2 className="font-black text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{candidateA.name}</h2>
                          <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{formatPartyName(candidateA.party)}</p>
@@ -182,12 +175,7 @@ const ComparatorView: React.FC<ComparatorViewProps> = ({ candidateA: initialA, c
                      {/* Candidate B */}
                      <div className="flex flex-col items-center text-center w-1/3">
                          <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-white dark:border-gray-700 shadow-xl overflow-hidden mb-3 bg-gray-200">
-                             <OptimizedImage 
-                                src={candidateB.photo} 
-                                className="w-full h-full object-cover" 
-                                alt={candidateB.name}
-                                widthParam={200}
-                             />
+                             <img src={candidateB.photo} className="w-full h-full object-cover" alt={candidateB.name}/>
                          </div>
                          <h2 className="font-black text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{candidateB.name}</h2>
                          <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">{formatPartyName(candidateB.party)}</p>

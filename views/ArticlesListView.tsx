@@ -1,17 +1,16 @@
-
 import React, { useState, useMemo } from 'react';
 import { BookOpen, ArrowRight, Lightbulb, Banknote, ScrollText, History, CheckCircle2 } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
+
+interface ArticlesListViewProps {
+  onSelectArticle: (id: number) => void;
+  onOpenNewsHistory?: () => void;
+  articles: any[];
+  readArticleIds?: number[];
+}
 
 const CATEGORIES = ['Todos', 'Direitos', 'Poderes', 'Orçamento', 'Cidadania'];
 
-const ArticlesListView: React.FC = () => {
-  const { articles, setSelectedEducationId, setIsNewsHistoryOpen } = useAppStore();
-  const onSelectArticle = (id: number) => setSelectedEducationId(id);
-  const onOpenNewsHistory = () => setIsNewsHistoryOpen(true);
-  
-  const readArticleIds: number[] = []; // Todo: Implement read tracking in store
-
+const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, onOpenNewsHistory, articles, readArticleIds = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
 
   // Filter Logic

@@ -1,10 +1,17 @@
 
-import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, Globe, ShieldCheck } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
-import { Politician } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight } from 'lucide-react';
+import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
+import { QUIZ_QUESTIONS } from '../constants';
 import BrazilMap from '../components/BrazilMap';
+
+interface PartiesDashboardViewProps {
+  politicians: Politician[];
+  parties?: Party[];
+  feedItems?: FeedItem[];
+  onSelectCandidate?: (pol: Politician) => void;
+}
 
 interface RegionStats {
     Norte: number;
@@ -509,12 +516,10 @@ const CohesionCard = ({ data, selectedParty }: { data: PartyStats[], selectedPar
     );
 };
 
-const PartiesDashboardView: React.FC = () => {
+const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
-  
-  const politicians = useAppStore((state) => state.politicians);
 
-  const { partyStats, ideologyStats } = useMemo(() => {
+  const { partyStats, ideologyStats, dominantIdeology } = useMemo(() => {
     const groups: Record<string, PartyStats> = {};
     const ideologyGroups: Record<string, number> = { 'Esquerda': 0, 'Centro': 0, 'Direita': 0 };
 
@@ -550,9 +555,16 @@ const PartiesDashboardView: React.FC = () => {
         }
     });
 
+    let max = 0;
+    let dom = 'Centro';
+    Object.entries(ideologyGroups).forEach(([k, v]) => {
+        if (v > max) { max = v; dom = k; }
+    });
+
     return {
         partyStats: Object.values(groups).filter(g => g.totalMembers > 0),
         ideologyStats: ideologyGroups,
+        dominantIdeology: dom
     };
   }, [politicians]);
 
@@ -574,7 +586,7 @@ const PartiesDashboardView: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <GeoDistributionWidget politicians={politicians} />
                     
-                    <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-center min-h-[550px]">
+                    <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-xl shadow-gray-200/50 dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-center min-h-[550px]">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 shadow-sm backdrop-blur-sm">
                                 <Compass size={18} aria-hidden="true" />

@@ -3,17 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>PapoReto - Transparência Política</title>
-    <meta name="description" content="Acompanhe gastos, votações e a atuação dos parlamentares brasileiros de forma simples e direta.">
-    <meta name="theme-color" content="#001F3F">
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CDN com Configuração do Tema -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -59,6 +50,67 @@
         }
       }
     </script>
+    <style>
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { 
+        background-color: rgba(30, 72, 143, 0.4);
+        border-radius: 20px; 
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 31, 63, 0.6); }
+      
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      .px-safe { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+      
+      .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #1E488F;
+        color: #F6F7ED;
+        padding: 8px;
+        z-index: 1000;
+        transition: top 0.3s;
+      }
+      .skip-link:focus { top: 0; }
+
+      :focus-visible {
+        outline: 3px solid #DBE64C;
+        outline-offset: 2px;
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      
+      body {
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-y: none;
+        background-color: #F6F7ED;
+        color: #001F3F;
+      }
+      .dark body { 
+        background-color: #001F3F;
+        color: #F6F7ED; 
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
 <script type="importmap">
 {
   "imports": {
@@ -66,13 +118,10 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "react-window": "https://esm.sh/react-window@^2.2.5",
-    "react-virtualized-auto-sizer": "https://esm.sh/react-virtualized-auto-sizer@^2.0.2",
     "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "zustand": "https://esm.sh/zustand@^5.0.10"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>

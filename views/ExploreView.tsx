@@ -1,20 +1,18 @@
 
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
-import { Search, Users, ChevronLeft, MapPin, LayoutGrid, Map, ChevronDown, X, Contact } from 'lucide-react';
-import * as ReactWindow from 'react-window';
-import * as AutoSizerModule from 'react-virtualized-auto-sizer';
-
-// Robust fallback for CJS/ESM interop
-const AutoSizer = (AutoSizerModule as any).default || AutoSizerModule;
-const Grid = (ReactWindow as any).FixedSizeGrid || (ReactWindow as any).default?.FixedSizeGrid || ReactWindow;
-const areEqual = (ReactWindow as any).areEqual || (ReactWindow as any).default?.areEqual;
-
-import { Politician } from '../types';
-import { useAppStore } from '../store/useAppStore';
+import { Search, Users, ChevronLeft, MapPin, Building2, Heart, LayoutGrid, Compass, Map, ChevronDown, Filter, X, Contact, LayoutList } from 'lucide-react';
+import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { PARTY_METADATA } from '../services/camaraApi';
 import BrazilMap from '../components/BrazilMap';
-import OptimizedImage from '../components/OptimizedImage';
+
+interface ExploreViewProps {
+  politicians: Politician[];
+  parties?: Party[]; 
+  onSelectCandidate: (pol: Politician) => void;
+  followingIds?: number[]; 
+  preselectedState?: string; // NOVO: Permite vir do Feed já filtrado
+}
 
 const ESTADOS_BRASIL = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
@@ -38,7 +36,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="w-full group relative bg-white/90 dark:bg-midnight/95 backdrop-blur-2xl rounded-[2.5rem] p-5 md:p-6 text-left border border-white/40 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
+            className="group relative bg-white/90 dark:bg-midnight/95 backdrop-blur-2xl rounded-[2.5rem] p-5 md:p-6 text-left border border-white/40 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
 
@@ -46,10 +44,9 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
                 <div className="flex justify-between items-start mb-4 md:mb-6 relative z-10">
                     {group.logo && !imgError ? (
                         <div className="w-10 h-10 md:w-14 md:h-14 bg-white/80 rounded-2xl md:rounded-3xl p-1 shadow-md border border-white/50 flex items-center justify-center backdrop-blur-md">
-                            <OptimizedImage 
+                            <img 
                                 src={group.logo} 
                                 alt={group.name} 
-                                widthParam={100}
                                 className="max-w-full max-h-full object-contain" 
                                 onError={() => setImgError(true)}
                             />
@@ -84,14 +81,12 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
 
             <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10">
                 {previewMembers.map((m: any) => (
-                    <div key={m.id} className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-200 shadow-md overflow-hidden">
-                        <OptimizedImage 
-                            src={m.photo} 
-                            widthParam={80}
-                            className="w-full h-full object-cover" 
-                            alt=""
-                        />
-                    </div>
+                    <img 
+                        key={m.id} 
+                        src={m.photo} 
+                        className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 object-cover bg-gray-200 shadow-md" 
+                        alt=""
+                    />
                 ))}
                 {group.members.length > 3 && (
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[2px] md:border-[3px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[9px] md:text-[10px] font-bold text-blue-500 shadow-md">
@@ -103,50 +98,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     );
 };
 
-// --- COMPONENTE DE CÉLULA DO GRID VIRTUAL ---
-// Memoizado automaticamente pelo React.memo (implicit no areEqual)
-const CandidateCell = React.memo(({ columnIndex, rowIndex, style, data }: any) => {
-    const { items, columnCount, onSelect } = data;
-    const index = rowIndex * columnCount + columnIndex;
-    
-    // Se o índice calculado exceder o número de itens, renderiza vazio (para preencher última linha)
-    if (index >= items.length) {
-        return <div style={style} />;
-    }
-
-    const pol = items[index];
-
-    return (
-        <div style={style} className="p-2 md:p-3">
-            <div 
-                onClick={() => onSelect(pol)} 
-                className="h-full w-full bg-white/90 dark:bg-midnight/90 backdrop-blur-xl rounded-[2rem] p-4 border border-white/20 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden cursor-pointer"
-            >
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden mb-3 border-[4px] border-white/80 dark:border-gray-700 shadow-lg bg-gray-200 shrink-0">
-                    <OptimizedImage 
-                        src={pol.photo} 
-                        alt={pol.name} 
-                        widthParam={150}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                </div>
-                <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1 w-full">{pol.name}</h3>
-                <div className="mt-2 flex flex-wrap justify-center gap-1 w-full">
-                    <span className="text-[8px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
-                    <span className="text-[8px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
-                </div>
-            </div>
-        </div>
-    );
-}, areEqual);
-
-const ExploreView: React.FC = () => {
-    // Connect to Store
-    const politicians = useAppStore((state) => state.politicians);
-    const parties = useAppStore((state) => state.parties);
-    const setSelectedCandidate = useAppStore((state) => state.setSelectedCandidate);
-    const preselectedState = useAppStore((state) => state.exploreFilterState);
-    
+const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], onSelectCandidate, followingIds = [], preselectedState }) => {
     const [search, setSearch] = useState("");
     const deferredSearch = useDeferredValue(search);
     
@@ -155,11 +107,14 @@ const ExploreView: React.FC = () => {
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
     const [showMap, setShowMap] = useState(false);
     
+    // Novo estado para controlar o modo de visualização (Partidos vs Lista de Pessoas)
     const [viewMode, setViewMode] = useState<ViewMode>('parties');
 
+    // Efeito para atualizar o estado quando a prop preselectedState mudar (vindo do Feed)
     useEffect(() => {
         if (preselectedState) {
             setSelectedUF(preselectedState);
+            // Se vier um estado pré-selecionado (do botão "Ver Todos"), muda automaticamente para lista de candidatos
             setViewMode('candidates');
         }
     }, [preselectedState]);
@@ -172,25 +127,29 @@ const ExploreView: React.FC = () => {
         return counts;
     }, [politicians]);
 
+    // Lógica de filtragem unificada com Ordenação Alfabética
     const filteredPoliticians = useMemo(() => {
         const searchLower = deferredSearch.toLowerCase();
         
         return politicians.filter(p => {
+            // Filtro de Estado
             if (selectedUF && p.state !== selectedUF) return false;
             
+            // Filtro de Busca
             if (searchLower) {
                 const matchesName = p.name.toLowerCase().includes(searchLower);
                 const matchesParty = p.party.toLowerCase().includes(searchLower);
                 if (!matchesName && !matchesParty) return false;
             }
 
+            // Filtro de Ideologia (se estiver no modo candidatos e quiser filtrar)
             if (selectedIdeology !== 'Todos') {
                 const pIdeology = getIdeology(p.party);
                 if (pIdeology !== selectedIdeology) return false;
             }
 
             return true;
-        }).sort((a, b) => a.name.localeCompare(b.name)); 
+        }).sort((a, b) => a.name.localeCompare(b.name)); // Garante ordem alfabética unificada
     }, [politicians, selectedUF, deferredSearch, selectedIdeology]);
 
     const partiesData = useMemo(() => {
@@ -215,6 +174,7 @@ const ExploreView: React.FC = () => {
             }
         });
 
+        // Usa a lista já filtrada para popular os grupos
         filteredPoliticians.forEach(p => {
             const sigla = p.party ? p.party.trim().toUpperCase() : 'OUTROS';
             if (!groups[sigla]) groups[sigla] = { name: sigla, members: [] };
@@ -227,6 +187,7 @@ const ExploreView: React.FC = () => {
                 const ideology = group.officialData?.ideology || getIdeology(group.name);
                 const logo = group.officialData?.urlLogo || group.officialData?.logo;
                 const matchesIdeology = selectedIdeology === 'Todos' || ideology === selectedIdeology;
+                // Exibe apenas grupos que têm membros após os filtros (ou se nenhum filtro aplicado, mostra todos com membros)
                 const visible = matchesIdeology && group.members.length > 0;
                 
                 return { name: group.name, officialName, members: group.members, logo, ideology, visible };
@@ -239,17 +200,16 @@ const ExploreView: React.FC = () => {
         if (!selectedParty) return [];
         const partyGroup = partiesData.find(p => p.name === selectedParty);
         if (!partyGroup) return [];
+        // Garante ordenação alfabética dentro do partido também
         return partyGroup.members.sort((a, b) => a.name.localeCompare(b.name));
     }, [partiesData, selectedParty]);
 
+    // Updated colors to avoid conflicts
     const getPartyColor = (ideology: string) => {
         if (ideology === 'Esquerda') return 'from-rose-500 to-rose-700';
         if (ideology === 'Direita') return 'from-indigo-600 to-indigo-800';
         return 'from-amber-400 to-amber-600'; 
     };
-
-    // Dados a serem exibidos na grid (Partidários ou Gerais)
-    const gridItems = selectedParty ? currentPartyMembers : filteredPoliticians;
 
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
@@ -270,6 +230,7 @@ const ExploreView: React.FC = () => {
                                  </div>
                                  <span className="hidden sm:inline tracking-tight">Explorar</span>
                                  
+                                 {/* View Mode Toggle */}
                                  <div className="flex bg-white/30 dark:bg-gray-800/30 rounded-2xl p-1 ml-2 border border-white/30 dark:border-gray-700 backdrop-blur-sm">
                                      <button 
                                         onClick={() => setViewMode('parties')}
@@ -310,6 +271,7 @@ const ExploreView: React.FC = () => {
 
                     {!selectedParty && (
                         <div className="flex flex-row items-center gap-4 overflow-x-auto overflow-y-hidden pb-1">
+                            {/* Horizontal Ideology Scroll */}
                             <div className="flex-1 flex flex-row items-center gap-2 bg-white/20 dark:bg-white/5 p-1.5 rounded-3xl border border-white/20 dark:border-white/10 overflow-x-auto scrollbar-hide backdrop-blur-md shadow-inner min-w-[200px] whitespace-nowrap">
                                 {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => (
                                     <button
@@ -326,6 +288,7 @@ const ExploreView: React.FC = () => {
                                 ))}
                             </div>
 
+                            {/* Horizontal State Selection on Mobile */}
                             <div className="flex flex-row gap-2 shrink-0">
                                 <div className="relative shrink-0 min-w-[120px] md:min-w-[140px]">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
@@ -373,71 +336,62 @@ const ExploreView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-hidden px-4 md:px-8 pb-0 pt-2 px-safe">
-                <div className="w-full h-full max-w-[2000px] mx-auto">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe">
+                <div className="w-full max-w-[2000px] mx-auto">
                     
-                    {viewMode === 'parties' && !selectedParty ? (
-                        /* Modo Partidos */
-                        <div className="h-full overflow-y-auto pb-32 custom-scrollbar">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
-                                {partiesData.map((group) => (
-                                    <PartyCard 
-                                        key={group.name} 
-                                        group={group} 
-                                        getPartyColor={getPartyColor} 
-                                        onSelect={setSelectedParty} 
-                                    />
-                                ))}
-                            </div>
+                    {/* VIEW MODE: PARTIES (DEFAULT) */}
+                    {viewMode === 'parties' && !selectedParty && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+                            {partiesData.map((group) => (
+                                <PartyCard 
+                                    key={group.name} 
+                                    group={group} 
+                                    getPartyColor={getPartyColor} 
+                                    onSelect={setSelectedParty} 
+                                />
+                            ))}
                         </div>
-                    ) : (
-                        /* Modo Candidatos - VIRTUALIZADO */
-                        <div className="h-full w-full">
-                            {/* Header de Contagem */}
+                    )}
+
+                    {/* VIEW MODE: CANDIDATES LIST (FLAT LIST OR INSIDE PARTY) */}
+                    {(viewMode === 'candidates' || selectedParty) && (
+                        <div>
                             {viewMode === 'candidates' && !selectedParty && (
                                 <div className="mb-4 flex items-center gap-2">
                                     <h3 className="font-black text-gray-900 dark:text-white text-lg">
                                         {selectedUF ? `Bancada de ${selectedUF}` : 'Todos os Parlamentares'}
                                     </h3>
                                     <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full text-xs font-bold">
-                                        {gridItems.length}
+                                        {filteredPoliticians.length}
                                     </span>
                                 </div>
                             )}
 
-                            {gridItems.length === 0 ? (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-4 md:gap-6">
+                                {(selectedParty ? currentPartyMembers : filteredPoliticians).map(pol => (
+                                    <div key={pol.id} onClick={() => onSelectCandidate(pol)} className="bg-white/90 dark:bg-midnight/90 backdrop-blur-xl rounded-[2.5rem] p-4 md:p-6 border border-white/20 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all active:scale-95 group flex flex-col items-center text-center relative overflow-hidden">
+                                        {followingIds.includes(pol.id) && (
+                                            <div className="absolute top-3 left-3 z-20">
+                                                <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
+                                                    <Heart size={10} className="fill-white text-white"/>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg">
+                                            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"/>
+                                        </div>
+                                        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1">{pol.name}</h3>
+                                        <div className="mt-2 flex flex-wrap justify-center gap-1">
+                                            <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
+                                            <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {(selectedParty ? currentPartyMembers : filteredPoliticians).length === 0 && (
                                 <div className="text-center py-20 opacity-50">
                                     <p className="font-bold text-gray-500">Nenhum parlamentar encontrado.</p>
-                                </div>
-                            ) : (
-                                <div style={{ height: 'calc(100% - 100px)' }}> 
-                                    <AutoSizer>
-                                        {({ height, width }: { height: number, width: number }) => {
-                                            let columnCount = 2;
-                                            if (width >= 768) columnCount = 3;
-                                            if (width >= 1024) columnCount = 4;
-                                            if (width >= 1280) columnCount = 6;
-                                            if (width >= 1536) columnCount = 7;
-
-                                            const columnWidth = width / columnCount;
-                                            const rowHeight = 220; 
-
-                                            return (
-                                                <Grid
-                                                    columnCount={columnCount}
-                                                    columnWidth={columnWidth}
-                                                    height={height}
-                                                    rowCount={Math.ceil(gridItems.length / columnCount)}
-                                                    rowHeight={rowHeight}
-                                                    width={width}
-                                                    itemData={{ items: gridItems, columnCount, onSelect: setSelectedCandidate }}
-                                                    className="custom-scrollbar"
-                                                >
-                                                    {CandidateCell}
-                                                </Grid>
-                                            );
-                                        }}
-                                    </AutoSizer>
                                 </div>
                             )}
                         </div>
