@@ -51,7 +51,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2.5rem] p-5 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
+            className="group relative glass rounded-[2rem] p-5 md:p-6 text-left hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-[220px]"
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
 
@@ -94,7 +94,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
                 </div>
             </div>
 
-            <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10">
+            <div className="mt-4 flex -space-x-2.5 relative z-10 h-8 md:h-10 pl-1">
                 {previewMembers.map((m: any) => (
                     <img 
                         key={m.id} 
@@ -122,10 +122,10 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
                 </div>
             </div>
         )}
-        <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-full overflow-hidden mb-3 md:mb-4 border-[4px] border-white/80 dark:border-gray-700 shadow-lg relative z-10">
-            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700"/>
+        <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-full overflow-hidden mb-3 md:mb-4 border-[3px] border-white/80 dark:border-gray-700 shadow-lg relative z-10 bg-gray-200">
+            <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"/>
         </div>
-        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-1 w-full">{pol.name}</h3>
+        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-2 w-full leading-tight h-8 md:h-10 flex items-center justify-center">{pol.name}</h3>
         <div className="mt-2 flex flex-wrap justify-center gap-1">
             <span className="text-[8px] md:text-[9px] font-black bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 uppercase tracking-tighter backdrop-blur-md border border-gray-200/50 dark:border-white/10">{pol.party}</span>
             <span className="text-[8px] md:text-[9px] font-black bg-blue-50/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-blue-600 dark:text-blue-300 uppercase tracking-tighter backdrop-blur-md border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
@@ -439,7 +439,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            const itemHeight = 280; 
+                                            const itemHeight = 310; // Increased height to prevent clipping
 
                                             return (
                                                 <List
