@@ -315,7 +315,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     let currentAngle = 0; // Starts from left (which we map to 0-180 logic)
 
     return (
-        <section className="w-full bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col items-center justify-between relative overflow-hidden h-auto min-h-[420px] md:min-h-[480px]" aria-labelledby="hemicycle-title">
+        <section className="w-full bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col items-center justify-between relative overflow-hidden h-auto" aria-labelledby="hemicycle-title">
             
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full mb-4 z-10 gap-4">
@@ -335,8 +335,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                  </div>
             </div>
 
-            {/* Graphic Container */}
-            <div className="relative w-full max-w-[650px] aspect-[1.8/1] flex items-end justify-center mb-6 md:mb-10">
+            {/* Graphic Container: Ensure min-height on mobile for better visibility */}
+            <div className="relative w-full max-w-[650px] aspect-[1.8/1] min-h-[220px] flex items-end justify-center mb-6 md:mb-10">
                 <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img" aria-describedby="hemicycle-data-table">
                     
                     {/* Background Track (Ghost Arc) */}
@@ -383,9 +383,9 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                         );
                     })}
 
-                    {/* Center Text Info */}
+                    {/* Center Text Info (Adjusted size for small screens) */}
                     <g className="transition-all duration-300 transform translate-y-2">
-                        <text x="200" y="175" textAnchor="middle" className="text-5xl md:text-6xl font-black fill-gray-900 dark:fill-white tracking-tighter drop-shadow-sm" style={{fontSize: '3.5rem'}}>
+                        <text x="200" y="175" textAnchor="middle" className="text-4xl md:text-6xl font-black fill-gray-900 dark:fill-white tracking-tighter drop-shadow-sm">
                             {activeParty ? data.find(p => p.name === activeParty)?.totalMembers : totalSeats}
                         </text>
                         <text x="200" y="200" textAnchor="middle" className="text-[10px] md:text-xs font-black uppercase fill-gray-400 tracking-[0.3em]">
