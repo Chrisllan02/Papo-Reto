@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { NewsArticle } from '../types';
+import { NewsArticle } from '../../types';
 
 // --- CONFIGURAÇÃO SEGURA DO CLIENTE AI ---
 // Inicialização Lazy: Só cria a instância quando for usada.

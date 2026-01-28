@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';

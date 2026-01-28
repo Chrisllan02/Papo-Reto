@@ -153,18 +153,28 @@ const MobileNav: React.FC<MobileNavProps> = ({
                 onClick={toggleMenu}
                 className={`flex-1 relative z-10 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 ${
                     isMenuOpen 
-                    ? 'text-blue-700 dark:text-white bg-white/40 dark:bg-white/10' 
+                    ? 'text-red-500 dark:text-red-400 bg-white/40 dark:bg-white/10' 
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
-                aria-label="Menu"
+                aria-label={isMenuOpen ? "Fechar Menu" : "Abrir Menu"}
                 aria-expanded={isMenuOpen}
             >
-                <Menu 
-                    size={20} 
-                    strokeWidth={isMenuOpen ? 2.5 : 2}
-                    className="transition-transform duration-200 drop-shadow-sm"
-                />
-                <span className="text-[9px] font-bold leading-none drop-shadow-sm">Menu</span>
+                {isMenuOpen ? (
+                    <X 
+                        size={20} 
+                        strokeWidth={2.5}
+                        className="transition-transform duration-200 drop-shadow-sm"
+                    />
+                ) : (
+                    <Menu 
+                        size={20} 
+                        strokeWidth={2}
+                        className="transition-transform duration-200 drop-shadow-sm"
+                    />
+                )}
+                <span className="text-[9px] font-bold leading-none drop-shadow-sm">
+                    {isMenuOpen ? 'Fechar' : 'Menu'}
+                </span>
             </button>
 
           </nav>
