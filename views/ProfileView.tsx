@@ -499,64 +499,67 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </div>
       )}
 
-      <div className="relative w-full overflow-hidden rounded-b-[2.5rem] md:rounded-b-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
-          {/* Background Layers */}
-          <div className="absolute inset-0 bg-green-900"></div>
-          <div className="absolute inset-0 opacity-50 mix-blend-overlay">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="Bandeira do Brasil" className="w-full h-full object-cover scale-110 brightness-75"/>
-          </div>
-          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
-          
-          <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
-            <button onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg">
-                <ChevronLeft size={24} aria-hidden="true" />
-            </button>
-          </div>
-          
-          <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
-              <div className="shrink-0 relative">
-                  <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800 border-[4px] border-white/10">
-                      <img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} />
-                  </div>
+      {/* WRAPPER FOR COVER TO ALIGN WITH CONTENT */}
+      <div className="px-4 md:px-12 max-w-[1800px] mx-auto pt-6 px-safe">
+          <div className="relative w-full overflow-hidden rounded-[2.5rem] md:rounded-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
+              {/* Background Layers */}
+              <div className="absolute inset-0 bg-green-900"></div>
+              <div className="absolute inset-0 opacity-50 mix-blend-overlay">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="Bandeira do Brasil" className="w-full h-full object-cover scale-110 brightness-75"/>
               </div>
-              <div className="flex-1 text-center md:text-left text-white mb-2 min-w-0">
-                  <div className="flex flex-wrap justify-center md:justify-start gap-1.5 md:gap-2 mb-2 md:mb-3">
-                      <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-[9px] md:text-[10px] font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.party}</span>
-                      <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-[9px] md:text-[10px] font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.state}</span>
-                  </div>
-                  <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl truncate">{candidate.name}</h1>
-                  <p className="text-white/80 text-[10px] md:text-sm font-bold uppercase tracking-widest mt-1.5 flex items-center justify-center md:justify-start gap-2">
-                    {candidate.role} <span className="w-1 h-1 bg-white/60 rounded-full"></span> Em Exercício
-                  </p>
+              <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-10"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
+              
+              <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
+                <button onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg">
+                    <ChevronLeft size={24} aria-hidden="true" />
+                </button>
               </div>
               
-              {/* Mandate Timer Card (Desktop Only) */}
-              <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5">
-                        <Clock size={12} className="text-orange-500" /> Contagem Regressiva
-                    </p>
-                    <span className="text-xs font-black text-orange-400 bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-500/20">
-                        {mandateInfo.percentage}%
-                    </span>
+              <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
+                  <div className="shrink-0 relative">
+                      <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800 border-[4px] border-white/10">
+                          <img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} />
+                      </div>
                   </div>
-                  <div className="flex justify-between items-center gap-2 mb-4 text-center">
-                      {[{ label: 'DIAS', value: timeLeft.days }, { label: 'HRS', value: timeLeft.hours }, { label: 'MIN', value: timeLeft.minutes }, { label: 'SEG', value: timeLeft.seconds }].map((time, i) => (
-                          <div key={i} className="flex-1 bg-white/10 rounded-xl p-2 border border-white/5 backdrop-blur-sm shadow-inner group/timer hover:bg-white/15 transition-colors">
-                              <span className="block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none group-hover/timer:scale-110 transition-transform">
-                                  {String(time.value).padStart(2, '0')}
-                              </span>
-                              <span className="text-[7px] font-bold text-white/50 uppercase tracking-wider">{time.label}</span>
-                          </div>
-                      ))}
+                  <div className="flex-1 text-center md:text-left text-white mb-2 min-w-0">
+                      <div className="flex flex-wrap justify-center md:justify-start gap-1.5 md:gap-2 mb-2 md:mb-3">
+                          <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-[9px] md:text-[10px] font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.party}</span>
+                          <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-[9px] md:text-[10px] font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.state}</span>
+                      </div>
+                      <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl truncate">{candidate.name}</h1>
+                      <p className="text-white/80 text-[10px] md:text-sm font-bold uppercase tracking-widest mt-1.5 flex items-center justify-center md:justify-start gap-2">
+                        {candidate.role} <span className="w-1 h-1 bg-white/60 rounded-full"></span> Em Exercício
+                      </p>
                   </div>
-                  <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden mb-2">
-                      <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div>
-                  </div>
-                  <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-widest">
-                      <span>Início: {mandateInfo.startStr}</span>
-                      <span>Fim: {mandateInfo.endStr}</span>
+                  
+                  {/* Mandate Timer Card (Desktop Only) */}
+                  <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5">
+                            <Clock size={12} className="text-orange-500" /> Contagem Regressiva
+                        </p>
+                        <span className="text-xs font-black text-orange-400 bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-500/20">
+                            {mandateInfo.percentage}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center gap-2 mb-4 text-center">
+                          {[{ label: 'DIAS', value: timeLeft.days }, { label: 'HRS', value: timeLeft.hours }, { label: 'MIN', value: timeLeft.minutes }, { label: 'SEG', value: timeLeft.seconds }].map((time, i) => (
+                              <div key={i} className="flex-1 bg-white/10 rounded-xl p-2 border border-white/5 backdrop-blur-sm shadow-inner group/timer hover:bg-white/15 transition-colors">
+                                  <span className="block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none group-hover/timer:scale-110 transition-transform">
+                                      {String(time.value).padStart(2, '0')}
+                                  </span>
+                                  <span className="text-[7px] font-bold text-white/50 uppercase tracking-wider">{time.label}</span>
+                              </div>
+                          ))}
+                      </div>
+                      <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+                          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                          <span>Início: {mandateInfo.startStr}</span>
+                          <span>Fim: {mandateInfo.endStr}</span>
+                      </div>
                   </div>
               </div>
           </div>
