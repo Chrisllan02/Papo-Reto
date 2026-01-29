@@ -84,10 +84,10 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className={`group relative rounded-[2rem] p-6 text-left hover:shadow-xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[220px] md:min-h-[240px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10`}
+            className={`group relative rounded-[2rem] p-5 text-left shadow-lg hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[170px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10`}
         >
-            <div className="w-full relative z-10">
-                <div className="flex justify-between items-start mb-4">
+            <div className="w-full relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-3">
                     {/* Acronym Box */}
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-xs shadow-md ${theme.iconBg}`}>
                         {badgeLabel.substring(0, 4)}
@@ -99,37 +99,35 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
                     </span>
                 </div>
 
-                <div className="mb-4">
-                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter mb-1 truncate leading-none">
+                <div className="mb-1">
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter mb-0.5 truncate leading-none">
                         {group.name}
                     </h3>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
                         {group.members.length} Parlamentares
                     </p>
-                </div>
-            </div>
 
-            {/* Avatar Container */}
-            <div className="mt-auto relative z-20 w-full">
-                <div className="flex -space-x-2 items-center">
-                    {previewMembers.map((m: any) => (
-                        <div key={m.id} className="relative transition-transform duration-200 hover:scale-110 hover:z-30">
-                            {/* Simple colored circle background if image fails or while loading */}
-                            <div className="w-10 h-10 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
-                                <img 
-                                    src={m.photo} 
-                                    className="w-full h-full object-cover" 
-                                    alt=""
-                                    loading="lazy"
-                                />
+                    {/* Avatar Container Moved Up */}
+                    <div className="flex -space-x-2 items-center">
+                        {previewMembers.map((m: any) => (
+                            <div key={m.id} className="relative transition-transform duration-200 hover:scale-110 hover:z-30">
+                                {/* Simple colored circle background if image fails or while loading */}
+                                <div className="w-9 h-9 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
+                                    <img 
+                                        src={m.photo} 
+                                        className="w-full h-full object-cover" 
+                                        alt=""
+                                        loading="lazy"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                    {group.members.length > 4 && (
-                        <div className="w-10 h-10 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-black text-gray-500 shadow-sm relative z-0">
-                            +{group.members.length - 4}
-                        </div>
-                    )}
+                        ))}
+                        {group.members.length > 4 && (
+                            <div className="w-9 h-9 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[9px] font-black text-gray-500 shadow-sm relative z-0">
+                                +{group.members.length - 4}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </button>
@@ -499,4 +497,3 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 };
 
 export default ExploreView;
-    
