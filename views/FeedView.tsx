@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Landmark, Banknote, Lightbulb, Filter, ArrowRight, ExternalLink, ChevronDown, CheckCircle2, XCircle, Clock, X, Share2, User, Sparkles, Loader2, MapPin, Thermometer, Volume2, VolumeX, Newspaper, ScrollText, Activity, Radio, Users, LocateFixed, Zap, GraduationCap, HeartPulse, Shield, Briefcase, Leaf, Gavel, Cpu, Palette, Bus, Plane, Scale, BookOpen } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { speakContent } from '../services/ai';
+import { getIdeology } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
 import { useAppContext } from '../contexts/AppContext';
 
@@ -174,7 +175,7 @@ const getDidacticContext = (title: string, description: string | undefined, type
 
     return { 
         text: didacticText, 
-        constitution: constitutionRef,
+        constitution: constitutionRef, 
         isExpense: false
     };
 };
@@ -421,11 +422,19 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
         }
     }, [politicians, userLocation]);
 
-    if (isLoading) return <div className="h-48 w-full glass rounded-[2.5rem] animate-pulse mb-8"></div>;
+    // Função auxiliar para cor do card
+    const getIdeologyStyle = (party: string) => {
+        const ideology = getIdeology(party);
+        if (ideology === 'Esquerda') return 'bg-rose-50/80 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800';
+        if (ideology === 'Direita') return 'bg-indigo-50/80 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800';
+        return 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+    };
+
+    if (isLoading) return <div className="h-64 w-full glass rounded-[2.5rem] animate-pulse mb-8"></div>;
     if (statePoliticians.length === 0) return null;
 
     return (
-        <section className="mb-12 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
+        <section className="mb-16 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
             <div className="absolute inset-0 glass-card rounded-[3rem] -mx-4 md:mx-0 z-0 border border-white/20 dark:border-white/5 shadow-sm"></div>
 
             <div className="relative z-10 p-6 md:p-8">
@@ -451,23 +460,25 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                     </button>
                 </div>
 
-                <div className="relative">
-                    <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white/90 dark:from-midnight/95 to-transparent pointer-events-none z-20 md:hidden rounded-r-[2rem]"></div>
-
+                <div className="relative -mx-4 md:-mx-0 px-4 md:px-0">
                     <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth">
-                        {statePoliticians.map((pol) => (
-                            <div 
-                                key={pol.id} 
-                                onClick={() => onSelectCandidate(pol)}
-                                className="snap-center shrink-0 w-40 glass rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/40 dark:border-white/10 cursor-pointer hover:scale-[1.03] hover:bg-white dark:hover:bg-midnight hover:shadow-2xl transition-all duration-300"
-                            >
-                                <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
-                                    <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
+                        {statePoliticians.map((pol) => {
+                            const cardStyle = getIdeologyStyle(pol.party);
+                            
+                            return (
+                                <div 
+                                    key={pol.id} 
+                                    onClick={() => onSelectCandidate(pol)}
+                                    className={`snap-center shrink-0 w-48 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 ${cardStyle}`}
+                                >
+                                    <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
+                                        <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
+                                    </div>
+                                    <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
+                                    <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase bg-white/40 dark:bg-white/5 px-3 py-1 rounded-md border border-white/20">{pol.party}</p>
                                 </div>
-                                <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-1.5 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
-                                <p className="text-xs font-bold text-gray-500 uppercase bg-gray-100/50 dark:bg-white/5 px-2 py-0.5 rounded-md">{pol.party}</p>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>
