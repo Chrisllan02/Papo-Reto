@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronLeft, Lightbulb, Banknote, ScrollText, ArrowRight, Clock, CheckCircle2, Scale, Target } from 'lucide-react';
 
 interface EducationViewProps {
@@ -10,7 +10,15 @@ interface EducationViewProps {
 }
 
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const item = articles.find(i => i.id === educationId);
+  
+  // Reset de Scroll ao mudar de artigo
+  useEffect(() => {
+      if (containerRef.current) {
+          containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      }
+  }, [educationId]);
   
   if (!item) return <div className="p-8 text-center text-gray-500">Conteúdo não encontrado</div>;
 
@@ -31,7 +39,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   const readingTime = Math.max(1, Math.ceil((item.text || "").split(' ').length / 200));
 
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
+    <div ref={containerRef} className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
         
         {/* HERO SECTION / COVER BAR */}
         <div className={`relative w-full min-h-[35vh] shrink-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} overflow-hidden flex flex-col`}>
