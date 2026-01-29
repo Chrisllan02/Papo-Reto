@@ -1,6 +1,5 @@
-
-import React, { useEffect, useRef } from 'react';
-import { ChevronLeft, Lightbulb, Banknote, ScrollText, ArrowRight, Clock, CheckCircle2, Scale, Target } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText } from 'lucide-react';
 
 interface EducationViewProps {
   educationId: number;
@@ -10,30 +9,14 @@ interface EducationViewProps {
 }
 
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const topRef = useRef<HTMLDivElement>(null);
-  const item = articles.find(i => i.id === educationId);
-  
-  // Reset de Scroll ao mudar de artigo (Backup caso o 'key' no App.tsx não seja suficiente em alguns browsers)
-  useEffect(() => {
-      const timer = setTimeout(() => {
-          if (containerRef.current) {
-              containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
-          }
-          if (topRef.current) {
-              topRef.current.scrollIntoView({ block: 'start', behavior: 'instant' });
-          }
-      }, 50); // Timeout para garantir renderização no mobile
-      return () => clearTimeout(timer);
-  }, [educationId]);
-  
-  if (!item) return <div className="p-8 text-center text-gray-500">Conteúdo não encontrado</div>;
+  const article = useMemo(() => articles.find(a => a.id === educationId), [articles, educationId]);
+  const nextItem = useMemo(() => {
+      const currentIndex = articles.findIndex(a => a.id === educationId);
+      return articles[(currentIndex + 1) % articles.length];
+  }, [articles, educationId]);
 
-  // Encontra o próximo item para sugestão
-  const nextItemIndex = (articles.findIndex(i => i.id === educationId) + 1) % articles.length;
-  const nextItem = articles[nextItemIndex];
+  if (!article) return null;
 
-  // Helper para renderizar o ícone correto
   const renderIcon = (iconName: string, size: number, className: string) => {
       switch(iconName) {
           case 'Banknote': return <Banknote size={size} className={className}/>;
@@ -42,131 +25,86 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
       }
   };
 
-  // Helper to calculate reading time based on word count
-  const readingTime = Math.max(1, Math.ceil((item.text || "").split(' ').length / 200));
-
   return (
-    <div ref={containerRef} className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
-        {/* Âncora de topo para scrollIntoView */}
-        <div ref={topRef} className="absolute top-0 left-0 w-full h-px opacity-0 pointer-events-none"></div>
+    <div className="w-full h-full bg-white dark:bg-gray-900 font-sans overflow-y-auto animate-in slide-in-from-right duration-300">
         
-        {/* HERO SECTION / COVER BAR */}
-        <div className={`relative w-full min-h-[35vh] shrink-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} overflow-hidden flex flex-col`}>
+        {/* Hero Header */}
+        <div className={`relative min-h-[300px] p-6 md:p-12 flex flex-col justify-between bg-gradient-to-br ${article.colorFrom} ${article.colorTo}`}>
+            {/* Texture */}
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
             
-            {/* Background Effects */}
-            <div className="absolute bottom-10 left-10 w-48 h-48 bg-black opacity-10 rounded-full blur-[60px] pointer-events-none"></div>
-            <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
-
-            {/* HEADER NAVIGATION */}
-            <div className="relative z-50 p-4 flex justify-between items-center shrink-0">
-                 <button 
-                    onClick={onBack} 
-                    className="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all active:scale-90 shadow-lg border border-white/20 group"
-                 >
-                    <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform"/>
+            {/* Nav */}
+            <div className="relative z-10 flex justify-between items-start">
+                <button 
+                    onClick={onBack}
+                    className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors"
+                >
+                    <ChevronLeft size={24}/>
                 </button>
+                <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20">
+                    {article.topic}
+                </div>
             </div>
 
-            {/* TITLE CARD CONTENT (INSIDE COVER) */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-10 pt-2 relative z-10">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-[1.5rem] flex items-center justify-center mb-4 shadow-[0_10px_20px_rgba(0,0,0,0.2)] border border-white/30 relative">
-                     <div className="absolute inset-0 bg-white/20 blur-md rounded-[1.5rem]"></div>
-                     {renderIcon(item.icon, 32, "text-white relative z-10 drop-shadow-md")}
+            {/* Title */}
+            <div className="relative z-10 mt-8">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white mb-6 border border-white/30 shadow-lg">
+                    {renderIcon(article.icon, 32, "drop-shadow-md")}
                 </div>
-                
-                <div className="inline-flex items-center gap-2 bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full text-white/90 text-[10px] font-black uppercase tracking-widest mb-3 border border-white/10">
-                    <Clock size={10} /> Leitura: {readingTime} min
-                </div>
-                
-                <h1 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-lg max-w-3xl">
-                    {item.title}
+                <h1 className="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md mb-2">
+                    {article.title}
                 </h1>
             </div>
         </div>
 
-        {/* CONTENT SHEET */}
-        <div className="flex-1 bg-gray-50 dark:bg-gray-900 relative z-20 -mt-8 rounded-t-[2.5rem] px-6 md:px-12 pt-10 pb-48 md:pb-32 shadow-[0_-20px_60px_rgba(0,0,0,0.15)] min-h-[50vh] border-t border-gray-100 dark:border-gray-800">
-            
-            {/* Decorative Pill */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300/50 dark:bg-gray-700 rounded-full"></div>
-
-            {/* Main Text */}
-            <div className="max-w-4xl mx-auto space-y-10">
-                <div>
-                    <h2 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
-                        <span className="w-6 h-px bg-gray-300 dark:bg-gray-700"></span>
-                        Entenda o Assunto
-                    </h2>
-                    <p className="text-lg md:text-xl text-gray-800 dark:text-gray-200 font-medium leading-relaxed whitespace-pre-line text-justify">
-                        {item.text}
+        {/* Content Body */}
+        <div className="px-6 md:px-12 py-10 max-w-4xl mx-auto -mt-10 relative z-20">
+            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-gray-100 dark:border-gray-800">
+                
+                <div className="prose dark:prose-invert prose-lg max-w-none mb-10">
+                    <p className="text-gray-700 dark:text-gray-300 font-medium leading-loose text-lg md:text-xl">
+                        {article.text}
                     </p>
                 </div>
 
-                {/* Dynamic Breakdown Sections */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    {/* Legislation Section */}
-                    {item.legislation ? (
-                        <div className="bg-purple-50 dark:bg-purple-900/10 p-6 rounded-[2.5rem] border border-purple-100 dark:border-purple-900/30">
-                            <h3 className="font-black text-purple-900 dark:text-purple-300 text-lg mb-4 flex items-center gap-2">
-                                <Scale className="text-purple-600 dark:text-purple-400"/>
-                                Na Lei
-                            </h3>
-                            <p className="text-sm text-purple-900/80 dark:text-purple-200/80 font-bold leading-relaxed italic">
-                                "{item.legislation}"
-                            </p>
-                        </div>
-                    ) : (
-                        // Fallback generic if no specific legislation provided
-                        <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-[2.5rem] border border-gray-200 dark:border-gray-700">
-                            <h3 className="font-black text-gray-500 text-lg mb-4 flex items-center gap-2">
-                                <Scale className="text-gray-400"/> Base Legal
-                            </h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Baseado na Constituição Federal de 1988 e Regimentos Internos do Congresso.
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    {article.legislation && (
+                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-3xl border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-black uppercase text-xs tracking-widest">
+                                <Scale size={16}/> Legislação
+                            </div>
+                            <p className="text-blue-900 dark:text-blue-200 font-bold text-sm leading-relaxed">
+                                {article.legislation}
                             </p>
                         </div>
                     )}
-
-                    {/* Impact Section */}
-                    {item.impact ? (
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-[2.5rem] border border-blue-100 dark:border-blue-900/30">
-                            <h3 className="font-black text-blue-900 dark:text-blue-300 text-lg mb-4 flex items-center gap-2">
-                                <Target className="text-blue-600 dark:text-blue-400"/>
-                                Impacto Cidadão
-                            </h3>
-                            <p className="text-sm text-blue-900/80 dark:text-blue-200/80 font-medium leading-relaxed">
-                                {item.impact}
-                            </p>
-                        </div>
-                    ) : (
-                        // Fallback generic if no impact provided
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-[2.5rem] border border-blue-100 dark:border-blue-900/30">
-                            <h3 className="font-black text-blue-900 dark:text-blue-300 text-lg mb-4 flex items-center gap-2">
-                                <CheckCircle2 className="text-blue-600 dark:text-blue-400"/>
-                                Por que se importar?
-                            </h3>
-                            <p className="text-sm text-blue-900/80 dark:text-blue-200/80 font-medium leading-tight">
-                                Isso afeta diretamente como seu dinheiro é usado e como as leis do país são definidas.
+                    
+                    {article.impact && (
+                        <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-3xl border border-orange-100 dark:border-orange-900/30">
+                            <div className="flex items-center gap-2 mb-3 text-orange-600 dark:text-orange-400 font-black uppercase text-xs tracking-widest">
+                                <AlertCircle size={16}/> Impacto na sua vida
+                            </div>
+                            <p className="text-orange-900 dark:text-orange-200 font-bold text-sm leading-relaxed">
+                                {article.impact}
                             </p>
                         </div>
                     )}
                 </div>
 
-                {/* Next Suggestion */}
-                <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+                {/* Next Suggestion - INCREASED PADDING BOTTOM FOR MOBILE */}
+                <div className="pt-8 border-t border-gray-200 dark:border-gray-800 pb-48 md:pb-0">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Continue Aprendendo</p>
                     <button 
                         type="button"
                         onClick={() => onSelectArticle(nextItem.id)}
-                        className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm`}
+                        className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
                     >
                         <div className="bg-white/90 dark:bg-gray-900 rounded-[2.3rem] p-5 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextItem.colorFrom.replace('from-', 'text-')}`}>
                                     {renderIcon(nextItem.icon, 20, "opacity-80")}
                                 </div>
-                                <div className="text-left">
+                                <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Próximo</p>
                                     <h4 className="font-bold text-gray-900 dark:text-white text-base md:text-lg line-clamp-1">{nextItem.title}</h4>
                                 </div>
