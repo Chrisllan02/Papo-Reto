@@ -282,7 +282,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
 
             <div className="flex flex-col lg:flex-row gap-8 items-center h-full">
                 {/* Map Area */}
-                <div className="w-full lg:w-1/2 h-[450px]">
+                <div className="w-full lg:w-1/2 h-[450px] overflow-hidden rounded-[2rem] relative z-0 border border-gray-100/50 dark:border-white/5">
                     <BrazilMap 
                         data={stateCounts} 
                         heatmapMode={true} 
@@ -296,7 +296,8 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                     <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">
                         {listData.isParties ? `Top 5 Partidos em ${selectedState}` : 'Estados com mais Representantes'}
                     </p>
-                    {listData.items.map(([label, count], index) => {
+                    {listData.items.map(([label, rawCount], index) => {
+                        const count = Number(rawCount);
                         const percent = ((count / listData.total) * 100).toFixed(1);
                         const maxVal = listData.items[0][1] as number;
                         return (
@@ -350,8 +351,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
             const ideB = getIdeology(b.name);
             
             // Fix: Explicitly typing values as numbers to avoid TS error about arithmetic on non-numeric types
-            const valA = orderMap[ideA] || 0;
-            const valB = orderMap[ideB] || 0;
+            const valA = Number(orderMap[ideA] || 0);
+            const valB = Number(orderMap[ideB] || 0);
             
             if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;
