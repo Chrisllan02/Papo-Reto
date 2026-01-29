@@ -386,10 +386,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none"/>
                                 </div>
 
-                                {/* Map Toggle Button */}
+                                {/* Map Toggle Button - HIDDEN ON MOBILE */}
                                 <button 
                                     onClick={() => setShowMap(!showMap)} 
-                                    className={`shrink-0 px-5 py-3 rounded-xl border font-bold text-xs uppercase flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
+                                    className={`shrink-0 px-5 py-3 rounded-xl border font-bold text-xs uppercase hidden md:flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
                                         showMap 
                                         ? 'bg-blue-600 text-white border-blue-600' 
                                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50'
@@ -401,7 +401,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
                             {/* Map Dropdown */}
                             {showMap && (
-                                <div className="mt-3 relative w-full h-[320px] bg-blue-50/50 dark:bg-midnight/90 backdrop-blur-xl rounded-[2rem] border border-blue-100 dark:border-blue-900/30 overflow-hidden animate-in slide-in-from-top-4 fade-in z-20 shadow-inner">
+                                <div className="mt-3 relative w-full h-[320px] bg-blue-50/50 dark:bg-midnight/90 backdrop-blur-xl rounded-[2rem] border border-blue-100 dark:border-blue-900/30 overflow-hidden animate-in slide-in-from-top-4 fade-in z-20 shadow-inner hidden md:block">
                                     <div className="absolute top-4 right-4 z-10 md:hidden">
                                         <button onClick={() => setShowMap(false)} className="p-2 bg-white/50 rounded-full text-blue-600"><X size={20}/></button>
                                     </div>
