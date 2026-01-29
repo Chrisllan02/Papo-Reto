@@ -85,7 +85,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
         </div>
 
         {/* CONTENT SHEET */}
-        <div className="flex-1 bg-gray-50 dark:bg-gray-900 relative z-20 -mt-8 rounded-t-[2.5rem] px-6 md:px-12 pt-10 pb-32 shadow-[0_-20px_60px_rgba(0,0,0,0.15)] min-h-[50vh] border-t border-gray-100 dark:border-gray-800">
+        <div className="flex-1 bg-gray-50 dark:bg-gray-900 relative z-20 -mt-8 rounded-t-[2.5rem] px-6 md:px-12 pt-10 pb-48 md:pb-32 shadow-[0_-20px_60px_rgba(0,0,0,0.15)] min-h-[50vh] border-t border-gray-100 dark:border-gray-800">
             
             {/* Decorative Pill */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300/50 dark:bg-gray-700 rounded-full"></div>

@@ -621,6 +621,35 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-6 relative z-20 space-y-6 px-safe">
           
+          {/* MANDATE TIMER (MOBILE ONLY) */}
+          <div className="lg:hidden mb-6 bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <Clock size={12} className="text-orange-500" /> Contagem Regressiva
+                    </p>
+                    <span className="text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-200 dark:border-orange-500/20">
+                        {mandateInfo.percentage}%
+                    </span>
+                </div>
+                <div className="flex justify-between items-center gap-2 mb-4 text-center">
+                    {[{ label: 'DIAS', value: timeLeft.days }, { label: 'HRS', value: timeLeft.hours }, { label: 'MIN', value: timeLeft.minutes }, { label: 'SEG', value: timeLeft.seconds }].map((time, i) => (
+                        <div key={i} className="flex-1 bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-100 dark:border-white/5 backdrop-blur-sm shadow-inner">
+                            <span className="block text-xl font-black text-gray-900 dark:text-white tabular-nums tracking-tighter leading-none">
+                                {String(time.value).padStart(2, '0')}
+                            </span>
+                            <span className="text-[7px] font-bold text-gray-400 dark:text-white/40 uppercase tracking-wider">{time.label}</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="relative w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-2">
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div>
+                </div>
+                <div className="flex justify-between text-[9px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest">
+                    <span>Início: {mandateInfo.startStr}</span>
+                    <span>Fim: {mandateInfo.endStr}</span>
+                </div>
+          </div>
+
           {/* EXPOSED SECTIONS (BIO & STATS) - Previously Hidden Modals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
               <BioCard candidate={candidate} isLoading={isLoadingDetails} />

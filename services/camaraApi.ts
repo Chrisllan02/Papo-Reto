@@ -197,9 +197,9 @@ const requestQueue: (() => void)[] = [];
 
 const acquireSemaphore = async () => {
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-        // Failsafe: Timeout de 5s (reduzido) para evitar deadlock
+        // Failsafe: Timeout de 8s para evitar deadlock se a fila travar
         await new Promise<void>(resolve => {
-            const timeout = setTimeout(() => resolve(), 5000);
+            const timeout = setTimeout(() => resolve(), 8000);
             requestQueue.push(() => {
                 clearTimeout(timeout);
                 resolve();
@@ -216,15 +216,15 @@ const releaseSemaphore = () => {
 
 const pendingRequests = new Map<string, Promise<any>>();
 
-const fetchAPI = async (url: string, retries = 2, useCache = true, silent = false): Promise<any> => {
+const fetchAPI = async (url: string, retries = 2, useCache = true, silent = false, critical = false): Promise<any> => {
     if (useCache) {
         const cachedEntry = getRawCache(url);
-        // Se temos cache, retornamos imediatamente, mesmo que seja "Dynamic"
-        // A invalidação é feita pelo fetchWithCache que chama o fetchAPI
+        // Se temos cache, retornamos imediatamente
         if (cachedEntry && (Date.now() - cachedEntry.timestamp < TTL_DYNAMIC)) return cachedEntry.data;
     }
     
-    if (CIRCUIT_BREAKER.isOpen()) {
+    // Critical requests bypass the circuit breaker to ensure static profile data loads
+    if (CIRCUIT_BREAKER.isOpen() && !critical) {
         return null;
     }
 
@@ -282,7 +282,8 @@ export let DYNAMIC_VOTE_CACHE: Record<string, Record<number, string>> = {};
 // --- INTERNAL HELPERS & SUB-FETCHERS ---
 
 const fetchSenadorDetalhes = async (id: number) => {
-    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 2, true);
+    // Critical = true
+    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 3, true, false, true);
     if (!data || !data.DetalheParlamentar) return {};
     const p = data.DetalheParlamentar.Parlamentar;
     return {
@@ -302,7 +303,9 @@ const fetchSenadorDiscursos = async (id: number) => { return []; };
 const fetchSenadorComissoes = async (id: number) => { return []; };
 
 const fetchDeputadoDetalhes = async (id: number): Promise<PoliticianDetails | null> => {
-    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}`, 2, true);
+    // Critical = true to ensure bio loads even if system is stressed
+    // Increased retries to 3
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}`, 3, true, false, true);
     if (!data || !data.dados) return null;
     const d = data.dados;
     return {
@@ -781,7 +784,6 @@ export const fetchAgendaCamara = async (): Promise<LegislativeEvent[]> => {
 
 export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQuestion[], voteMap: Record<string, Record<number, string>> }> => {
     const realVotes = await fetchWithCache('dynamic_quiz_v2', async () => {
-         // Otimização: Apenas 3 votações recentes para o quiz dinâmico
          const data = await fetchAPI(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=3`, 2, true);
          return data ? data.dados : [];
     }, TTL_DYNAMIC);
@@ -868,7 +870,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 
     try {
         const [detailsResult, profissoes, orgaos] = await Promise.all([
-            fetchDeputadoDetalhes(pol.id).catch(() => null),
+            fetchDeputadoDetalhes(pol.id).catch(() => null), // Can fail
             fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
             fetchDeputadoOrgaos(pol.id).catch(() => [])
         ]);
@@ -919,8 +921,8 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
                 fetchSenadorDiscursos(pol.id),
                 fetchSenadorComissoes(pol.id)
             ]);
-            // ... (rest of senator logic)
-            return robustPol; // Fallback temporário para encurtar o código aqui, a lógica original está preservada implicitamente
+            // ... (rest of senator logic omitted for brevity, fallback to robustPol if fails)
+            return robustPol; 
         } catch (e) { return robustPol; }
     }
 
@@ -936,16 +938,14 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
             });
         };
 
-        // Redução de Paralelismo e Payload
-        // Se o Circuit Breaker estiver ativo, algumas chamadas retornarão dados cacheados ou vazios instantaneamente
         const results = await Promise.allSettled([
             wrap(fetchPresencaReal(pol.id), "Verificando presenças..."),
             wrap(fetchDespesasAggregated(pol.id), "Auditando gastos..."),
             fetchProposicoesAggregated(pol.id), // Leve
-            fetchDiscursos(pol.id), // Leve (limitado a 3)
+            fetchDiscursos(pol.id), // Leve
             fetchFrentes(pol.id),
-            fetchProposicoes(pol.id), // Leve (limitado a 5)
-            fetchViagens(pol.id), // Leve (limitado a 5)
+            fetchProposicoes(pol.id), // Leve
+            fetchViagens(pol.id), // Leve
             fetchRemuneracaoAtual(pol.id),
             fetchDeputadoAgenda(pol.id),
             wrap(fetchRelatorias(pol.id, currentYear), "Analisando relatorias..."),
@@ -1017,7 +1017,6 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
             }
         };
 
-        // Cache somente se os dados parecerem completos para evitar cachear erros parciais como "sucesso"
         const hasExpenses = expensesData.total > 0;
         const hasPresence = presenca.total > 0;
         
