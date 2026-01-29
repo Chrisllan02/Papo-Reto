@@ -1,6 +1,5 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight } from 'lucide-react';
+import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { QUIZ_QUESTIONS } from '../constants';
@@ -207,6 +206,9 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
 
 // --- GEO DISTRIBUTION WIDGET ---
 const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) => {
+    const [selectedState, setSelectedState] = useState<string | null>(null);
+
+    // Dados gerais para o Mapa (Heatmap)
     const stateCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         politicians.forEach(p => {
@@ -215,45 +217,98 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
         return counts;
     }, [politicians]);
 
-    const total = politicians.length || 1;
-    const topStates = Object.entries(stateCounts)
-        .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
-        .slice(0, 5);
+    // Dados para a Lista (Drill-down)
+    const listData = useMemo(() => {
+        if (selectedState) {
+            // Se estado selecionado, mostra os partidos daquele estado
+            const statePols = politicians.filter(p => p.state === selectedState);
+            const totalInState = Math.max(statePols.length, 1);
+            
+            const partyCounts: Record<string, number> = {};
+            statePols.forEach(p => {
+                const pName = p.party || 'S/P';
+                partyCounts[pName] = (partyCounts[pName] || 0) + 1;
+            });
+
+            const sorted = Object.entries(partyCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5); 
+
+            return {
+                title: `Força em ${selectedState}`,
+                subtitle: 'Maiores Bancadas Partidárias',
+                items: sorted,
+                total: totalInState,
+                isParties: true
+            };
+        } else {
+            // Se nenhum estado, mostra o ranking nacional de estados
+            const total = Math.max(politicians.length, 1);
+            const topStates = Object.entries(stateCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            return {
+                title: 'Força Regional',
+                subtitle: 'Maiores Bancadas Estaduais',
+                items: topStates,
+                total: total,
+                isParties: false
+            };
+        }
+    }, [politicians, stateCounts, selectedState]);
 
     return (
         <section className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-h-[550px]">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm backdrop-blur-sm">
-                    <Globe size={18} aria-hidden="true" />
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm backdrop-blur-sm">
+                        <Globe size={18} aria-hidden="true" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">{listData.title}</h3>
+                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">{listData.subtitle}</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Força Regional</h3>
-                    <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Distribuição de Parlamentares</p>
-                </div>
+                {selectedState && (
+                    <button 
+                        onClick={() => setSelectedState(null)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-[10px] font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                    >
+                        <X size={12} /> Limpar Filtro
+                    </button>
+                )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-center h-full">
                 {/* Map Area */}
                 <div className="w-full lg:w-1/2 h-[450px]">
-                    <BrazilMap data={stateCounts} heatmapMode={true} />
+                    <BrazilMap 
+                        data={stateCounts} 
+                        heatmapMode={true} 
+                        selectedState={selectedState || undefined}
+                        onSelectState={(uf) => setSelectedState(prev => prev === uf ? null : uf)}
+                    />
                 </div>
 
                 {/* Ranking List */}
-                <div className="w-full lg:w-1/2 space-y-3">
-                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Maiores Bancadas Estaduais</p>
-                    {topStates.map(([uf, count]: [string, number], index: number) => {
-                        const percent = ((count / total) * 100).toFixed(1);
-                        const maxVal = topStates[0][1] as number;
+                <div className="w-full lg:w-1/2 space-y-3 animate-in slide-in-from-right-4 fade-in duration-300" key={selectedState || 'br'}>
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">
+                        {listData.isParties ? `Top 5 Partidos em ${selectedState}` : 'Estados com mais Representantes'}
+                    </p>
+                    {listData.items.map(([label, count], index) => {
+                        const percent = ((count / listData.total) * 100).toFixed(1);
+                        const maxVal = listData.items[0][1] as number;
                         return (
-                            <div key={uf} className="flex items-center gap-3">
+                            <div key={label} className="flex items-center gap-3">
                                 <span className="w-6 text-[10px] font-black text-gray-400">#{index + 1}</span>
                                 <div className="flex-1 bg-gray-100/50 dark:bg-white/5 rounded-full h-8 relative overflow-hidden flex items-center px-3 backdrop-blur-sm border border-gray-200/20 dark:border-white/5">
                                     <div 
-                                        className="absolute top-0 left-0 bottom-0 bg-blue-100/80 dark:bg-blue-900/40 transition-all duration-1000" 
+                                        className={`absolute top-0 left-0 bottom-0 transition-all duration-1000 ${listData.isParties ? 'bg-orange-100/80 dark:bg-orange-900/40' : 'bg-blue-100/80 dark:bg-blue-900/40'}`}
                                         style={{ width: `${(count / maxVal) * 100}%` }}
                                     ></div>
-                                    <span className="relative z-10 text-xs font-bold text-gray-700 dark:text-gray-200">{uf}</span>
-                                    <span className="relative z-10 ml-auto text-xs font-black text-blue-600 dark:text-blue-400">{count}</span>
+                                    <span className="relative z-10 text-xs font-bold text-gray-700 dark:text-gray-200">{label}</span>
+                                    <span className={`relative z-10 ml-auto text-xs font-black ${listData.isParties ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>{count}</span>
                                 </div>
                                 <span className="text-[10px] font-bold text-gray-400 w-10 text-right">{percent}%</span>
                             </div>
@@ -289,11 +344,16 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     
     // Sort logic
     const sortedParties = useMemo(() => {
-        const orderMap = { 'Esquerda': 1, 'Centro': 2, 'Direita': 3 };
+        const orderMap: Record<string, number> = { 'Esquerda': 1, 'Centro': 2, 'Direita': 3 };
         return [...data].sort((a, b) => {
             const ideA = getIdeology(a.name);
             const ideB = getIdeology(b.name);
-            if (orderMap[ideA] !== orderMap[ideB]) return (orderMap as any)[ideA] - (orderMap as any)[ideB];
+            
+            // Fix: Explicitly typing values as numbers to avoid TS error about arithmetic on non-numeric types
+            const valA = orderMap[ideA] || 0;
+            const valB = orderMap[ideB] || 0;
+            
+            if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;
         });
     }, [data]);
