@@ -28,7 +28,7 @@ const getAi = () => {
 // Cache Utils para AI
 const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 4; // 4 Horas (Atualização mais frequente para dados reais)
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -144,74 +144,8 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
 export const getNewsHistory = (): NewsArticle[] => getCache(NEWS_HISTORY_KEY, 0) || [];
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
-export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
-    const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    if (cachedNews && cachedNews.length > 0) return cachedNews;
-
-    const ai = getAi();
-    // Fallback imediato se não houver AI configurada
-    if (!ai) return createEmergencyNews();
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Busque as 3 principais notícias políticas do Brasil de hoje...`,
-            config: {
-                tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json",
-                maxOutputTokens: 2000,
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING },
-                            source: { type: Type.STRING },
-                            url: { type: Type.STRING },
-                            time: { type: Type.STRING },
-                            summary: { type: Type.STRING },
-                            imageUrl: { type: Type.STRING }
-                        },
-                        required: ["title", "source", "url", "time", "summary"]
-                    }
-                }
-            }
-        });
-
-        let jsonStr = response.text?.trim();
-        if (!jsonStr) throw new Error("Empty AI response");
-        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-        else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
-
-        const data = JSON.parse(jsonStr) as NewsArticle[];
-        const enrichedData = await Promise.all(data.map(async (item, index) => {
-            let img = null;
-            if (index < 3) {
-                try {
-                    img = await Promise.race([generateNewsImage(item.title), new Promise<string | null>(r => setTimeout(() => r(null), 6000))]);
-                } catch (e) { /* Ignore image gen errors */ }
-            }
-            if (!img) img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
-            return { ...item, imageUrl: img };
-        }));
-
-        if (enrichedData.length > 0) {
-            setCache(NEWS_CACHE_KEY, enrichedData);
-            saveToHistory(enrichedData);
-        }
-        return enrichedData;
-
-    } catch (error: any) {
-        if (checkQuotaError(error)) {
-            console.warn("News Fetch: Quota exceeded, using fallback.");
-        } else {
-            console.warn("News Fetch Error:", error);
-        }
-        return createEmergencyNews();
-    }
-};
-
-function createEmergencyNews() {
+// Helper function exported for immediate UI fallback
+export function getEmergencyNews() {
     return [
         { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias para o país em sessão deliberativa no plenário.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
         { title: "Votações no Senado Federal", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias e projetos de lei em tramitação.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
@@ -219,26 +153,77 @@ function createEmergencyNews() {
     ];
 }
 
-export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    const ai = getAi();
-    if (!ai) return "Resumo indisponível (Erro de conexão).";
-
-    const summaryKey = `news_summary_${btoa(title).slice(0, 20)}`;
-    const cached = getCache(summaryKey, NEWS_CACHE_TTL);
-    if (cached) return cached;
+// REPLACED AI NEWS GENERATION WITH REAL API DATA
+export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
+    const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
+    if (cachedNews && cachedNews.length > 0) return cachedNews;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Resumo detalhado sobre: "${title}" (${source})...`,
-            config: { tools: [{ googleSearch: {} }] }
+        // Busca votações recentes da API da Câmara (Dados Reais)
+        const response = await fetch('https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=5', {
+            headers: { 'Accept': 'application/json' }
         });
-        const text = response.text || "Resumo indisponível.";
-        setCache(summaryKey, text);
-        return text;
-    } catch (error) {
-        return "Resumo indisponível.";
+
+        if (!response.ok) throw new Error("Falha na API da Câmara");
+
+        const json = await response.json();
+        
+        if (!json.dados || json.dados.length === 0) {
+            return getEmergencyNews();
+        }
+
+        const newsItems: NewsArticle[] = json.dados.map((item: any, index: number) => {
+            const date = new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR');
+            const time = new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            // Format title and summary
+            let title = item.descricao || "Votação em Plenário";
+            if (title.length > 100) title = title.substring(0, 97) + "...";
+            
+            const summary = item.descricao 
+                ? `O Plenário da Câmara dos Deputados realizou votação sobre: ${item.descricao}. Acompanhe os detalhes e votos dos parlamentares.`
+                : "Sem detalhes adicionais disponíveis no momento.";
+
+            let sourceUrl = `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`;
+            if (item.uriProposicaoObjeto) {
+                const propId = item.uriProposicaoObjeto.split('/').pop();
+                if (propId) sourceUrl = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
+            }
+
+            return {
+                title: title,
+                source: "Câmara dos Deputados",
+                url: sourceUrl,
+                time: `${date} às ${time}`,
+                summary: summary,
+                imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
+            };
+        });
+
+        // Tenta gerar imagens com IA apenas se possível (Opcional)
+        const enrichedData = await Promise.all(newsItems.map(async (item, index) => {
+            let img = item.imageUrl;
+            // Desativado por padrão para economizar cota e garantir performance
+            // if (index < 3) { try { img = await generateNewsImage(item.title) || img; } catch (e) {} }
+            return { ...item, imageUrl: img };
+        }));
+
+        if (enrichedData.length > 0) {
+            setCache(NEWS_CACHE_KEY, enrichedData);
+            saveToHistory(enrichedData);
+        }
+        
+        return enrichedData;
+
+    } catch (error: any) {
+        console.warn("News Fetch Error:", error);
+        return getEmergencyNews();
     }
+};
+
+export const getNewsSummary = async (title: string, source: string): Promise<string> => {
+    // Retorna string estática para evitar uso de IA em resumos sob demanda
+    return "Resumo detalhado indisponível no momento. Consulte a fonte oficial.";
 };
 
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {

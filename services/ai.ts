@@ -26,7 +26,7 @@ const getAi = () => {
 // Cache Utils para AI
 const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Horas
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 4; // 4 Horas
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -123,7 +123,7 @@ export const generateNewsImage = async (headline: string): Promise<string | null
         }
         return null;
     } catch (e: any) {
-        if (!e.message?.includes('429')) console.warn("Falha na geração de imagem:", e.message);
+        // Silently fail on quota or generation errors for images, fallback will be used
         return null;
     }
 };
@@ -142,54 +142,113 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
 export const getNewsHistory = (): NewsArticle[] => getCache(NEWS_HISTORY_KEY, 0) || [];
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
+// Helper function exported for immediate UI fallback
+export function getEmergencyNews() {
+    return [
+        { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias para o país em sessão deliberativa no plenário.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
+        { title: "Votações no Senado Federal", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias e projetos de lei em tramitação.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
+        { title: "Pauta Econômica em Debate", source: "Portal da Câmara", url: "https://www.camara.leg.br/noticias/", time: "Recente", summary: "Líderes discutem diretrizes para o orçamento e novas propostas econômicas.", imageUrl: STATIC_FALLBACK_IMAGES[2] }
+    ];
+}
+
+// --- ROBOZINHO DE RESUMO (Sem IA) ---
+// Traduz linguagem legislativa para português claro usando regras
+function summarizeLegislativeText(rawText: string): string {
+    if (!rawText) return "Detalhes não informados pela fonte oficial.";
+
+    let text = rawText.trim();
+
+    // 1. Limpeza de prefixos de trâmite
+    // Ex: "Votação em turno único do..." -> ""
+    text = text.replace(/^(Votação|Discussão|Apreciação) (em \w+ turno )?(d[oa]s? )?/i, "");
+    text = text.replace(/^Aprovação d[oa] /i, "");
+
+    // 2. Simplifica identificadores de proposições
+    text = text.replace(/Projeto de Lei n\.? ?\d+\/\d+/i, "Projeto de Lei");
+    text = text.replace(/Proposta de Emenda à Constituição n\.? ?\d+\/\d+/i, "PEC");
+    text = text.replace(/Requerimento n\.? ?\d+\/\d+/i, "Requerimento");
+    text = text.replace(/Medida Provisória n\.? ?\d+\/\d+/i, "Medida Provisória");
+    
+    // 3. Remove autoria burocrática para focar no conteúdo
+    // Ex: ", do Sr. Fulano,"
+    text = text.replace(/, d[oa] Sr[a]?\..*?,/i, ",");
+
+    // 4. Traduz termos técnicos ("Legislativês" -> Português)
+    const replacements: Record<string, string> = {
+        "que institui": "que cria",
+        "dispõe sobre": "sobre",
+        "altera a lei": "que muda a legislação",
+        "autoriza o poder executivo": "autoriza o governo",
+        "abre crédito extraordinário": "libera verba extra",
+        "visando": "para",
+        "com a finalidade de": "para"
+    };
+
+    Object.keys(replacements).forEach(key => {
+        const regex = new RegExp(key, "gi");
+        text = text.replace(regex, replacements[key]);
+    });
+    
+    // 5. Capitalização e formatação final
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+    // Remove espaços duplos
+    text = text.replace(/\s+/g, ' ');
+    
+    return text;
+}
+
+// REPLACED AI NEWS GENERATION WITH ROBOT SUMMARY + API DATA
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) return cachedNews;
 
-    const ai = getAi();
-    // Fallback imediato se não houver AI configurada
-    if (!ai) return createEmergencyNews();
-
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Busque as 3 principais notícias políticas do Brasil de hoje...`,
-            config: {
-                tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json",
-                maxOutputTokens: 2000,
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING },
-                            source: { type: Type.STRING },
-                            url: { type: Type.STRING },
-                            time: { type: Type.STRING },
-                            summary: { type: Type.STRING },
-                            imageUrl: { type: Type.STRING }
-                        },
-                        required: ["title", "source", "url", "time", "summary"]
-                    }
-                }
-            }
+        // Busca votações recentes da API da Câmara (Dados Reais)
+        const response = await fetch('https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=5', {
+            headers: { 'Accept': 'application/json' }
         });
 
-        let jsonStr = response.text?.trim();
-        if (!jsonStr) throw new Error("Empty AI response");
-        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-        else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        if (!response.ok) throw new Error("Falha na API da Câmara");
 
-        const data = JSON.parse(jsonStr) as NewsArticle[];
-        const enrichedData = await Promise.all(data.map(async (item, index) => {
-            let img = null;
-            if (index < 3) {
-                try {
-                    img = await Promise.race([generateNewsImage(item.title), new Promise<string | null>(r => setTimeout(() => r(null), 6000))]);
-                } catch (e) { console.warn(`Image skip for ${item.title}`); }
+        const json = await response.json();
+        
+        if (!json.dados || json.dados.length === 0) {
+            return getEmergencyNews();
+        }
+
+        const newsItems: NewsArticle[] = json.dados.map((item: any, index: number) => {
+            const date = new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR');
+            const time = new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            // Format title 
+            let title = item.descricao || "Votação em Plenário";
+            // Clean up title for display
+            title = title.replace(/^Votação .*? do /i, "");
+            if (title.length > 100) title = title.substring(0, 97) + "...";
+            
+            // USE ROBOT SUMMARY INSTEAD OF AI
+            const summary = summarizeLegislativeText(item.descricao);
+
+            let sourceUrl = `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`;
+            if (item.uriProposicaoObjeto) {
+                const propId = item.uriProposicaoObjeto.split('/').pop();
+                if (propId) sourceUrl = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
             }
-            if (!img) img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
+
+            return {
+                title: title,
+                source: "Câmara dos Deputados",
+                url: sourceUrl,
+                time: `${date} às ${time}`,
+                summary: summary,
+                imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
+            };
+        });
+
+        // Tenta gerar imagens com IA apenas se possível (Opcional, desativado para economia)
+        const enrichedData = await Promise.all(newsItems.map(async (item, index) => {
+            let img = item.imageUrl;
+            // if (index < 3) { try { img = await generateNewsImage(item.title) || img; } catch (e) {} }
             return { ...item, imageUrl: img };
         }));
 
@@ -197,42 +256,18 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             setCache(NEWS_CACHE_KEY, enrichedData);
             saveToHistory(enrichedData);
         }
+        
         return enrichedData;
 
     } catch (error: any) {
-        console.warn("News Fetch Error or Quota:", error);
-        return createEmergencyNews();
+        console.warn("News Fetch Error:", error);
+        return getEmergencyNews();
     }
 };
 
-function createEmergencyNews() {
-    return [
-        { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
-        { title: "Votações no Senado", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
-        { title: "Pauta Econômica", source: "Portal da Câmara", url: "https://www.camara.leg.br/noticias/", time: "Recente", summary: "Discussões sobre orçamento.", imageUrl: STATIC_FALLBACK_IMAGES[2] }
-    ];
-}
-
 export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    const ai = getAi();
-    if (!ai) return "Resumo indisponível (Erro de conexão).";
-
-    const summaryKey = `news_summary_${btoa(title).slice(0, 20)}`;
-    const cached = getCache(summaryKey, NEWS_CACHE_TTL);
-    if (cached) return cached;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Resumo detalhado sobre: "${title}" (${source})...`,
-            config: { tools: [{ googleSearch: {} }] }
-        });
-        const text = response.text || "Resumo indisponível.";
-        setCache(summaryKey, text);
-        return text;
-    } catch (error) {
-        return "Resumo indisponível.";
-    }
+    // Retorna string estática para evitar uso de IA em resumos sob demanda
+    return "Resumo detalhado indisponível no momento. Consulte a fonte oficial.";
 };
 
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
@@ -276,7 +311,7 @@ export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' 
 
         return { text: response.text || "Sem resposta.", searchSources, mapSources };
     } catch (error: any) {
-        if (error.message?.includes('429')) return { text: "⚠️ Cota excedida. Tente novamente em breve." };
+        if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido. Por favor, aguarde alguns instantes." };
         return { text: "Erro ao processar mensagem." };
     }
 };
@@ -306,6 +341,16 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
         });
         return response.text || "";
     } catch (error) { return ""; }
+};
+
+// Helper to check for 429/Quota errors in various formats
+const checkQuotaError = (error: any): boolean => {
+    if (!error) return false;
+    if (error.status === 429 || error.code === 429) return true;
+    if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) return true;
+    
+    const msg = error.message || JSON.stringify(error);
+    return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota');
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
@@ -352,7 +397,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             Temas sugeridos: Orçamento Público, Tramitação de Leis, STF, Papel do Deputado.`,
             config: {
                 responseMimeType: "application/json",
-                maxOutputTokens: 4000, // Aumentado para evitar truncamento
+                maxOutputTokens: 4000, 
                 responseSchema: {
                     type: Type.ARRAY,
                     items: {
@@ -374,7 +419,6 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             return JSON.parse(jsonStr) as GeneratedArticle[];
         } catch (e) {
             console.warn("JSON Parse Error in Ed Content, attempting fix", e);
-            // Simple repair attempt: Find last closing bracket
             const lastBracket = jsonStr.lastIndexOf(']');
             if (lastBracket !== -1) {
                 try {
@@ -386,8 +430,12 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             }
             return staticContent;
         }
-    } catch (error) { 
-        console.error("Educational Content Gen Error:", error);
+    } catch (error: any) { 
+        if (checkQuotaError(error)) {
+            console.warn("Educational Content: Quota exceeded (429), using static fallback.");
+        } else {
+            console.warn("Educational Content Gen Error (using fallback):", error);
+        }
         return staticContent; 
     }
 };

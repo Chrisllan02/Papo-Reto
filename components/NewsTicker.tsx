@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { fetchDailyNews, getBestAvailableNews } from '../services/ai';
+import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../services/ai';
 import { NewsArticle } from '../types';
-import { ChevronRight, Loader2, Sparkles, ChevronUp, ExternalLink, Globe } from 'lucide-react';
+import { ChevronRight, Sparkles, ChevronUp, ExternalLink, Globe } from 'lucide-react';
 
 const GRADIENTS = [
     'from-blue-900 to-slate-900',
@@ -13,43 +14,43 @@ const GRADIENTS = [
 ];
 
 const NewsTicker: React.FC = () => {
-    // 1. Init state with best available news (Sync from LocalStorage) to avoid flash
+    // 1. Initialize state immediately with cache OR emergency fallback.
+    // This ensures NO loading spinner is ever shown to the user.
     const [news, setNews] = useState<NewsArticle[]>(() => {
         const cached = getBestAvailableNews();
-        return cached || [];
+        if (cached && cached.length > 0) return cached;
+        return getEmergencyNews();
     });
-    
-    // Loading only true if absolutely no news available
-    const [loading, setLoading] = useState(() => news.length === 0);
     
     const [index, setIndex] = useState(0);
     const [paused, setPaused] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     
-    // Initial load effects
+    // 2. Background Fetch (Silent Update)
     useEffect(() => {
         const updateNews = async () => {
             try {
-                // Background fetch for fresh news
-                // fetchDailyNews handles TTL checks internally
+                // fetchDailyNews internally handles cache expiry (TTL).
+                // If cache is fresh, it returns it instantly.
+                // If stale, it fetches new data.
                 const fresh = await fetchDailyNews();
                 
                 if (fresh && fresh.length > 0) {
-                    // Update only if different to prevent unnecessary renders
-                    // Simple check on first title
-                    if (fresh[0].title !== news[0]?.title) {
+                    // Only update state if the new data is actually different
+                    // to prevent UI flicker or reset of rotation index.
+                    const isDifferent = fresh[0].title !== news[0]?.title || fresh[0].time !== news[0]?.time;
+                    
+                    if (isDifferent) {
                         setNews(fresh);
                     }
                 }
             } catch (error) {
-                console.error("Background news update failed", error);
-            } finally {
-                setLoading(false);
+                console.error("Silent news update failed", error);
             }
         };
         
         updateNews();
-    }, []);
+    }, []); // Run once on mount
 
     useEffect(() => {
         if (news.length === 0 || paused || isExpanded) return;
@@ -71,19 +72,10 @@ const NewsTicker: React.FC = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="w-full h-48 bg-white/95 dark:bg-gray-900/50 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center border border-gray-200 dark:border-gray-800 animate-pulse mb-6">
-                <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                    <Loader2 className="animate-spin" size={14} /> Carregando Plantão...
-                </div>
-            </div>
-        );
-    }
-
+    // Safe guard if somehow news is empty (shouldn't happen with fallback)
     if (news.length === 0) return null;
 
-    const currentNews = news[index];
+    const currentNews = news[index % news.length];
     const gradientColors = GRADIENTS[index % GRADIENTS.length];
 
     return (
@@ -117,17 +109,17 @@ const NewsTicker: React.FC = () => {
                         </span>
                     </div>
                     
-                    {/* Direct Link Button (Collapsed) */}
+                    {/* Direct Link Button (Collapsed) - UPDATED TO TEXT BUTTON */}
                     {!isExpanded && (
                        <a 
                             href={currentNews.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
                             onClick={(e) => e.stopPropagation()}
-                            title="Fonte Original"
+                            title="Ler notícia completa na fonte"
                        >
-                           <Globe size={16} />
+                           Ver Notícia <ExternalLink size={10} />
                        </a>
                     )}
                 </div>
@@ -178,7 +170,7 @@ const NewsTicker: React.FC = () => {
                         {news.map((_, i) => (
                             <div 
                                 key={i} 
-                                className={`h-1 rounded-full transition-all duration-500 ${i === index ? 'w-8 bg-white' : 'w-2 bg-white/30'}`} 
+                                className={`h-1 rounded-full transition-all duration-500 ${i === (index % news.length) ? 'w-8 bg-white' : 'w-2 bg-white/30'}`} 
                             />
                         ))}
                     </div>
