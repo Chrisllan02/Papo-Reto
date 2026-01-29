@@ -52,10 +52,10 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2rem] p-5 text-left hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[180px] md:min-h-[260px] border border-white/40 dark:border-white/5 overflow-hidden"
+            className="group relative glass rounded-[2rem] p-5 text-left hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[220px] md:min-h-[300px] border border-white/40 dark:border-white/5 overflow-hidden"
         >
             {/* Gradient Overlay */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
 
             <div className="w-full relative z-10">
                 <div className="flex justify-between items-start mb-4">
