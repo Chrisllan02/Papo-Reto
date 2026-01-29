@@ -389,22 +389,29 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
         }
     } catch (error: any) { 
         // Robust 429 / Quota Error Handling
-        // Detects if error is 429 by status code, message content, or inner error object
-        const isQuota = 
-            error.status === 429 || 
-            error.code === 429 ||
-            error.error?.code === 429 ||
-            (error.message && (
-                error.message.includes('429') || 
-                error.message.includes('RESOURCE_EXHAUSTED') ||
-                error.message.includes('Quota')
-            )) ||
-            (JSON.stringify(error).includes('RESOURCE_EXHAUSTED'));
+        let isQuota = false;
+        
+        if (error) {
+             if (error.status === 429 || error.code === 429) isQuota = true;
+             if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) isQuota = true;
+             if (error.message && (
+                 error.message.includes('429') || 
+                 error.message.includes('RESOURCE_EXHAUSTED') ||
+                 error.message.includes('Quota')
+             )) isQuota = true;
+             
+             // Backup check via stringification
+             if (!isQuota) {
+                 try {
+                     const str = JSON.stringify(error);
+                     if (str.includes('RESOURCE_EXHAUSTED') || str.includes('"code":429')) isQuota = true;
+                 } catch {}
+             }
+        }
 
         if (isQuota) {
             console.warn("Educational Content: Quota exceeded (429), using static fallback.");
         } else {
-            // Log other errors as warnings to avoid clutter
             console.warn("Educational Content Gen Error (using fallback):", error);
         }
         return staticContent; 

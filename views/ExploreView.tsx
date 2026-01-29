@@ -135,22 +135,22 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
 };
 
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => (
-    <div onClick={() => onSelect(pol)} className="glass shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[2rem] p-3 h-full border border-white/40 dark:border-white/5 cursor-pointer bg-white/40 dark:bg-white/5 min-h-[180px]">
+    <div onClick={() => onSelect(pol)} className="glass shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[1.5rem] p-2 h-full border border-white/40 dark:border-white/5 cursor-pointer bg-white/40 dark:bg-white/5 min-h-[150px]">
         {isFollowing && (
-            <div className="absolute top-3 left-3 z-20">
+            <div className="absolute top-2 left-2 z-20">
                 <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
-                    <Heart size={10} className="fill-white text-white"/>
+                    <Heart size={8} className="fill-white text-white"/>
                 </div>
             </div>
         )}
-        {/* Slightly smaller image container to reduce height */}
-        <div className="w-20 h-20 md:w-24 md:h-24 shrink-0 rounded-full overflow-hidden mb-2 border-[3px] border-white/80 dark:border-gray-700 shadow-lg relative z-10 bg-gray-200">
+        {/* Significantly smaller image container to reduce height */}
+        <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden mb-2 border-[2px] border-white/80 dark:border-gray-700 shadow-md relative z-10 bg-gray-200">
             <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"/>
         </div>
-        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-2 w-full leading-tight min-h-[2.5em] flex items-center justify-center mb-1">{pol.name}</h3>
+        <h3 className="font-black text-blue-900 dark:text-white text-[10px] md:text-xs line-clamp-2 w-full leading-tight min-h-[2.5em] flex items-center justify-center mb-1">{pol.name}</h3>
         <div className="mt-auto flex flex-wrap justify-center gap-1 w-full">
-            <span className="text-[8px] md:text-[10px] font-black bg-gray-100/80 dark:bg-white/10 px-2 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
-            <span className="text-[8px] md:text-[10px] font-black bg-blue-50/80 dark:bg-blue-900/30 px-2 py-0.5 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
+            <span className="text-[8px] font-black bg-gray-100/80 dark:bg-white/10 px-1.5 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
+            <span className="text-[8px] font-black bg-blue-50/80 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
         </div>
     </div>
 );
@@ -265,7 +265,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         const rowItems = items.slice(startIndex, startIndex + numColumns);
 
         return (
-            <div style={style} className="flex gap-3 md:gap-6 px-1 pb-4">
+            <div style={style} className="flex gap-3 md:gap-4 px-1 pb-4">
                 {rowItems.map((pol: Politician) => (
                     <div key={pol.id} className="flex-1 min-w-0 h-full">
                         <PoliticianCard 
@@ -285,11 +285,11 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     };
 
     const getColumnCount = (width: number) => {
-        if (width >= 1536) return 7; 
+        if (width >= 1536) return 8; // More columns for ultra-wide
         if (width >= 1280) return 6; 
-        if (width >= 1024) return 4; 
-        if (width >= 768) return 3; 
-        return 2; 
+        if (width >= 1024) return 5; 
+        if (width >= 768) return 4; 
+        return 3; // Reduced card width allows 3 columns on mobile now
     };
 
     const itemsToRender = selectedParty ? currentPartyMembers : filteredPoliticians;
@@ -470,8 +470,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            // Adjusted item height for smaller cards
-                                            const itemHeight = width < 768 ? 190 : 240; 
+                                            // Adjusted item height for smaller cards (150px min + spacing)
+                                            const itemHeight = width < 768 ? 165 : 180; 
 
                                             return (
                                                 <List
