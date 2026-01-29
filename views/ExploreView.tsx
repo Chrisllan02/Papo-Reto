@@ -52,7 +52,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect })
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2rem] p-5 text-left hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[220px] md:min-h-[300px] border border-white/40 dark:border-white/5 overflow-hidden"
+            className="group relative glass rounded-[2rem] p-5 text-left hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[240px] md:min-h-[340px] border border-white/40 dark:border-white/5 overflow-hidden"
         >
             {/* Gradient Overlay */}
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
@@ -458,8 +458,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            // Increased item height for better card spacing
-                                            const itemHeight = width < 768 ? 220 : 320; 
+                                            // Increased item height again to fit new card size
+                                            const itemHeight = width < 768 ? 240 : 360; 
 
                                             return (
                                                 <List

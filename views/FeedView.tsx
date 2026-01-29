@@ -469,7 +469,7 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                                 <div 
                                     key={pol.id} 
                                     onClick={() => onSelectCandidate(pol)}
-                                    className={`snap-center shrink-0 w-48 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 ${cardStyle}`}
+                                    className={`snap-center shrink-0 w-56 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 ${cardStyle}`}
                                 >
                                     <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
                                         <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
