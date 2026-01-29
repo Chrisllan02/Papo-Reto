@@ -11,13 +11,20 @@ interface EducationViewProps {
 
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
   const item = articles.find(i => i.id === educationId);
   
-  // Reset de Scroll ao mudar de artigo
+  // Reset de Scroll ao mudar de artigo (Backup caso o 'key' no App.tsx não seja suficiente em alguns browsers)
   useEffect(() => {
-      if (containerRef.current) {
-          containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
-      }
+      const timer = setTimeout(() => {
+          if (containerRef.current) {
+              containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+          }
+          if (topRef.current) {
+              topRef.current.scrollIntoView({ block: 'start', behavior: 'instant' });
+          }
+      }, 50); // Timeout para garantir renderização no mobile
+      return () => clearTimeout(timer);
   }, [educationId]);
   
   if (!item) return <div className="p-8 text-center text-gray-500">Conteúdo não encontrado</div>;
@@ -40,6 +47,8 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
 
   return (
     <div ref={containerRef} className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-safe animate-in slide-in-from-right duration-500 relative flex flex-col">
+        {/* Âncora de topo para scrollIntoView */}
+        <div ref={topRef} className="absolute top-0 left-0 w-full h-px opacity-0 pointer-events-none"></div>
         
         {/* HERO SECTION / COVER BAR */}
         <div className={`relative w-full min-h-[35vh] shrink-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} overflow-hidden flex flex-col`}>
@@ -148,8 +157,9 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                 <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Continue Aprendendo</p>
                     <button 
+                        type="button"
                         onClick={() => onSelectArticle(nextItem.id)}
-                        className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] hover:scale-[1.02] transition-transform cursor-pointer`}
+                        className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm`}
                     >
                         <div className="bg-white/90 dark:bg-gray-900 rounded-[2.3rem] p-5 flex items-center justify-between">
                             <div className="flex items-center gap-4">

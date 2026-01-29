@@ -47,6 +47,7 @@ function App() {
   } else if (selectedEducationId) {
       content = (
         <EducationView 
+            key={selectedEducationId} // Força reset de scroll e animação
             educationId={selectedEducationId} 
             articles={articles} 
             onBack={() => actions.selectEducation(null)}
