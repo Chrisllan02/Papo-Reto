@@ -388,19 +388,24 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             return staticContent;
         }
     } catch (error: any) { 
-        // Improved 429 Error Handling
-        const errorString = JSON.stringify(error);
-        if (
+        // Robust 429 / Quota Error Handling
+        // Detects if error is 429 by status code, message content, or inner error object
+        const isQuota = 
             error.status === 429 || 
-            errorString.includes('429') || 
-            errorString.includes('RESOURCE_EXHAUSTED') ||
-            error.message?.includes('429')
-        ) {
+            error.code === 429 ||
+            error.error?.code === 429 ||
+            (error.message && (
+                error.message.includes('429') || 
+                error.message.includes('RESOURCE_EXHAUSTED') ||
+                error.message.includes('Quota')
+            )) ||
+            (JSON.stringify(error).includes('RESOURCE_EXHAUSTED'));
+
+        if (isQuota) {
             console.warn("Educational Content: Quota exceeded (429), using static fallback.");
-        } else if (errorString.includes('xhr error') || errorString.includes('Rpc failed')) {
-             console.warn("Educational Content: Network/API connection failed, using static fallback.");
         } else {
-            console.error("Educational Content Gen Error:", error);
+            // Log other errors as warnings to avoid clutter
+            console.warn("Educational Content Gen Error (using fallback):", error);
         }
         return staticContent; 
     }
