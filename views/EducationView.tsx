@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText } from 'lucide-react';
 
@@ -28,37 +29,39 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   return (
     <div className="w-full h-full bg-white dark:bg-gray-900 font-sans overflow-y-auto animate-in slide-in-from-right duration-300">
         
-        {/* Hero Header */}
-        <div className={`relative min-h-[300px] p-6 md:p-12 flex flex-col justify-between bg-gradient-to-br ${article.colorFrom} ${article.colorTo}`}>
-            {/* Texture */}
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-            
-            {/* Nav */}
-            <div className="relative z-10 flex justify-between items-start">
-                <button 
-                    onClick={onBack}
-                    className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors"
-                >
-                    <ChevronLeft size={24}/>
-                </button>
-                <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20">
-                    {article.topic}
+        <div className="px-4 md:px-8 pt-4 md:pt-6">
+            {/* Hero Header */}
+            <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-gradient-to-br ${article.colorFrom} ${article.colorTo}`}>
+                {/* Texture */}
+                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                
+                {/* Nav */}
+                <div className="relative z-10 flex justify-between items-start">
+                    <button 
+                        onClick={onBack}
+                        className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors"
+                    >
+                        <ChevronLeft size={24}/>
+                    </button>
+                    <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20">
+                        {article.topic}
+                    </div>
                 </div>
-            </div>
 
-            {/* Title */}
-            <div className="relative z-10 mt-8">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white mb-6 border border-white/30 shadow-lg">
-                    {renderIcon(article.icon, 32, "drop-shadow-md")}
+                {/* Title */}
+                <div className="relative z-10 mt-8">
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white mb-6 border border-white/30 shadow-lg">
+                        {renderIcon(article.icon, 32, "drop-shadow-md")}
+                    </div>
+                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md mb-2">
+                        {article.title}
+                    </h1>
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md mb-2">
-                    {article.title}
-                </h1>
             </div>
         </div>
 
         {/* Content Body */}
-        <div className="px-6 md:px-12 py-10 max-w-4xl mx-auto -mt-10 relative z-20">
+        <div className="px-4 md:px-12 py-10 max-w-4xl mx-auto -mt-12 relative z-20">
             <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-gray-100 dark:border-gray-800">
                 
                 <div className="prose dark:prose-invert prose-lg max-w-none mb-10">
@@ -123,3 +126,4 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
 };
 
 export default EducationView;
+    
