@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2 } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
@@ -59,7 +58,7 @@ const Sidebar: React.FC = () => {
         <div className="flex flex-col gap-3 items-center xl:items-start w-full">
           <NavItem id="feed" icon={ScrollText} label="Mural" />
           <NavItem id="explore" icon={Users} label="Políticos" />
-          <NavItem id="parties" icon={BarChart3} label="Gráficos" colorClass="bg-gradient-to-r from-yellow-500 to-yellow-600" />
+          <NavItem id="parties" icon={BarChart3} label="Gráficos" colorClass="bg-gradient-to-r from-blue-500 to-blue-600" />
           <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" colorClass="bg-gradient-to-r from-picture to-green-900" />
         </div>
       </div>

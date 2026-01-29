@@ -83,8 +83,11 @@
       .skip-link:focus { top: 0; }
 
       :focus-visible {
-        outline: 3px solid #DBE64C;
+        outline: 3px solid #2563EB; /* Blue-600 */
         outline-offset: 2px;
+      }
+      .dark :focus-visible {
+        outline-color: #3b82f6;
       }
 
       @keyframes slideUp {
@@ -192,7 +195,7 @@
 }
 </script>
 </head>
-  <body class="overflow-hidden selection:bg-spring selection:text-midnight text-midnight dark:text-praxeti">
+  <body class="overflow-hidden selection:bg-blue-600 selection:text-white text-midnight dark:text-praxeti">
     <div class="bg-noise"></div>
     <a href="#main-content" class="skip-link font-bold">Pular para o conteúdo</a>
     <div id="root"></div>

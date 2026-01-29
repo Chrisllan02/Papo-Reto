@@ -5,11 +5,12 @@ import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { PARTY_METADATA } from '../services/camaraApi';
 import BrazilMap from '../components/BrazilMap';
-import { FixedSizeList as List } from 'react-window';
+import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';
 
 // Fix for "module does not provide an export named 'default'" error in some ESM environments
 const AutoSizer = (AutoSizerModule as any).default || AutoSizerModule;
+const List = (ReactWindow as any).FixedSizeList;
 
 interface ExploreViewProps {
   politicians: Politician[];
@@ -38,75 +39,94 @@ const normalizeString = (str: string | undefined | null) => {
 
 interface PartyCardProps {
   group: any;
-  getPartyColor: (i: string) => string;
   onSelect: (name: string) => void;
 }
 
-const PartyCard: React.FC<PartyCardProps> = ({ group, getPartyColor, onSelect }) => {
-    const [imgError, setImgError] = useState(false);
-    const gradient = getPartyColor(group.ideology || 'Centro');
-    const badgeLabel = formatPartyName(group.name);
-    // Mostra até 4 membros no preview mobile agora que temos mais espaço
+const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
+    const ideology = group.ideology || 'Centro';
+    
+    // New Theme Logic based on Screenshot
+    const getTheme = (ideo: string) => {
+        if (ideo === 'Esquerda') return {
+            bg: 'bg-rose-50/80 dark:bg-rose-900/10',
+            border: 'border-rose-100 dark:border-rose-900/30',
+            iconBg: 'bg-[#C41E3A]', // Strong Red for PT/Left
+            text: 'text-rose-900 dark:text-rose-100',
+            badgeBg: 'bg-rose-100 dark:bg-rose-900/40',
+            badgeText: 'text-[#C41E3A] dark:text-rose-300',
+            label: 'ESQ'
+        };
+        if (ideo === 'Direita') return {
+            bg: 'bg-indigo-50/80 dark:bg-indigo-900/10',
+            border: 'border-indigo-100 dark:border-indigo-900/30',
+            iconBg: 'bg-[#2E3192]', // Deep Blue for PL/Right
+            text: 'text-indigo-900 dark:text-indigo-100',
+            badgeBg: 'bg-indigo-100 dark:bg-indigo-900/40',
+            badgeText: 'text-[#2E3192] dark:text-indigo-300',
+            label: 'DIR'
+        };
+        // Centro
+        return {
+            bg: 'bg-amber-50/80 dark:bg-amber-900/10',
+            border: 'border-amber-100 dark:border-amber-900/30',
+            iconBg: 'bg-[#E69138]', // Gold/Orange for PSD/Center
+            text: 'text-amber-900 dark:text-amber-100',
+            badgeBg: 'bg-amber-100 dark:bg-amber-900/40',
+            badgeText: 'text-[#E69138] dark:text-amber-300',
+            label: 'CEN'
+        };
+    };
+
+    const theme = getTheme(ideology);
+    const badgeLabel = group.name;
     const previewMembers = group.members.slice(0, 4);
 
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className="group relative glass rounded-[2rem] p-5 text-left hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[240px] md:min-h-[340px] border border-white/40 dark:border-white/5 overflow-hidden"
+            className={`group relative rounded-[2rem] p-6 text-left hover:shadow-xl transition-all active:scale-[0.98] flex flex-col justify-between min-h-[220px] md:min-h-[240px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10`}
         >
-            {/* Gradient Overlay */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
-
             <div className="w-full relative z-10">
                 <div className="flex justify-between items-start mb-4">
-                    {group.logo && !imgError ? (
-                        <div className="w-10 h-10 md:w-14 md:h-14 bg-white/90 rounded-2xl p-1 shadow-sm border border-white/50 flex items-center justify-center backdrop-blur-md">
-                            <img 
-                                src={group.logo} 
-                                alt={group.name} 
-                                className="max-w-full max-h-full object-contain" 
-                                onError={() => setImgError(true)}
-                            />
-                        </div>
-                    ) : (
-                        <div className={`w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black shadow-lg text-xs md:text-lg`}>
-                            {badgeLabel.substring(0, 4)}
-                        </div>
-                    )}
+                    {/* Acronym Box */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-xs shadow-md ${theme.iconBg}`}>
+                        {badgeLabel.substring(0, 4)}
+                    </div>
                     
-                    <span className={`text-[10px] md:text-xs font-black uppercase px-2 py-1 rounded-lg border backdrop-blur-md shadow-sm ${
-                        group.ideology === 'Esquerda' ? 'bg-rose-50/90 text-rose-600 border-rose-100' :
-                        group.ideology === 'Direita' ? 'bg-indigo-50/90 text-indigo-600 border-indigo-100' :
-                        'bg-amber-50/90 text-amber-600 border-amber-100'
-                    }`}>
-                        {group.ideology?.substring(0, 3)}
+                    {/* Ideology Pill */}
+                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${theme.badgeBg} ${theme.badgeText}`}>
+                        {theme.label}
                     </span>
                 </div>
 
-                <div className="min-w-0">
-                    <h3 className="text-lg md:text-2xl font-black text-blue-900 dark:text-white tracking-tight mb-1 truncate">
+                <div className="mb-4">
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter mb-1 truncate leading-none">
                         {group.name}
                     </h3>
-                    <p className="text-[10px] md:text-xs font-bold text-blue-600 dark:text-blue-300 uppercase tracking-wide opacity-80">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         {group.members.length} Parlamentares
                     </p>
                 </div>
             </div>
 
-            {/* Avatar Container - Adjusted to prevent clipping */}
-            <div className="mt-auto pt-4 relative z-20 w-full">
-                <div className="flex -space-x-2 md:-space-x-3 items-center">
+            {/* Avatar Container */}
+            <div className="mt-auto relative z-20 w-full">
+                <div className="flex -space-x-2 items-center">
                     {previewMembers.map((m: any) => (
                         <div key={m.id} className="relative transition-transform duration-200 hover:scale-110 hover:z-30">
-                            <img 
-                                src={m.photo} 
-                                className="w-8 h-8 md:w-12 md:h-12 rounded-full border-[2px] border-white dark:border-gray-800 object-cover bg-gray-200 shadow-md" 
-                                alt=""
-                            />
+                            {/* Simple colored circle background if image fails or while loading */}
+                            <div className="w-10 h-10 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
+                                <img 
+                                    src={m.photo} 
+                                    className="w-full h-full object-cover" 
+                                    alt=""
+                                    loading="lazy"
+                                />
+                            </div>
                         </div>
                     ))}
                     {group.members.length > 4 && (
-                        <div className="w-8 h-8 md:w-12 md:h-12 rounded-full border-[2px] border-white dark:border-gray-800 bg-blue-50 dark:bg-gray-700 flex items-center justify-center text-[9px] md:text-xs font-black text-blue-600 dark:text-blue-300 shadow-md relative z-0">
+                        <div className="w-10 h-10 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-black text-gray-500 shadow-sm relative z-0">
                             +{group.members.length - 4}
                         </div>
                     )}
@@ -130,7 +150,7 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
         </div>
         <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-base line-clamp-2 w-full leading-tight h-8 md:h-12 flex items-center justify-center mb-1">{pol.name}</h3>
         <div className="mt-auto flex flex-wrap justify-center gap-1 w-full">
-            <span className="text-[9px] md:text-xs font-black bg-gray-100/80 dark:bg-white/10 px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-gray-200/50 dark:border-white/10">{pol.party}</span>
+            <span className="text-[9px] md:text-xs font-black bg-gray-100/80 dark:bg-white/10 px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
             <span className="text-[9px] md:text-xs font-black bg-blue-50/80 dark:bg-blue-900/30 px-2 py-1 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
         </div>
     </div>
@@ -240,12 +260,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         return partyGroup.members.sort((a, b) => a.name.localeCompare(b.name));
     }, [partiesData, selectedParty]);
 
-    const getPartyColor = (ideology: string) => {
-        if (ideology === 'Esquerda') return 'from-rose-500 to-rose-700';
-        if (ideology === 'Direita') return 'from-indigo-600 to-indigo-800';
-        return 'from-amber-400 to-amber-600'; 
-    };
-
     const VirtualRow = ({ index, style, data }: any) => {
         const { items, numColumns } = data;
         const startIndex = index * numColumns;
@@ -284,7 +298,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
             
-            {/* Header Redesigned for Mobile Clarity */}
+            {/* Header Redesigned */}
             <div className="sticky top-0 z-30 pt-2 px-2 md:pt-4 md:px-6 pb-2">
                 <div className="w-full glass rounded-[2.5rem] p-4 shadow-xl border border-white/40 dark:border-white/10 bg-white/90 dark:bg-midnight/90 backdrop-blur-xl flex flex-col gap-4">
                     
@@ -293,16 +307,16 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                          {selectedParty ? (
                              <button 
                                 onClick={() => setSelectedParty(null)}
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-white text-white dark:text-black rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all"
                              >
                                  <ChevronLeft size={16} /> Voltar
                              </button>
                          ) : (
                              <div className="flex items-center gap-3">
-                                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
+                                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-900 dark:text-blue-400">
                                      {viewMode === 'parties' ? <LayoutGrid size={20}/> : <Users size={20}/>}
                                  </div>
-                                 <span className="text-lg font-black text-blue-900 dark:text-white tracking-tight">
+                                 <span className="text-lg font-black text-midnight dark:text-white tracking-tight">
                                      {viewMode === 'parties' ? 'Partidos' : 'Parlamentares'}
                                  </span>
                              </div>
@@ -326,26 +340,26 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                          )}
                     </div>
 
-                    {/* Row 2: Search Bar - Bigger & Cleaner */}
+                    {/* Row 2: Search Bar - Updated Accent Color */}
                     <div className="relative group w-full">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                         </div>
                         <input 
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, estado..." : "Buscar partido..."}
-                            className="block w-full pl-11 pr-10 py-3.5 bg-gray-50/80 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white dark:focus:bg-gray-800 transition-all shadow-inner"
+                            className="block w-full pl-11 pr-10 py-3.5 bg-gray-50/80 dark:bg-black/20 border border-blue-200 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-800 transition-all shadow-inner"
                         />
                         {search && (
-                          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-500 hover:text-red-500 transition-colors">
+                          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors">
                             <X size={14} />
                           </button>
                         )}
                     </div>
 
-                    {/* Row 3: Filters - Better Scroll & Visuals */}
+                    {/* Row 3: Filters - Updated Accent Color */}
                     {!selectedParty && (
                         <div className="relative group/filters">
                             {/* Scroll indicators */}
@@ -354,7 +368,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                             <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory pr-4">
                                 
                                 {/* Ideology Group */}
-                                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-white/5 shrink-0 snap-start">
+                                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-white/5 shrink-0 snap-start">
                                     {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => (
                                         <button
                                             key={ideology}
@@ -370,29 +384,29 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     ))}
                                 </div>
 
-                                {/* State Selector - Pill Style */}
+                                {/* State Selector */}
                                 <div className="relative shrink-0 snap-start">
-                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 dark:text-blue-400 pointer-events-none">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900 dark:text-blue-400 pointer-events-none">
                                         <MapPin size={16} />
                                     </div>
                                     <select 
                                         value={selectedUF} 
                                         onChange={(e) => setSelectedUF(e.target.value)}
-                                        className="appearance-none bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 pl-9 pr-8 py-3 rounded-xl font-bold text-xs uppercase focus:outline-none border border-blue-100 dark:border-blue-900/30 cursor-pointer min-w-[100px]"
+                                        className="appearance-none bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300 pl-9 pr-8 py-3 rounded-xl font-bold text-xs uppercase focus:outline-none border border-blue-100 dark:border-blue-900/30 cursor-pointer min-w-[100px] focus:ring-2 focus:ring-blue-600/20"
                                     >
                                         <option value="">Brasil</option>
                                         {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                                     </select>
-                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none"/>
+                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-900 pointer-events-none"/>
                                 </div>
 
-                                {/* Map Toggle Button - HIDDEN ON MOBILE */}
+                                {/* Map Toggle Button */}
                                 <button 
                                     onClick={() => setShowMap(!showMap)} 
                                     className={`shrink-0 px-5 py-3 rounded-xl border font-bold text-xs uppercase hidden md:flex items-center gap-2 transition-all active:scale-95 shadow-sm snap-start ${
                                         showMap 
                                         ? 'bg-blue-600 text-white border-blue-600' 
-                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50'
+                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-blue-200 dark:border-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
                                     {showMap ? 'Fechar Mapa' : 'Ver Mapa'}
@@ -427,7 +441,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 <PartyCard 
                                     key={group.name} 
                                     group={group} 
-                                    getPartyColor={getPartyColor} 
                                     onSelect={setSelectedParty} 
                                 />
                             ))}
@@ -486,3 +499,4 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 };
 
 export default ExploreView;
+    
