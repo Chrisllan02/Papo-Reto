@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
@@ -231,7 +232,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
             });
 
             const sorted = Object.entries(partyCounts)
-                .sort((a, b) => b[1] - a[1])
+                .sort((a, b) => (b[1] as number) - (a[1] as number))
                 .slice(0, 5); 
 
             return {
@@ -245,7 +246,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
             // Se nenhum estado, mostra o ranking nacional de estados
             const total = Math.max(politicians.length, 1);
             const topStates = Object.entries(stateCounts)
-                .sort((a, b) => b[1] - a[1])
+                .sort((a, b) => (b[1] as number) - (a[1] as number))
                 .slice(0, 5);
 
             return {
@@ -259,7 +260,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
     }, [politicians, stateCounts, selectedState]);
 
     return (
-        <section className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-h-[550px]">
+        <section className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-4 md:p-6 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-h-[550px] w-full">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm backdrop-blur-sm">
@@ -281,8 +282,17 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-center h-full">
-                {/* Map Area */}
-                <div className="w-full lg:w-1/2 h-[450px] overflow-hidden rounded-[2rem] relative z-0 border border-gray-100/50 dark:border-white/5">
+                {/* Map Area - Expanded Width on Desktop */}
+                <div 
+                    className="w-full lg:w-3/5 h-[450px] rounded-[2rem] relative z-0 border border-gray-100/50 dark:border-white/5"
+                    style={{ 
+                        overflow: 'hidden',
+                        transform: 'translateZ(0)', // Force hardware acceleration context
+                        WebkitMaskImage: '-webkit-radial-gradient(white, black)', // Fix for Safari border-radius clipping
+                        maskImage: 'radial-gradient(white, black)',
+                        isolation: 'isolate'
+                    }}
+                >
                     <BrazilMap 
                         data={stateCounts} 
                         heatmapMode={true} 
@@ -291,8 +301,8 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                     />
                 </div>
 
-                {/* Ranking List */}
-                <div className="w-full lg:w-1/2 space-y-3 animate-in slide-in-from-right-4 fade-in duration-300" key={selectedState || 'br'}>
+                {/* Ranking List - Adjust width accordingly */}
+                <div className="w-full lg:w-2/5 space-y-3 animate-in slide-in-from-right-4 fade-in duration-300" key={selectedState || 'br'}>
                     <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">
                         {listData.isParties ? `Top 5 Partidos em ${selectedState}` : 'Estados com mais Representantes'}
                     </p>
@@ -350,9 +360,9 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
             const ideA = getIdeology(a.name);
             const ideB = getIdeology(b.name);
             
-            // Fix: Explicitly typing values as numbers to avoid TS error about arithmetic on non-numeric types
-            const valA = Number(orderMap[ideA] || 0);
-            const valB = Number(orderMap[ideB] || 0);
+            // Explicitly typed as number to avoid arithmetic errors
+            const valA: number = orderMap[ideA] || 0;
+            const valB: number = orderMap[ideB] || 0;
             
             if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;
@@ -501,7 +511,7 @@ const CohesionCard = ({ data, selectedParty }: { data: PartyStats[], selectedPar
     const status = getStatus(cohesion);
 
     return (
-        <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-between relative overflow-hidden min-h-[400px] group">
+        <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-between relative overflow-hidden min-h-[400px] group w-full">
             
             {/* Header */}
             <div className="flex items-center justify-between mb-4 relative z-10">
@@ -631,7 +641,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32">
-        <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-6 relative z-10 px-safe">
+        <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-8 relative z-10 px-safe">
             <div className="pt-safe">
                 <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
                 <p className="text-[10px] md:text-sm font-bold text-gray-500 uppercase tracking-widest mt-1.5">Raio-X das Forças do Congresso Nacional</p>
@@ -641,13 +651,16 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                 <FemaleRepresentationWidget politicians={politicians} />
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            {/* Change to flex-col to better control vertical flow and prevent overlap */}
+            <div className="flex flex-col gap-8">
                 <ParliamentHemicycle data={partyStats} onClick={(name) => setExpandedPartyName(name)} activeParty={expandedPartyName} />
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="w-full pb-4">
                     <GeoDistributionWidget politicians={politicians} />
-                    
-                    <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-center min-h-[550px]">
+                </div>
+                
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-2">
+                    <div className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col justify-center min-h-[400px]">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 shadow-sm backdrop-blur-sm">
                                 <Compass size={18} aria-hidden="true" />
@@ -656,9 +669,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                         </div>
                         <IdeologySpectrum left={ideologyStats['Esquerda']} center={ideologyStats['Centro']} right={ideologyStats['Direita']} />
                     </div>
-                </div>
 
-                <div className="w-full">
                     <CohesionCard data={partyStats} selectedParty={expandedPartyName} />
                 </div>
             </div>
