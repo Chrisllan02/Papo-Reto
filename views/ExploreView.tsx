@@ -84,35 +84,35 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className={`group relative rounded-[2rem] p-5 text-left shadow-lg hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[170px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10`}
+            className={`group relative rounded-[2rem] p-4 text-left shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10`}
         >
             <div className="w-full relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-3">
-                    {/* Acronym Box */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-xs shadow-md ${theme.iconBg}`}>
+                <div className="flex justify-between items-start mb-2">
+                    {/* Acronym Box - Reduced Size */}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-[10px] shadow-md ${theme.iconBg}`}>
                         {badgeLabel.substring(0, 4)}
                     </div>
                     
                     {/* Ideology Pill */}
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${theme.badgeBg} ${theme.badgeText}`}>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider ${theme.badgeBg} ${theme.badgeText}`}>
                         {theme.label}
                     </span>
                 </div>
 
-                <div className="mb-1">
-                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter mb-0.5 truncate leading-none">
+                <div className="mt-auto">
+                    <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tighter mb-0.5 truncate leading-none">
                         {group.name}
                     </h3>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
+                    <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                         {group.members.length} Parlamentares
                     </p>
 
-                    {/* Avatar Container Moved Up */}
+                    {/* Avatar Container - Closer spacing */}
                     <div className="flex -space-x-2 items-center">
                         {previewMembers.map((m: any) => (
                             <div key={m.id} className="relative transition-transform duration-200 hover:scale-110 hover:z-30">
-                                {/* Simple colored circle background if image fails or while loading */}
-                                <div className="w-9 h-9 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
+                                {/* Reduced Avatar Size */}
+                                <div className="w-8 h-8 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
                                     <img 
                                         src={m.photo} 
                                         className="w-full h-full object-cover" 
@@ -123,7 +123,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
                             </div>
                         ))}
                         {group.members.length > 4 && (
-                            <div className="w-9 h-9 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[9px] font-black text-gray-500 shadow-sm relative z-0">
+                            <div className="w-8 h-8 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[8px] font-black text-gray-500 shadow-sm relative z-0">
                                 +{group.members.length - 4}
                             </div>
                         )}
@@ -135,7 +135,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
 };
 
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => (
-    <div onClick={() => onSelect(pol)} className="glass hover:shadow-xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[2rem] p-4 h-full border border-white/40 dark:border-white/5 cursor-pointer bg-white/40 dark:bg-white/5">
+    <div onClick={() => onSelect(pol)} className="glass shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[2rem] p-3 h-full border border-white/40 dark:border-white/5 cursor-pointer bg-white/40 dark:bg-white/5 min-h-[180px]">
         {isFollowing && (
             <div className="absolute top-3 left-3 z-20">
                 <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
@@ -143,13 +143,14 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
                 </div>
             </div>
         )}
-        <div className="w-20 h-20 md:w-28 md:h-28 shrink-0 rounded-full overflow-hidden mb-3 border-[3px] border-white/80 dark:border-gray-700 shadow-lg relative z-10 bg-gray-200">
+        {/* Slightly smaller image container to reduce height */}
+        <div className="w-20 h-20 md:w-24 md:h-24 shrink-0 rounded-full overflow-hidden mb-2 border-[3px] border-white/80 dark:border-gray-700 shadow-lg relative z-10 bg-gray-200">
             <img src={pol.photo} alt={pol.name} loading="lazy" className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"/>
         </div>
-        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-base line-clamp-2 w-full leading-tight h-8 md:h-12 flex items-center justify-center mb-1">{pol.name}</h3>
+        <h3 className="font-black text-blue-900 dark:text-white text-xs md:text-sm line-clamp-2 w-full leading-tight min-h-[2.5em] flex items-center justify-center mb-1">{pol.name}</h3>
         <div className="mt-auto flex flex-wrap justify-center gap-1 w-full">
-            <span className="text-[9px] md:text-xs font-black bg-gray-100/80 dark:bg-white/10 px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
-            <span className="text-[9px] md:text-xs font-black bg-blue-50/80 dark:bg-blue-900/30 px-2 py-1 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
+            <span className="text-[8px] md:text-[10px] font-black bg-gray-100/80 dark:bg-white/10 px-2 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
+            <span className="text-[8px] md:text-[10px] font-black bg-blue-50/80 dark:bg-blue-900/30 px-2 py-0.5 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
         </div>
     </div>
 );
@@ -469,8 +470,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            // Increased item height again to fit new card size
-                                            const itemHeight = width < 768 ? 240 : 360; 
+                                            // Adjusted item height for smaller cards
+                                            const itemHeight = width < 768 ? 190 : 240; 
 
                                             return (
                                                 <List
