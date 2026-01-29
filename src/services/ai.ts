@@ -100,7 +100,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
         }
         return null;
     } catch (e) {
-        console.error("Erro no TTS Gemini:", e);
+        console.warn("TTS Gemini indisponível (Cota ou Erro):", e);
         return null;
     }
 };
@@ -125,7 +125,7 @@ export const generateNewsImage = async (headline: string): Promise<string | null
         }
         return null;
     } catch (e: any) {
-        if (!e.message?.includes('429')) console.warn("Falha na geração de imagem:", e.message);
+        // Silently fail on quota or generation errors for images, fallback will be used
         return null;
     }
 };
@@ -189,7 +189,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             if (index < 3) {
                 try {
                     img = await Promise.race([generateNewsImage(item.title), new Promise<string | null>(r => setTimeout(() => r(null), 6000))]);
-                } catch (e) { console.warn(`Image skip for ${item.title}`); }
+                } catch (e) { /* Ignore image gen errors */ }
             }
             if (!img) img = STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length];
             return { ...item, imageUrl: img };
@@ -202,16 +202,20 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
         return enrichedData;
 
     } catch (error: any) {
-        console.warn("News Fetch Error or Quota:", error);
+        if (checkQuotaError(error)) {
+            console.warn("News Fetch: Quota exceeded, using fallback.");
+        } else {
+            console.warn("News Fetch Error:", error);
+        }
         return createEmergencyNews();
     }
 };
 
 function createEmergencyNews() {
     return [
-        { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
-        { title: "Votações no Senado", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
-        { title: "Pauta Econômica", source: "Portal da Câmara", url: "https://www.camara.leg.br/noticias/", time: "Recente", summary: "Discussões sobre orçamento.", imageUrl: STATIC_FALLBACK_IMAGES[2] }
+        { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias para o país em sessão deliberativa no plenário.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
+        { title: "Votações no Senado Federal", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias e projetos de lei em tramitação.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
+        { title: "Pauta Econômica em Debate", source: "Portal da Câmara", url: "https://www.camara.leg.br/noticias/", time: "Recente", summary: "Líderes discutem diretrizes para o orçamento e novas propostas econômicas.", imageUrl: STATIC_FALLBACK_IMAGES[2] }
     ];
 }
 
@@ -278,7 +282,7 @@ export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' 
 
         return { text: response.text || "Sem resposta.", searchSources, mapSources };
     } catch (error: any) {
-        if (error.message?.includes('429')) return { text: "⚠️ Cota excedida. Tente novamente em breve." };
+        if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido. Por favor, aguarde alguns instantes." };
         return { text: "Erro ao processar mensagem." };
     }
 };
@@ -308,6 +312,16 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
         });
         return response.text || "";
     } catch (error) { return ""; }
+};
+
+// Helper to check for 429/Quota errors in various formats
+const checkQuotaError = (error: any): boolean => {
+    if (!error) return false;
+    if (error.status === 429 || error.code === 429) return true;
+    if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) return true;
+    
+    const msg = error.message || JSON.stringify(error);
+    return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota');
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
@@ -388,28 +402,7 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             return staticContent;
         }
     } catch (error: any) { 
-        // Robust 429 / Quota Error Handling
-        let isQuota = false;
-        
-        if (error) {
-             if (error.status === 429 || error.code === 429) isQuota = true;
-             if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) isQuota = true;
-             if (error.message && (
-                 error.message.includes('429') || 
-                 error.message.includes('RESOURCE_EXHAUSTED') ||
-                 error.message.includes('Quota')
-             )) isQuota = true;
-             
-             // Backup check via stringification
-             if (!isQuota) {
-                 try {
-                     const str = JSON.stringify(error);
-                     if (str.includes('RESOURCE_EXHAUSTED') || str.includes('"code":429')) isQuota = true;
-                 } catch {}
-             }
-        }
-
-        if (isQuota) {
+        if (checkQuotaError(error)) {
             console.warn("Educational Content: Quota exceeded (429), using static fallback.");
         } else {
             console.warn("Educational Content Gen Error (using fallback):", error);
