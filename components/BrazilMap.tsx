@@ -140,10 +140,11 @@ const BrazilMap: React.FC<BrazilMapProps> = ({ data, selectedState, onSelectStat
 
       const getColor = (uf: string) => {
           const value = data[uf] || 0;
+          if (value === 0) return undefined; // FIXED: Returns undefined for 0 values to use default gray CSS
           const intensity = value / max;
-          // Interpolação simples entre Azul Claro (quase transparente) e Azul Forte
-          // Base Color: 53, 92, 245 (RGB do Blue-500 do Tailwind)
-          return `rgba(53, 92, 245, ${0.1 + (intensity * 0.9)})`;
+          // Interpolation from distinct blue to very dark blue
+          // Min alpha 0.4 ensures it doesn't look like a glitch
+          return `rgba(30, 72, 143, ${0.4 + (intensity * 0.6)})`;
       };
 
       return { getColor };

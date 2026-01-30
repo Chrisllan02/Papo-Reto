@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -16,6 +16,32 @@ const GENDER_CORRECTIONS: Record<number, string> = {
     220645: 'F',
     220657: 'F',
     220618: 'F'
+};
+
+// --- CIRCUIT BREAKER ---
+const CIRCUIT_BREAKER = {
+    failures: 0,
+    lastFailureTime: 0,
+    THRESHOLD: 3, 
+    TIMEOUT: 60000, 
+    isOpen: () => {
+        if (CIRCUIT_BREAKER.failures >= CIRCUIT_BREAKER.THRESHOLD) {
+            const now = Date.now();
+            if (now - CIRCUIT_BREAKER.lastFailureTime > CIRCUIT_BREAKER.TIMEOUT) {
+                CIRCUIT_BREAKER.failures = CIRCUIT_BREAKER.THRESHOLD - 1; 
+                return false;
+            }
+            return true;
+        }
+        return false;
+    },
+    recordFailure: () => {
+        CIRCUIT_BREAKER.failures++;
+        CIRCUIT_BREAKER.lastFailureTime = Date.now();
+    },
+    recordSuccess: () => {
+        CIRCUIT_BREAKER.failures = 0;
+    }
 };
 
 interface PoliticianDetails {
@@ -101,10 +127,10 @@ export const formatText = (text: string) => {
 };
 
 const CACHE_PREFIX = 'paporeto_v22_';
-const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias (Listas de Políticos)
-const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas (Votações do Dia)
-const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano (Histórico Fechado)
-const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas (Refresh Perfil Completo)
+const TTL_STATIC = 1000 * 60 * 60 * 24 * 30; // 30 Dias
+const TTL_DYNAMIC = 1000 * 60 * 60 * 4; // 4 Horas
+const TTL_PERMANENT = 1000 * 60 * 60 * 24 * 365; // 1 Ano
+const TTL_PROFILE = 1000 * 60 * 60 * 24; // 24 Horas
 
 const getRawCache = (key: string) => {
     try {
@@ -121,8 +147,6 @@ const setInCache = (key: string, data: any) => {
         try {
             localStorage.setItem(CACHE_PREFIX + key, payload);
         } catch (e) {
-            console.warn('LocalStorage cheio. Tentando limpar cache antigo...');
-            // Estratégia de limpeza simples: remove chaves dinâmicas antigas
             Object.keys(localStorage).forEach(k => {
                 if (k.startsWith(CACHE_PREFIX + 'req_') || k.startsWith(CACHE_PREFIX + 'dynamic_')) {
                     localStorage.removeItem(k);
@@ -141,12 +165,17 @@ const fetchWithCache = async (keySuffix: string, fetchFn: () => Promise<any>, tt
     if (cached && (Date.now() - cached.timestamp < ttl)) {
         return cached.data;
     }
+    
+    if (CIRCUIT_BREAKER.isOpen()) {
+        return cached ? cached.data : null;
+    }
+
     try {
         const data = await fetchFn();
         if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
             setInCache(cacheKey, data);
+            CIRCUIT_BREAKER.recordSuccess();
         }
-        // Se a busca falhou e retornou nulo, tenta usar o cache antigo se existir (Stale-while-revalidate logic)
         if (!data && cached) return cached.data;
         return data;
     } catch (e) {
@@ -161,7 +190,6 @@ const requestQueue: (() => void)[] = [];
 
 const acquireSemaphore = async () => {
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-        // Failsafe: Timeout de 8s para evitar deadlock se a fila travar
         await new Promise<void>(resolve => {
             const timeout = setTimeout(() => resolve(), 8000);
             requestQueue.push(() => {
@@ -180,13 +208,14 @@ const releaseSemaphore = () => {
 
 const pendingRequests = new Map<string, Promise<any>>();
 
-const fetchAPI = async (url: string, retries = 2, useCache = true, silent = false): Promise<any> => {
+const fetchAPI = async (url: string, retries = 2, useCache = true, silent = false, critical = false): Promise<any> => {
     if (useCache) {
         const cachedEntry = getRawCache(url);
-        // Se temos cache, retornamos imediatamente, mesmo que seja "Dynamic"
-        // A invalidação é feita pelo fetchWithCache que chama o fetchAPI
         if (cachedEntry && (Date.now() - cachedEntry.timestamp < TTL_DYNAMIC)) return cachedEntry.data;
     }
+    
+    if (CIRCUIT_BREAKER.isOpen() && !critical) return null;
+
     if (pendingRequests.has(url)) return pendingRequests.get(url);
 
     const requestPromise = (async () => {
@@ -195,20 +224,29 @@ const fetchAPI = async (url: string, retries = 2, useCache = true, silent = fals
              await acquireSemaphore();
              try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
                 const response = await fetch(url, { headers: HEADERS, signal: controller.signal });
                 clearTimeout(timeoutId);
 
-                if (response.status === 429) throw new Error("Rate Limit");
+                if (response.status === 429) {
+                    CIRCUIT_BREAKER.recordFailure();
+                    throw new Error("Rate Limit");
+                }
+                
                 if (!response.ok) {
+                    if (response.status >= 500) CIRCUIT_BREAKER.recordFailure();
                     if (response.status === 404 && silent) return null;
                     if ([400, 404, 405].includes(response.status)) return null;
                     throw new Error(`HTTP Error ${response.status}`);
                 }
                 const json = await response.json();
                 if (useCache && json) setInCache(url, json);
+                
+                CIRCUIT_BREAKER.recordSuccess();
                 return json;
             } catch (err: any) {
+                if (err.name === 'AbortError') console.warn("Fetch Aborted (Timeout)");
+                
                 if (err.message === "Rate Limit") await delay(currentDelay * 2);
                 else {
                      if (i === retries - 1) return null;
@@ -231,7 +269,7 @@ export let DYNAMIC_VOTE_CACHE: Record<string, Record<number, string>> = {};
 // --- INTERNAL HELPERS & SUB-FETCHERS ---
 
 const fetchSenadorDetalhes = async (id: number) => {
-    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 2, true);
+    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}.json`, 3, true, false, true);
     if (!data || !data.DetalheParlamentar) return {};
     const p = data.DetalheParlamentar.Parlamentar;
     return {
@@ -251,8 +289,7 @@ const fetchSenadorDiscursos = async (id: number) => { return []; };
 const fetchSenadorComissoes = async (id: number) => { return []; };
 
 const fetchDeputadoDetalhes = async (id: number): Promise<PoliticianDetails | null> => {
-    // Detalhes básicos (Nascimento, Bio) raramente mudam. Cache longo via fetchAPI.
-    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}`, 2, true);
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}`, 3, true, false, true);
     if (!data || !data.dados) return null;
     const d = data.dados;
     return {
@@ -285,14 +322,18 @@ const fetchPresencaReal = async (id: number) => {
     
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        // LOGICA INTELIGENTE: Se o ano já acabou (ex: 2023), usa TTL_PERMANENT. Se é atual, TTL_DYNAMIC.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         
-        const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
-            return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/eventos?dataInicio=${year}-01-01&dataFim=${year}-12-31&ordem=DESC&ordenarPor=dataHoraInicio&itens=500`, 2, true);
-        }, ttl);
-
-        const allEvents = data && data.dados ? data.dados : [];
+        let allEvents = [];
+        if (isPast && CIRCUIT_BREAKER.isOpen()) {
+             const cached = getRawCache(`req_eventos_completos_${id}_${year}`);
+             if (cached) allEvents = cached.data?.dados || [];
+        } else {
+            const data = await fetchWithCache(`eventos_completos_${id}_${year}`, async () => {
+                return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/eventos?dataInicio=${year}-01-01&dataFim=${year}-12-31&ordem=DESC&ordenarPor=dataHoraInicio&itens=500`, 2, true);
+            }, ttl);
+            allEvents = data && data.dados ? data.dados : [];
+        }
 
         const plenaryEvents = allEvents.filter((e: any) => e.descricaoTipo.includes('Sessão Deliberativa'));
         
@@ -379,14 +420,19 @@ const fetchDespesasAggregated = async (id: number) => {
 
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        // LOGICA INTELIGENTE: Gastos de anos passados não mudam. Cache Permanente.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         
-        let yearTotal = 0;
-        const yearData = await fetchWithCache(`despesas_${id}_${year}`, async () => {
-            return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${year}&ordem=DESC&ordenarPor=valorDocumento&itens=100`, 2, true);
-        }, ttl);
+        let yearData: any = null;
+        if (isPast && CIRCUIT_BREAKER.isOpen()) {
+             const cached = getRawCache(`req_despesas_${id}_${year}`);
+             if (cached) yearData = cached.data;
+        } else {
+            yearData = await fetchWithCache(`despesas_${id}_${year}`, async () => {
+                return await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ano=${year}&ordem=DESC&ordenarPor=valorDocumento&itens=100`, 2, true);
+            }, ttl);
+        }
         
+        let yearTotal = 0;
         if (yearData && yearData.dados) {
             yearData.dados.forEach((d: any) => {
                 const val = d.valorDocumento;
@@ -411,7 +457,6 @@ const fetchProposicoesAggregated = async (id: number) => {
     const yearlyMap: Record<number, number> = {};
     for (let year = MANDATE_START_YEAR; year <= currentYear; year++) {
         const isPast = year < currentYear;
-        // LOGICA INTELIGENTE: Projetos de anos passados são fixos.
         const ttl = isPast ? TTL_PERMANENT : TTL_DYNAMIC;
         
         const yearData = await fetchWithCache(`proposicoes_${id}_${year}`, async () => {
@@ -454,7 +499,7 @@ const fetchViagens = async (id: number): Promise<Travel[]> => {
 };
 
 const fetchRemuneracaoAtual = async (id: number): Promise<Remuneration | undefined> => {
-    return undefined; // Placeholder
+    return undefined; 
 };
 
 const fetchDeputadoAgenda = async (id: number) => {
@@ -592,13 +637,13 @@ export const fetchPartidos = async (): Promise<Party[]> => {
             urlLogo: PM[p.sigla]?.logo,
             ideology: PM[p.sigla]?.ideology || 'Centro'
         }));
-    }, TTL_PERMANENT); // LOGICA: Lista de partidos é praticamente estática
+    }, TTL_PERMANENT);
     return result || getStaticParties();
 };
 
 export const fetchDeputados = async (): Promise<Politician[]> => {
   const result = await fetchWithCache('lista_deputados', async () => {
-      const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?pagina=1&itens=600`, 2, false);
+      const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?pagina=1&itens=600`, 2, false, false, true); // critical=true
       if (!data || !data.dados) return [];
       const sorted = data.dados.sort((a: any, b: any) => a.nome.localeCompare(b.nome));
       return sorted.map((dep: any) => {
@@ -624,7 +669,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             hasApiIntegration: true
         };
       });
-  }, TTL_STATIC); // Lista básica é segura por 30 dias
+  }, TTL_STATIC);
   return result || [];
 };
 
@@ -658,7 +703,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 hasApiIntegration: true
             };
         });
-    }, TTL_STATIC); // Lista básica segura por 30 dias
+    }, TTL_STATIC);
     return result || [];
 };
 
@@ -726,7 +771,6 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
             const v = realVotes[i];
             const qId = 100 + i;
             
-            // Fetch votes for specific aggregation
             const votesData = await fetchAPI(`${BASE_URL_CAMARA}/votacoes/${v.id}/votos`, 2, true);
             
             let stats: QuizVoteStats = { totalYes: 0, totalNo: 0, totalAbstain: 0, partiesYes: [], partiesNo: [], approvalRate: 0 };
@@ -756,7 +800,6 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
                     voteMap[v.id][vote.deputado_.id] = sVoto;
                 });
 
-                // Calculate Top Parties
                 stats.partiesYes = Object.entries(partyYesCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
@@ -786,25 +829,18 @@ export const fetchDynamicQuizQuestions = async (): Promise<{ questions: QuizQues
     return { questions, voteMap };
 };
 
-// --- FIX: ROBUST FAST ENRICH (FAIL-SAFE IDENTITY CACHE) ---
-// This function ensures that once we know a politician's static details,
-// we NEVER lose them, even if the API fails or returns null later.
-
 export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
     const permanentKey = `permanent_identity_${pol.id}`;
     
-    // 1. Load Permanent Cache (Indestructible Identity)
     let baseData = pol;
     try {
         const stored = localStorage.getItem(permanentKey);
         if (stored) {
             const parsed = JSON.parse(stored);
-            // Merge cached identity into base pol object
             baseData = { ...pol, ...parsed };
         }
     } catch (e) { console.warn("Failed to read permanent cache", e); }
 
-    // Senadores logic remains simple (API is stable)
     if (pol.role.includes('Senad')) {
         const details = await fetchSenadorDetalhes(pol.id).catch(() => ({}));
         let fixedBio = baseData.bio;
@@ -816,15 +852,13 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
         return result;
     }
 
-    // Deputies Logic: TRY to fetch fresh data, but fallback to baseData on failure
     try {
         const [detailsResult, profissoes, orgaos] = await Promise.all([
-            fetchDeputadoDetalhes(pol.id).catch(() => null), // Can fail
+            fetchDeputadoDetalhes(pol.id).catch(() => null),
             fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
             fetchDeputadoOrgaos(pol.id).catch(() => [])
         ]);
 
-        // If API returned valid details, update everything and save to permanent cache
         if (detailsResult) {
             let bio = pol.bio;
             if (detailsResult.civilName) {
@@ -842,7 +876,6 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 roles: orgaos,
             };
 
-            // Save to Permanent Storage (Never Expires)
             localStorage.setItem(permanentKey, JSON.stringify(freshData));
             return freshData;
         }
@@ -850,24 +883,20 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
         console.warn(`Fast enrich failed for ${pol.name}, using cached identity.`);
     }
 
-    // If API failed or returned null, return the robust baseData (cached identity)
-    // This prevents the UI from "blinking" or showing empty fields
     return baseData;
 };
 
-export const enrichPoliticianData = async (pol: Politician): Promise<Politician> => {
-    // 1. Always start with the Robust Identity from enrichPoliticianFast
-    // This ensures we don't start with a blank slate if the full profile fetch fails
+export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: string) => void): Promise<Politician> => {
     const robustPol = await enrichPoliticianFast(pol);
 
     const profileCacheKey = `full_profile_${pol.id}`;
     const cachedProfile = getRawCache(profileCacheKey);
     if (cachedProfile && (Date.now() - cachedProfile.timestamp < TTL_PROFILE)) {
-        return { ...robustPol, ...cachedProfile.data }; // Merge just in case
+        return { ...robustPol, ...cachedProfile.data }; 
     }
 
-    // Senators Logic
     if (pol.role.includes('Senad')) {
+        if (onProgress) onProgress("Buscando dados no Senado...");
         try {
             const [timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
                 fetchSenadorVotacoes(pol.id),
@@ -892,8 +921,8 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
         } catch (e) { return robustPol; }
     }
 
-    // Deputies Logic
     try {
+        if (onProgress) onProgress("Buscando dados na Câmara...");
         const currentYear = new Date().getFullYear();
         
         const results = await Promise.allSettled([
@@ -957,7 +986,7 @@ export const enrichPoliticianData = async (pol: Politician): Promise<Politician>
         }
         
         const finalProfile = {
-            ...robustPol, // Uses robust identity
+            ...robustPol, 
             speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats,
             assets: [], donors: [],
             expensesBreakdown: expensesData.breakdown,

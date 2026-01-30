@@ -2,20 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../services/ai';
 import { NewsArticle } from '../types';
-import { ChevronRight, Sparkles, ChevronUp, ExternalLink, Globe } from 'lucide-react';
-
-const GRADIENTS = [
-    'from-blue-900 to-slate-900',
-    'from-emerald-900 to-slate-900',
-    'from-rose-900 to-slate-900',
-    'from-amber-900 to-slate-900',
-    'from-indigo-900 to-slate-900',
-    'from-teal-900 to-slate-900'
-];
+import { Sparkles, ExternalLink, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 const NewsTicker: React.FC = () => {
     // 1. Initialize state immediately with cache OR emergency fallback.
-    // This ensures NO loading spinner is ever shown to the user.
     const [news, setNews] = useState<NewsArticle[]>(() => {
         const cached = getBestAvailableNews();
         if (cached && cached.length > 0) return cached;
@@ -24,22 +14,14 @@ const NewsTicker: React.FC = () => {
     
     const [index, setIndex] = useState(0);
     const [paused, setPaused] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
     
     // 2. Background Fetch (Silent Update)
     useEffect(() => {
         const updateNews = async () => {
             try {
-                // fetchDailyNews internally handles cache expiry (TTL).
-                // If cache is fresh, it returns it instantly.
-                // If stale, it fetches new data.
                 const fresh = await fetchDailyNews();
-                
                 if (fresh && fresh.length > 0) {
-                    // Only update state if the new data is actually different
-                    // to prevent UI flicker or reset of rotation index.
                     const isDifferent = fresh[0].title !== news[0]?.title || fresh[0].time !== news[0]?.time;
-                    
                     if (isDifferent) {
                         setNews(fresh);
                     }
@@ -48,144 +30,122 @@ const NewsTicker: React.FC = () => {
                 console.error("Silent news update failed", error);
             }
         };
-        
         updateNews();
-    }, []); // Run once on mount
+    }, []);
 
     useEffect(() => {
-        if (news.length === 0 || paused || isExpanded) return;
+        if (news.length === 0 || paused) return;
         const interval = setInterval(() => {
             setIndex((prev) => (prev + 1) % news.length);
         }, 8000); // 8s rotation
         return () => clearInterval(interval);
-    }, [news, paused, isExpanded]);
+    }, [news, paused]);
 
-    const handleToggleExpand = (e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        
-        if (isExpanded) {
-            setIsExpanded(false);
-            setPaused(false);
-        } else {
-            setIsExpanded(true);
-            setPaused(true);
-        }
-    };
-
-    // Safe guard if somehow news is empty (shouldn't happen with fallback)
     if (news.length === 0) return null;
 
     const currentNews = news[index % news.length];
-    const gradientColors = GRADIENTS[index % GRADIENTS.length];
+
+    // Lógica de Cores Semânticas (Urgente vs Suave)
+    const getNewsTheme = (text: string, title: string) => {
+        const combined = (text + " " + title).toLowerCase();
+        
+        // Urgente / Negativo / Crítico
+        if (combined.match(/(urgência|urgente|crise|denúncia|veto|rejeitado|polêmica|investigação|cassação|cpi)/)) {
+            return {
+                gradient: 'from-red-900 to-orange-900',
+                icon: AlertTriangle,
+                labelColor: 'bg-red-500/20 text-red-100 border-red-500/30'
+            };
+        }
+        
+        // Positivo / Suave / Institucional
+        if (combined.match(/(aprovado|sanção|educação|cultura|saúde|benefício|direitos|avança|conquista|mulher|piso)/)) {
+            return {
+                gradient: 'from-emerald-900 to-teal-900',
+                icon: CheckCircle2,
+                labelColor: 'bg-emerald-500/20 text-emerald-100 border-emerald-500/30'
+            };
+        }
+
+        // Neutro / Padrão
+        return {
+            gradient: 'from-blue-900 to-slate-900',
+            icon: Info,
+            labelColor: 'bg-blue-500/20 text-blue-100 border-blue-500/30'
+        };
+    };
+
+    const theme = getNewsTheme(currentNews.summary || "", currentNews.title);
+    const ThemeIcon = theme.icon;
 
     return (
         <section 
-            className={`w-full relative overflow-hidden rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group cursor-pointer ${isExpanded ? 'h-[500px]' : 'h-52 md:h-56 hover:shadow-2xl hover:scale-[1.01]'}`}
-            onMouseEnter={() => !isExpanded && setPaused(true)}
-            onMouseLeave={() => !isExpanded && setPaused(false)}
-            onClick={() => !isExpanded && handleToggleExpand()}
+            className={`w-full relative overflow-hidden rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group h-[420px] md:h-64 hover:shadow-2xl hover:scale-[1.01]`}
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
             aria-label="Destaque de notícia política"
         >
-            {/* Dynamic Background */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradientColors} transition-all duration-1000`}></div>
+            {/* Background Base */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} transition-all duration-1000`}></div>
             
             {/* Texture Overlay */}
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
             
-            {/* Ambient Light Effect */}
+            {/* Ambient Light */}
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none opacity-50"></div>
 
-            {/* Content Container */}
             <div className="relative z-10 p-6 md:p-8 flex flex-col h-full text-white">
                 
-                {/* Header: Source & Time */}
+                {/* Header: Source & Status */}
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-2 animate-in fade-in">
-                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 shadow-sm">
-                            {currentNews.source}
+                        <span className={`backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-1.5 ${theme.labelColor}`}>
+                            <ThemeIcon size={12} /> {currentNews.source}
                         </span>
-                        <span className="text-[10px] font-bold opacity-80 flex items-center gap-1">
-                            <span className="w-1 h-1 bg-white rounded-full"></span> {currentNews.time}
+                        <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 ml-2">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> {currentNews.time}
                         </span>
                     </div>
                     
-                    {/* Direct Link Button (Collapsed) - UPDATED TO TEXT BUTTON */}
-                    {!isExpanded && (
-                       <a 
-                            href={currentNews.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
-                            onClick={(e) => e.stopPropagation()}
-                            title="Ler notícia completa na fonte"
-                       >
-                           Ver Notícia <ExternalLink size={10} />
-                       </a>
-                    )}
+                    <a 
+                        href={currentNews.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
+                        title="Ler na fonte oficial"
+                    >
+                        Ver na Íntegra <ExternalLink size={10} />
+                    </a>
                 </div>
 
-                {/* Main Title */}
-                <div className={`flex-1 flex flex-col justify-center transition-all duration-500 ${isExpanded ? 'justify-start mt-2' : ''}`}>
-                    <h3 className={`font-black leading-tight tracking-tight drop-shadow-md transition-all duration-500 ${isExpanded ? 'text-2xl md:text-4xl mb-4' : 'text-xl md:text-3xl line-clamp-3'}`}>
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col justify-start mt-2">
+                    {/* Title */}
+                    <h3 className="font-black leading-tight tracking-tight drop-shadow-md text-xl md:text-3xl mb-4 line-clamp-3">
                         {currentNews.title}
                     </h3>
                     
-                    {/* Expand Hint (Collapsed) */}
-                    {!isExpanded && (
-                        <p className="mt-3 text-[10px] font-bold uppercase tracking-widest opacity-60 flex items-center gap-1 group-hover:opacity-100 transition-opacity group-hover:translate-x-1 duration-300">
-                            Ler Resumo <ChevronRight size={12}/>
-                        </p>
-                    )}
-                </div>
-
-                {/* Summary Section (Expanded) */}
-                {isExpanded && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 overflow-y-auto custom-scrollbar pr-2 mb-2">
-                        <div className="prose prose-invert prose-sm">
-                            <div className="flex items-center gap-2 mb-2 text-white/80 text-[10px] font-black uppercase tracking-widest">
-                                <Sparkles size={12} aria-hidden="true" /> Resumo
-                            </div>
-                            <p className="text-white/90 text-sm leading-relaxed font-medium whitespace-pre-line">
-                                {currentNews.summary || "Resumo não disponível."}
+                    {/* Summary (Always Visible) */}
+                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex items-start gap-3">
+                            <Sparkles size={16} className="text-yellow-300 shrink-0 mt-0.5" />
+                            <p className="text-sm font-medium leading-relaxed text-white/90 line-clamp-4 md:line-clamp-3">
+                                {currentNews.summary || "Resumo indisponível."}
                             </p>
-                            
-                            <div className="mt-6 pt-4 border-t border-white/20 flex items-center gap-3">
-                                <a 
-                                    href={currentNews.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="flex-1 py-3 bg-white text-black rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors shadow-lg"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    Matéria Completa <ExternalLink size={12} aria-hidden="true" />
-                                </a>
-                            </div>
                         </div>
                     </div>
-                )}
+                </div>
 
-                {/* Footer Controls (Collapsed) */}
-                {!isExpanded && (
-                    <div className="mt-auto pt-4 flex gap-1.5" aria-hidden="true">
-                        {news.map((_, i) => (
-                            <div 
-                                key={i} 
-                                className={`h-1 rounded-full transition-all duration-500 ${i === (index % news.length) ? 'w-8 bg-white' : 'w-2 bg-white/30'}`} 
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Collapse Button (Expanded) */}
-                {isExpanded && (
-                    <button 
-                        onClick={(e) => handleToggleExpand(e)}
-                        aria-label="Recolher resumo"
-                        className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-colors z-20"
-                    >
-                        <ChevronUp size={20} aria-hidden="true" />
-                    </button>
-                )}
+                {/* Pagination Dots */}
+                <div className="mt-auto pt-4 flex gap-1.5 justify-center md:justify-start" aria-hidden="true">
+                    {news.map((_, i) => (
+                        <div 
+                            key={i} 
+                            className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${i === (index % news.length) ? 'w-8 bg-white' : 'w-2 bg-white/30 hover:bg-white/60'}`}
+                            onClick={() => setIndex(i)}
+                        />
+                    ))}
+                </div>
             </div>
         </section>
     );

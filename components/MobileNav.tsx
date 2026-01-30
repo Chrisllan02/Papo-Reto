@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, MapPin, LocateFixed, Loader2 } from 'lucide-react';
+import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { ESTADOS_BRASIL } from '../constants';
 
@@ -85,22 +85,39 @@ const MobileNav: React.FC = () => {
                         <span className="text-[10px] font-bold">Alto Contraste</span>
                     </button>
 
-                    <button 
-                        onClick={actions.cycleFontSize}
-                        className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
-                    >
-                        <Type size={20} className="text-blue-600 dark:text-blue-400" />
-                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
-                            Fonte: {fontSizeLevel === 1 ? '1x' : fontSizeLevel === 1.1 ? '1.1x' : '1.2x'}
-                        </span>
-                    </button>
+                    {/* Font Size Control - Full Width in Grid */}
+                    <div className="col-span-2 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                            <Type size={20} className="text-blue-600 dark:text-blue-400" />
+                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Tamanho da Fonte</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <button 
+                                onClick={actions.decreaseFontSize} 
+                                disabled={fontSizeLevel <= 1}
+                                className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-lg disabled:opacity-30 active:scale-95 transition-all"
+                             >
+                                 <Minus size={16} />
+                             </button>
+                             <span className="text-xs font-black w-10 text-center tabular-nums text-gray-800 dark:text-white">
+                                 {Math.round(fontSizeLevel * 100)}%
+                             </span>
+                             <button 
+                                onClick={actions.increaseFontSize} 
+                                disabled={fontSizeLevel >= 1.5}
+                                className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-lg disabled:opacity-30 active:scale-95 transition-all"
+                             >
+                                 <Plus size={16} />
+                             </button>
+                        </div>
+                    </div>
 
                     <button 
                         onClick={() => { actions.setShowOnboarding(true); setIsMenuOpen(false); }}
-                        className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                        className="col-span-2 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
                     >
                         <HelpCircle size={20} className="text-green-600 dark:text-green-400" />
-                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Ajuda</span>
+                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Ajuda e Tutoriais</span>
                     </button>
                 </div>
             </div>

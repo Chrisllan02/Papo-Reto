@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2 } from 'lucide-react';
+import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { ESTADOS_BRASIL } from '../constants';
 
@@ -111,15 +112,34 @@ const Sidebar: React.FC = () => {
                      </button>
                  </div>
 
-                 <button onClick={actions.cycleFontSize} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left">
+                 {/* Controle de Fonte Melhorado */}
+                 <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors w-full">
                      <div className="flex items-center gap-3">
                          <Type size={18} className="text-nuit dark:text-blue-400"/>
-                         <span className="text-sm font-bold text-gray-800 dark:text-white">Tamanho da Fonte</span>
+                         <span className="text-sm font-bold text-gray-800 dark:text-white">Fonte</span>
                      </div>
-                     <span className="text-[10px] font-black bg-gray-200 dark:bg-white/10 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
-                         {fontSizeLevel === 1 ? '1x' : fontSizeLevel === 1.1 ? '1.1x' : '1.25x'}
-                     </span>
-                 </button>
+                     <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 rounded-lg p-1">
+                         <button 
+                            onClick={actions.decreaseFontSize} 
+                            disabled={fontSizeLevel <= 1}
+                            className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-all"
+                            aria-label="Diminuir Fonte"
+                         >
+                             <Minus size={14} />
+                         </button>
+                         <span className="text-[10px] font-black w-8 text-center tabular-nums text-gray-600 dark:text-gray-300">
+                             {Math.round(fontSizeLevel * 100)}%
+                         </span>
+                         <button 
+                            onClick={actions.increaseFontSize} 
+                            disabled={fontSizeLevel >= 1.5}
+                            className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-all"
+                            aria-label="Aumentar Fonte"
+                         >
+                             <Plus size={14} />
+                         </button>
+                     </div>
+                 </div>
 
                  <button onClick={actions.toggleHighContrast} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left">
                      <div className="flex items-center gap-3">

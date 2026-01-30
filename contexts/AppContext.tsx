@@ -36,7 +36,8 @@ interface AppActions {
   setActiveTab: (tab: string) => void;
   toggleDarkMode: () => void;
   toggleHighContrast: () => void;
-  cycleFontSize: () => void;
+  increaseFontSize: () => void;
+  decreaseFontSize: () => void;
   
   selectCandidate: (pol: Politician | null) => void;
   selectEducation: (id: number | null) => void;
@@ -65,9 +66,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const { politicians, feedItems, parties, articles, isLoading, setPoliticians } = useInitialData();
 
   const [activeTab, setActiveTab] = useState('feed');
-  const [darkMode, setDarkMode] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
-  const [fontSizeLevel, setFontSizeLevel] = useState(1);
+  
+  // Initialize from LocalStorage
+  const [darkMode, setDarkMode] = useState(() => {
+      try { return localStorage.getItem('paporeto_dark_mode') === 'true'; } catch { return false; }
+  });
+  const [highContrast, setHighContrast] = useState(() => {
+      try { return localStorage.getItem('paporeto_high_contrast') === 'true'; } catch { return false; }
+  });
+  const [fontSizeLevel, setFontSizeLevel] = useState(() => {
+      try { 
+          const saved = localStorage.getItem('paporeto_font_size');
+          return saved ? parseFloat(saved) : 1; 
+      } catch { return 1; }
+  });
 
   const [selectedCandidate, setSelectedCandidate] = useState<Politician | null>(null);
   const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
@@ -125,41 +137,67 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (savedLoc) {
           setUserLocation(savedLoc);
       } else {
-          // Se não tem salvo, tenta detectar automaticamente no primeiro boot
           detectLocation();
       }
   }, []);
 
+  // --- ACESSIBILIDADE: Efeitos Colaterais ---
+  
+  // 1. Aplicar Zoom
+  useEffect(() => {
+      const percentage = Math.round(fontSizeLevel * 100);
+      document.documentElement.style.fontSize = `${percentage}%`;
+      localStorage.setItem('paporeto_font_size', fontSizeLevel.toString());
+  }, [fontSizeLevel]);
+
+  // 2. Aplicar Classes de Tema no HTML (Root)
+  useEffect(() => {
+      if (darkMode) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+      localStorage.setItem('paporeto_dark_mode', darkMode.toString());
+  }, [darkMode]);
+
+  useEffect(() => {
+      if (highContrast) {
+          document.documentElement.classList.add('high-contrast');
+          // Força remoção do dark mode visualmente se alto contraste estiver ativo, 
+          // mas mantemos o estado do dark mode para quando desligar o alto contraste.
+          document.documentElement.classList.remove('dark'); 
+      } else {
+          document.documentElement.classList.remove('high-contrast');
+          // Restaura dark mode se estava ativo
+          if (darkMode) document.documentElement.classList.add('dark');
+      }
+      localStorage.setItem('paporeto_high_contrast', highContrast.toString());
+  }, [highContrast, darkMode]);
+
+
   // Theme Handling
   const toggleDarkMode = () => {
+    // Se alto contraste estiver ligado, desliga ele primeiro
     if (highContrast) setHighContrast(false);
-    setDarkMode(prev => {
-        const newVal = !prev;
-        document.documentElement.classList.toggle('dark', newVal);
-        document.documentElement.classList.remove('high-contrast');
-        return newVal;
-    });
+    setDarkMode(prev => !prev);
   };
 
   const toggleHighContrast = () => {
-      setHighContrast(prev => {
-          const newVal = !prev;
-          if (newVal) {
-              setDarkMode(false);
-              document.documentElement.classList.remove('dark');
-              document.documentElement.classList.add('high-contrast');
-          } else {
-              document.documentElement.classList.remove('high-contrast');
-          }
-          return newVal;
+      setHighContrast(prev => !prev);
+  };
+
+  const increaseFontSize = () => {
+      setFontSizeLevel(prev => {
+          if (prev >= 1.5) return 1.5;
+          if (prev >= 1.25) return 1.5;
+          if (prev >= 1.1) return 1.25;
+          return 1.1;
       });
   };
 
-  const cycleFontSize = () => {
+  const decreaseFontSize = () => {
       setFontSizeLevel(prev => {
-          if (prev === 1) return 1.1;
-          if (prev === 1.1) return 1.25;
-          return 1;
+          if (prev <= 1) return 1;
+          if (prev <= 1.1) return 1;
+          if (prev <= 1.25) return 1.1;
+          return 1.25;
       });
   };
 
@@ -173,7 +211,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updatePolitician = (updated: Politician) => {
       setPoliticians(prev => prev.map(p => p.id === updated.id ? updated : p));
-      // Update selectedCandidate if it matches, to reflect changes in UI immediately
       if (selectedCandidate?.id === updated.id) {
           setSelectedCandidate(updated);
       }
@@ -214,7 +251,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveTab: handleSetActiveTab,
         toggleDarkMode,
         toggleHighContrast,
-        cycleFontSize,
+        increaseFontSize,
+        decreaseFontSize,
+        cycleFontSize: increaseFontSize, // Fallback/Alias
         selectCandidate: setSelectedCandidate,
         selectEducation: setSelectedEducationId,
         markArticleAsRead,

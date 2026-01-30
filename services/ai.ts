@@ -10,7 +10,7 @@ const getAi = () => {
     
     const key = process.env.API_KEY;
     if (!key || key.trim() === "") {
-        console.warn("API_KEY do Google Gemini não encontrada ou vazia. Algumas funcionalidades usarão dados estáticos.");
+        console.warn("Aviso: API_KEY do Google Gemini não encontrada. Funcionalidades de IA usarão fallback.");
         return null;
     }
     
@@ -54,7 +54,6 @@ const setCache = (key: string, data: any) => {
     }
 };
 
-// Fallback de Imagens de Alta Qualidade
 const STATIC_FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop", 
     "https://images.unsplash.com/photo-1575320181282-9afab399332c?q=80&w=800&auto=format&fit=crop", 
@@ -72,62 +71,115 @@ export interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
 }
 
-// --- GERAÇÃO DE VOZ ---
-export const speakContent = async (text: string): Promise<Uint8Array | null> => {
-    const ai = getAi();
-    if (!ai) return null;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text: `Diga de forma clara e profissional: ${text}` }] }],
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
-            },
-        });
-        
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (base64Audio) {
-            const binaryString = atob(base64Audio);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes;
-        }
-        return null;
-    } catch (e) {
-        console.error("Erro no TTS Gemini:", e);
-        return null;
-    }
+// --- DICIONÁRIO DIDÁTICO ---
+const LEGISLATIVE_GLOSSARY: Record<string, string> = {
+    'requerimento de urgência': 'Os deputados votaram para **acelerar este projeto**, permitindo que ele pule a análise das comissões e seja votado imediatamente no Plenário.',
+    'medida provisória': 'Esta é uma norma com **força de lei imediata** editada pelo Presidente. O Congresso está decidindo se ela continua valendo definitivamente.',
+    'projeto de lei complementar': 'Votação de uma lei que detalha regras específicas exigidas pela Constituição. Exige aprovação da maioria absoluta (257 deputados).',
+    'proposta de emenda à constituição': 'Uma das votações mais importantes. Tenta **mudar a Constituição Federal**, a lei máxima do país. Exige apoio de 308 deputados.',
+    'redação final': 'O texto já foi aprovado no mérito. Esta votação serve apenas para **confirmar a gramática e a técnica jurídica** antes de enviar para o Senado ou Sanção.',
+    'destaque': 'Votação separada para tentar **retirar ou alterar um trecho específico** do texto principal que já foi discutido.',
+    'requerimento de retirada': 'Um pedido para **adiar a discussão** deste tema. Se aprovado, o assunto sai da pauta de hoje.',
+    'projeto de resolução': 'Decisão interna sobre regras da própria Câmara ou de seus membros (como cassações ou salários).',
+    'projeto de decreto legislativo': 'O Congresso usando seu poder para fiscalizar o Executivo, aprovar tratados internacionais ou sustar atos do Presidente.',
 };
 
-export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    const ai = getAi();
-    if (!ai) return null;
+// --- GERAÇÃO DE TÍTULO (MANCHETE JORNALÍSTICA) ---
+function cleanLegislativeTitle(rawText: string): string {
+    if (!rawText) return "Movimentação no Congresso";
 
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: {
-                parts: [{ text: `Fotojornalismo profissional, estilo editorial de revista...: '${headline}'.` }]
-            },
-            config: { imageConfig: { aspectRatio: "16:9" } }
-        });
-        
-        if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-            }
-        }
-        return null;
-    } catch (e: any) {
-        // Silently fail on quota or generation errors for images, fallback will be used
-        return null;
+    let text = rawText.trim();
+    let prefix = "";
+
+    // Identificar Ação para Prefixo
+    if (text.match(/requerimento de urgência/i)) prefix = "Urgência: ";
+    else if (text.match(/redação final/i)) prefix = "Texto Final: ";
+    else if (text.match(/destaque/i)) prefix = "Destaque: ";
+    else if (text.match(/projeto de lei/i)) prefix = "Lei: ";
+    else if (text.match(/proposta de emenda/i)) prefix = "PEC: ";
+
+    // Limpeza Brutal
+    text = text
+        .replace(/^(Votação|Discussão|Apreciação) (única )?(em \w+ turno )?(d[oa]s? )?/i, "")
+        .replace(/^Aprovação d[oa] /i, "")
+        .replace(/Projeto de Lei n\.? ?\d+(\/\d+)?/i, "")
+        .replace(/Proposta de Emenda à Constituição n\.? ?\d+(\/\d+)?/i, "")
+        .replace(/Medida Provisória n\.? ?\d+(\/\d+)?/i, "")
+        .replace(/Requerimento n\.? ?\d+(\/\d+)?/i, "")
+        .replace(/Parecer.*proferido.*/i, "")
+        .replace(/ - \d{2}\/\d{2}\/\d{4}.*$/, "");
+
+    // Extração do Tema
+    const matchInstitui = text.match(/(?:que|visando|para) (institui|cria|autoriza|obriga|concede|reconhece|altera|dispõe|regulamenta) (.*?)(?:;|\.|$)/i);
+    if (matchInstitui) {
+        text = matchInstitui[2].trim();
+    } else {
+        // Se não achou verbo claro, tenta pegar o início
+        text = text.split(/,|;/)[0]; 
     }
-};
 
+    // Capitalização
+    text = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    
+    // Limite de tamanho
+    if (text.length > 60) text = text.substring(0, 57) + "...";
+
+    return (prefix + text).replace(/\s+/g, ' ').trim();
+}
+
+// --- TRADUTOR DIDÁTICO (CORPO DA NOTÍCIA) ---
+function summarizeLegislativeText(rawText: string): string {
+    if (!rawText) return "Detalhes não informados pela fonte oficial.";
+
+    let summary = "";
+    const lowerText = rawText.toLowerCase();
+
+    // 1. Identificar o "O Que É" (Glossário)
+    let explanation = "";
+    for (const [key, value] of Object.entries(LEGISLATIVE_GLOSSARY)) {
+        if (lowerText.includes(key)) {
+            explanation = value;
+            break;
+        }
+    }
+
+    // 2. Identificar o "Sobre o Que É" (Assunto)
+    let subject = rawText;
+    
+    // Tenta limpar o "juridiquês" do assunto
+    const matchSubject = rawText.match(/(?:institui|cria|sobre|acerca d[eo]|referente [aà])\s+(.*?)(?:;|\.|,|$)/i);
+    if (matchSubject && matchSubject[1]) {
+        subject = matchSubject[1].trim();
+    } else {
+        // Fallback: limpa prefixos
+        subject = subject.replace(/^(Votação|Discussão).*?(nº \d+)?/i, "").trim();
+    }
+
+    // Tradução de termos específicos no assunto
+    subject = subject
+        .replace(/abre crédito extraordinário/gi, "libera dinheiro extra fora do orçamento")
+        .replace(/em favor de/gi, "para")
+        .replace(/encargos financeiros/gi, "impostos e taxas")
+        .replace(/dispõe sobre/gi, "trata de");
+
+    // 3. Montar o Texto Final
+    if (explanation) {
+        summary = `🎓 **Entenda:** ${explanation}\n\n📌 **O Tema:** O texto original trata de ${subject}.`;
+    } else {
+        // Se não for um termo do glossário, foca em explicar a ação
+        if (lowerText.includes('aprovad')) {
+            summary = `✅ **Aprovado:** Os deputados concordaram com este texto. Ele trata de: ${subject}.`;
+        } else if (lowerText.includes('rejeitad') || lowerText.includes('retirad')) {
+            summary = `🛑 **Parado:** A proposta foi rejeitada ou retirada da pauta. O tema era: ${subject}.`;
+        } else {
+            summary = `🗳️ **Em Debate:** O Plenário está discutindo sobre ${subject}. Acompanhe o resultado.`;
+        }
+    }
+
+    return summary;
+}
+
+// Helper Functions Required for NewsTicker and NewsHistoryView
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
@@ -142,7 +194,6 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
 export const getNewsHistory = (): NewsArticle[] => getCache(NEWS_HISTORY_KEY, 0) || [];
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
-// Helper function exported for immediate UI fallback
 export function getEmergencyNews() {
     return [
         { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias para o país em sessão deliberativa no plenário.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
@@ -151,59 +202,12 @@ export function getEmergencyNews() {
     ];
 }
 
-// --- ROBOZINHO DE RESUMO (Sem IA) ---
-// Traduz linguagem legislativa para português claro usando regras
-function summarizeLegislativeText(rawText: string): string {
-    if (!rawText) return "Detalhes não informados pela fonte oficial.";
-
-    let text = rawText.trim();
-
-    // 1. Limpeza de prefixos de trâmite
-    // Ex: "Votação em turno único do..." -> ""
-    text = text.replace(/^(Votação|Discussão|Apreciação) (em \w+ turno )?(d[oa]s? )?/i, "");
-    text = text.replace(/^Aprovação d[oa] /i, "");
-
-    // 2. Simplifica identificadores de proposições
-    text = text.replace(/Projeto de Lei n\.? ?\d+\/\d+/i, "Projeto de Lei");
-    text = text.replace(/Proposta de Emenda à Constituição n\.? ?\d+\/\d+/i, "PEC");
-    text = text.replace(/Requerimento n\.? ?\d+\/\d+/i, "Requerimento");
-    text = text.replace(/Medida Provisória n\.? ?\d+\/\d+/i, "Medida Provisória");
-    
-    // 3. Remove autoria burocrática para focar no conteúdo
-    // Ex: ", do Sr. Fulano,"
-    text = text.replace(/, d[oa] Sr[a]?\..*?,/i, ",");
-
-    // 4. Traduz termos técnicos ("Legislativês" -> Português)
-    const replacements: Record<string, string> = {
-        "que institui": "que cria",
-        "dispõe sobre": "sobre",
-        "altera a lei": "que muda a legislação",
-        "autoriza o poder executivo": "autoriza o governo",
-        "abre crédito extraordinário": "libera verba extra",
-        "visando": "para",
-        "com a finalidade de": "para"
-    };
-
-    Object.keys(replacements).forEach(key => {
-        const regex = new RegExp(key, "gi");
-        text = text.replace(regex, replacements[key]);
-    });
-    
-    // 5. Capitalização e formatação final
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-    // Remove espaços duplos
-    text = text.replace(/\s+/g, ' ');
-    
-    return text;
-}
-
-// REPLACED AI NEWS GENERATION WITH ROBOT SUMMARY + API DATA
+// REPLACED AI NEWS GENERATION WITH REAL API DATA
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) return cachedNews;
 
     try {
-        // Busca votações recentes da API da Câmara (Dados Reais)
         const response = await fetch('https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=5', {
             headers: { 'Accept': 'application/json' }
         });
@@ -220,13 +224,8 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             const date = new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR');
             const time = new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
-            // Format title 
-            let title = item.descricao || "Votação em Plenário";
-            // Clean up title for display
-            title = title.replace(/^Votação .*? do /i, "");
-            if (title.length > 100) title = title.substring(0, 97) + "...";
-            
-            // USE ROBOT SUMMARY INSTEAD OF AI
+            // Nova Lógica de Processamento
+            const title = cleanLegislativeTitle(item.descricao);
             const summary = summarizeLegislativeText(item.descricao);
 
             let sourceUrl = `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`;
@@ -245,12 +244,8 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             };
         });
 
-        // Tenta gerar imagens com IA apenas se possível (Opcional, desativado para economia)
-        const enrichedData = await Promise.all(newsItems.map(async (item, index) => {
-            let img = item.imageUrl;
-            // if (index < 3) { try { img = await generateNewsImage(item.title) || img; } catch (e) {} }
-            return { ...item, imageUrl: img };
-        }));
+        // Simulação de AI (Lightweight) para enriquecer se necessário, mas aqui confiamos no novo parser
+        const enrichedData = newsItems;
 
         if (enrichedData.length > 0) {
             setCache(NEWS_CACHE_KEY, enrichedData);
@@ -265,15 +260,58 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     }
 };
 
+export const speakContent = async (text: string): Promise<Uint8Array | null> => {
+    const ai = getAi();
+    if (!ai) return null;
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-preview-tts",
+            contents: [{ parts: [{ text: `Diga de forma clara e profissional: ${text}` }] }],
+            config: {
+                responseModalities: [Modality.AUDIO],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+            },
+        });
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (base64Audio) {
+            const binaryString = atob(base64Audio);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+};
+
+export const generateNewsImage = async (headline: string): Promise<string | null> => {
+    const ai = getAi();
+    if (!ai) return null;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image', 
+            contents: { parts: [{ text: `Fotojornalismo profissional...: '${headline}'.` }] },
+            config: { imageConfig: { aspectRatio: "16:9" } }
+        });
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+            }
+        }
+        return null;
+    } catch (e: any) { return null; }
+};
+
 export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    // Retorna string estática para evitar uso de IA em resumos sob demanda
     return "Resumo detalhado indisponível no momento. Consulte a fonte oficial.";
 };
 
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
     const ai = getAi();
     if (!ai) return null;
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
@@ -289,29 +327,24 @@ export const getSearchContext = async (query: string): Promise<AIResponse | null
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
     const ai = getAi();
     if (!ai) return { text: "⚠️ Sistema offline. Verifique a API Key." };
-
     try {
         let model = 'gemini-3-pro-preview'; 
         let tools: any[] = [];
         let config: any = {};
-
         switch (mode) {
             case 'fast': model = 'gemini-flash-lite-latest'; break;
             case 'search': model = 'gemini-3-flash-preview'; tools = [{ googleSearch: {} }]; break;
             case 'location': model = 'gemini-flash-latest'; tools = [{ googleMaps: {} }]; break;
             case 'thinking': model = 'gemini-3-pro-preview'; config = { thinkingConfig: { thinkingBudget: 32768 } }; break;
         }
-
         const contents = [...history, { role: 'user', parts: [{ text: message }] }];
         const response = await ai.models.generateContent({ model, contents, config: { ...config, tools: tools.length > 0 ? tools : undefined } });
-
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const searchSources = groundingChunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
         const mapSources = groundingChunks.filter((c: any) => c.maps).map((c: any) => ({ uri: c.maps.uri, title: c.maps.title, source: c.maps.placeAnswerSources?.[0]?.reviewSnippets?.[0]?.snippet || "Localização" }));
-
         return { text: response.text || "Sem resposta.", searchSources, mapSources };
     } catch (error: any) {
-        if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido. Por favor, aguarde alguns instantes." };
+        if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido." };
         return { text: "Erro ao processar mensagem." };
     }
 };
@@ -343,58 +376,44 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
     } catch (error) { return ""; }
 };
 
-// Helper to check for 429/Quota errors in various formats
 const checkQuotaError = (error: any): boolean => {
     if (!error) return false;
     if (error.status === 429 || error.code === 429) return true;
     if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) return true;
-    
     const msg = error.message || JSON.stringify(error);
     return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota');
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
     const ai = getAi();
-    
-    // Conteúdo estático de fallback em caso de falha da API
     const staticContent: GeneratedArticle[] = [
         {
             title: "O Orçamento Público",
-            text: "O Orçamento Público estima as receitas e fixa as despesas do governo para um ano. É a lei que define onde seu dinheiro será gasto: saúde, educação, segurança. Sem ele, o governo não pode funcionar.",
+            text: "O Orçamento Público estima as receitas e fixa as despesas do governo para um ano. É a lei que define onde seu dinheiro será gasto: saúde, educação, segurança.",
             topic: "Orçamento",
             legislation: "Art. 165 da Constituição Federal",
             impact: "Define a qualidade dos serviços públicos que você usa."
         },
         {
             title: "PEC vs Projeto de Lei",
-            text: "PEC (Proposta de Emenda à Constituição) altera a Constituição e exige 3/5 dos votos em dois turnos. PL (Projeto de Lei) cria leis comuns e exige maioria simples. PECs mudam as regras do jogo; PLs jogam o jogo.",
+            text: "PEC altera a Constituição e exige 3/5 dos votos. PL cria leis comuns e exige maioria simples. PECs mudam as regras do jogo; PLs jogam o jogo.",
             topic: "Legislação",
             legislation: "Art. 59 a 69 da CF/88",
             impact: "PECs geralmente trazem mudanças profundas e duradouras."
         },
         {
             title: "O Papel do STF",
-            text: "O Supremo Tribunal Federal é o guardião da Constituição. Ele não cria leis, mas julga se as leis criadas pelo Congresso e atos do Presidente respeitam a Constituição. É a última instância da Justiça.",
+            text: "O STF é o guardião da Constituição. Ele não cria leis, mas julga se as leis criadas pelo Congresso e atos do Presidente respeitam a Constituição.",
             topic: "Poder Judiciário",
             legislation: "Art. 101 da CF/88",
             impact: "Garante que seus direitos fundamentais não sejam violados."
         }
     ];
-
     if (!ai) return staticContent;
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Atue como um Professor de Direito Constitucional.
-            Gere 3 artigos educativos curtos e diretos sobre política brasileira.
-            
-            REGRAS RÍGIDAS:
-            - Texto deve ter NO MÁXIMO 60 palavras.
-            - Linguagem simples.
-            - Retorne APENAS o JSON válido.
-
-            Temas sugeridos: Orçamento Público, Tramitação de Leis, STF, Papel do Deputado.`,
+            contents: `Atue como um Professor de Direito Constitucional. Gere 3 artigos educativos curtos e diretos sobre política brasileira. Regras: Máximo 60 palavras, linguagem simples, JSON.`,
             config: {
                 responseMimeType: "application/json",
                 maxOutputTokens: 4000, 
@@ -408,34 +427,10 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
                 }
             }
         });
-        
         let jsonStr = response.text?.trim();
         if (!jsonStr) return staticContent;
-
         if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
         else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
-        
-        try {
-            return JSON.parse(jsonStr) as GeneratedArticle[];
-        } catch (e) {
-            console.warn("JSON Parse Error in Ed Content, attempting fix", e);
-            const lastBracket = jsonStr.lastIndexOf(']');
-            if (lastBracket !== -1) {
-                try {
-                    const fixedStr = jsonStr.substring(0, lastBracket + 1);
-                    return JSON.parse(fixedStr) as GeneratedArticle[];
-                } catch (e2) {
-                    return staticContent;
-                }
-            }
-            return staticContent;
-        }
-    } catch (error: any) { 
-        if (checkQuotaError(error)) {
-            console.warn("Educational Content: Quota exceeded (429), using static fallback.");
-        } else {
-            console.warn("Educational Content Gen Error (using fallback):", error);
-        }
-        return staticContent; 
-    }
+        try { return JSON.parse(jsonStr) as GeneratedArticle[]; } catch (e) { return staticContent; }
+    } catch (error: any) { return staticContent; }
 };

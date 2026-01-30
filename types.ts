@@ -157,6 +157,7 @@ export interface Remuneration {
 export interface Speech {
   date: string;
   summary: string;
+  transcription?: string; // NOVO: Texto completo
   type: string;
   keywords?: string[]; // NOVO
   externalLink?: string; 
@@ -178,6 +179,7 @@ export interface TimelineItem {
   status?: string; // Para votos (Sim/Não) ou Projetos (Aprovado)
   icon?: any; // Metadado interno
   link?: string;
+  details?: string; // NOVO: Para conteúdo expandido (ex: transcrição)
 }
 
 export interface Party {
