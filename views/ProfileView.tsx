@@ -539,7 +539,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           .sort((a, b) => b[1].count - a[1].count)
           .map(([name, data]) => ({
               name,
-              count: data.count,
               percent: (data.count / total) * 100, // Use precise percent for drawing
               ...data
           }));

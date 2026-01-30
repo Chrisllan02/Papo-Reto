@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats } from '../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front } from '../../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -284,8 +284,59 @@ const fetchSenadorDetalhes = async (id: number) => {
     };
 };
 
-const fetchSenadorVotacoes = async (id: number) => { return []; };
-const fetchSenadorDiscursos = async (id: number) => { return []; };
+const fetchSenadorVotacoes = async (id: number, year: number): Promise<LegislativeVote[]> => {
+    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}/votacoes.json?ano=${year}`, 2, true);
+    if (!data || !data.VotacoesParlamentar || !data.VotacoesParlamentar.Parlamentar) return [];
+    
+    // Safety check for empty or single object
+    const votacoes = forceArray(data.VotacoesParlamentar.Parlamentar.Votacoes?.Votacao);
+    
+    return votacoes.map((v: any) => ({
+        id: v.CodigoSessao + '-' + v.SequencialVotacao,
+        date: v.DataSessao,
+        description: formatText(v.DescricaoVotacao || v.Materia?.EmentaMateria || "Votação em Plenário"),
+        vote: v.SiglaDescricaoVoto || "Presença"
+    }));
+};
+
+const fetchSenadorDespesas = async (id: number, year: number) => {
+    const data = await fetchAPI(`${BASE_URL_SENADO}/senador/${id}/indemnizatorias.json?ano=${year}`, 2, true);
+    
+    // Safety check: Senate API sometimes returns empty structure or missing 'Despesas' key
+    const rawDespesas = data?.IndenizacaoSenador?.Parlamentar?.Despesas?.Despesa;
+    if (!rawDespesas) return { total: 0, breakdown: [], yearly: {}, history: [] };
+
+    const despesas = forceArray(rawDespesas);
+    
+    let total = 0;
+    const byType: Record<string, number> = {};
+    const history: ExpenseHistoryItem[] = [];
+
+    despesas.forEach((d: any) => {
+        const val = parseFloat(d.ValorReembolsado || 0);
+        if (val > 0) {
+            total += val;
+            const type = formatText(d.TipoDespesa);
+            byType[type] = (byType[type] || 0) + val;
+        }
+    });
+
+    history.push({ month: `${year}`, year: year, value: total, label: `${year}` });
+
+    const breakdown = Object.entries(byType)
+        .map(([type, val]) => ({ type, value: val, percent: Math.round((val / total) * 100) }))
+        .sort((a,b) => b.value - a.value)
+        .slice(0, 5);
+
+    return { 
+        total, 
+        breakdown, 
+        yearly: { [year]: total }, 
+        history 
+    };
+};
+
+const fetchSenadorDiscursos = async (id: number) => { return []; }; 
 const fetchSenadorComissoes = async (id: number) => { return []; };
 
 const fetchDeputadoDetalhes = async (id: number): Promise<PoliticianDetails | null> => {
@@ -307,6 +358,32 @@ const fetchDeputadoDetalhes = async (id: number): Promise<PoliticianDetails | nu
             email: d.ultimoStatus?.gabinete?.email
         }
     };
+};
+
+// --- NEW FETCHER: Detailed Occupations ---
+const fetchOcupacoes = async (id: number): Promise<Occupation[]> => {
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/ocupacoes`, 2, true);
+    if (!data || !data.dados) return [];
+    
+    return data.dados.map((o: any) => ({
+        title: formatText(o.titulo),
+        entity: o.entidade ? formatText(o.entidade) : undefined,
+        state: o.ufEntidade,
+        startYear: o.anoInicio,
+        endYear: o.anoFim
+    }));
+};
+
+const fetchSecretarios = async (id: number): Promise<Secretary[]> => {
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/secretarios`, 2, true);
+    if (!data || !data.dados) return [];
+    
+    return data.dados.map((s: any) => ({
+        name: formatText(s.nome),
+        role: s.cargo,
+        group: 'Secretário Parlamentar',
+        start: s.dataInicio
+    }));
 };
 
 const fetchProfissoes = async (id: number) => {
@@ -562,22 +639,25 @@ const fetchMapDeVotosReais = async (): Promise<Record<number, Record<number, str
 
 // --- EXPORTED PUBLIC FETCHERS ---
 
-export const fetchDiscursos = async (id: number, year?: number, pagina = 1) => {
+// Updated to try and fetch full transcriptions if available
+export const fetchDiscursos = async (id: number, year?: number, pagina = 1): Promise<Speech[]> => {
     let url = `${BASE_URL_CAMARA}/deputados/${id}/discursos?ordem=DESC&ordenarPor=dataHoraInicio&pagina=${pagina}&itens=5`;
     if (year) {
         url += `&dataInicio=${year}-01-01&dataFim=${year}-12-31`;
     }
     const data = await fetchAPI(url, 2, true);
     if (!data || !data.dados) return [];
+    
     return data.dados.map((d: any) => ({
         date: d.dataHoraInicio,
         summary: formatText(d.sumario || d.transcricao || "Discurso em plenário."),
+        transcription: d.transcricao || d.sumario, // V2 puts full text in 'transcricao' often
         type: d.keywords ? d.keywords.split(',')[0] : 'Discurso',
         externalLink: d.urlAudio || `https://www.camara.leg.br/deputados/${id}`
     }));
 };
 
-export const fetchFrentes = async (id: number) => {
+export const fetchFrentes = async (id: number): Promise<Front[]> => {
     const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/frentes`, 2, true);
     if (!data || !data.dados) return [];
     return data.dados.map((f: any) => ({
@@ -853,10 +933,11 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
     }
 
     try {
-        const [detailsResult, profissoes, orgaos] = await Promise.all([
+        const [detailsResult, profissoes, orgaos, ocupacoes] = await Promise.all([
             fetchDeputadoDetalhes(pol.id).catch(() => null),
             fetchProfissoes(pol.id).catch(() => 'Parlamentar'),
-            fetchDeputadoOrgaos(pol.id).catch(() => [])
+            fetchDeputadoOrgaos(pol.id).catch(() => []),
+            fetchOcupacoes(pol.id).catch(() => [])
         ]);
 
         if (detailsResult) {
@@ -874,6 +955,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 bio: bio,
                 profession: profissoes,
                 roles: orgaos,
+                occupations: ocupacoes
             };
 
             localStorage.setItem(permanentKey, JSON.stringify(freshData));
@@ -898,25 +980,50 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
     if (pol.role.includes('Senad')) {
         if (onProgress) onProgress("Buscando dados no Senado...");
         try {
-            const [timelineResult, speechesResult, comissoesResult] = await Promise.allSettled([
-                fetchSenadorVotacoes(pol.id),
+            const currentYear = new Date().getFullYear();
+            const [timelineResult, expensesResult, speechesResult, comissoesResult] = await Promise.allSettled([
+                fetchSenadorVotacoes(pol.id, currentYear),
+                fetchSenadorDespesas(pol.id, currentYear),
                 fetchSenadorDiscursos(pol.id),
                 fetchSenadorComissoes(pol.id)
             ]);
+            
             const timelineVotes = timelineResult.status === 'fulfilled' ? timelineResult.value : [];
+            const expensesData = expensesResult.status === 'fulfilled' ? expensesResult.value : { total: 0, breakdown: [], yearly: {}, history: [] };
             const speeches = speechesResult.status === 'fulfilled' ? speechesResult.value : [];
             const roles = comissoesResult.status === 'fulfilled' ? comissoesResult.value : [];
             
+            // Map LegislativeVote[] to TimelineItem[]
+            const timelineItems: TimelineItem[] = timelineVotes.map((v: LegislativeVote) => ({
+                id: v.id,
+                date: v.date,
+                type: 'voto',
+                title: 'Votação no Senado',
+                description: v.description,
+                status: v.vote
+            }));
+
             const result = {
                 ...robustPol,
-                timeline: timelineVotes || [],
+                timeline: timelineItems,
+                votingHistory: timelineVotes || [],
                 speeches: speeches || [],
                 roles: roles,
-                stats: { ...pol.stats, projects: timelineVotes ? timelineVotes.length : 0 },
-                agenda: [] 
+                expensesBreakdown: expensesData.breakdown,
+                expensesHistory: expensesData.history,
+                stats: { 
+                    ...pol.stats, 
+                    projects: timelineVotes ? timelineVotes.length : 0,
+                    spending: expensesData.total 
+                },
+                agenda: [],
+                staff: [] // Senadores ainda sem endpoint de secretários implementado
             };
             
-            setInCache(profileCacheKey, result);
+            if (expensesData.total > 0 || (timelineVotes && timelineVotes.length > 0)) {
+                setInCache(profileCacheKey, result);
+            }
+            
             return result;
         } catch (e) { return robustPol; }
     }
@@ -939,7 +1046,8 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
             fetchVotacoesPorAno(pol.id, currentYear),
             fetchEmendasStats(pol.id),
             fetchTimeline(pol.id),
-            fetchMapDeVotosReais()
+            fetchMapDeVotosReais(),
+            fetchSecretarios(pol.id)
         ]);
 
         const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
@@ -958,6 +1066,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
         const amendmentStats = getValue(results[11], { authorized: 0 });
         const timeline = getValue(results[12], []);
         const allVotesResult = getValue(results[13], {});
+        const staff = getValue(results[14], []);
 
         const roles = robustPol.roles && robustPol.roles.length > 0 ? robustPol.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
 
@@ -987,7 +1096,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
         
         const finalProfile = {
             ...robustPol, 
-            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats,
+            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats, staff,
             assets: [], donors: [],
             expensesBreakdown: expensesData.breakdown,
             expensesHistory: expensesData.history,
