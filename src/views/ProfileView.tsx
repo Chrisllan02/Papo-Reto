@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, ArrowDown, History, Check, BrainCircuit, ScanSearch, Sparkles } from 'lucide-react';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, ArrowDown, History, Check, BrainCircuit, ScanSearch, Sparkles, Crown, Video } from 'lucide-react';
 import { Politician, FeedItem, YearStats, Tramitacao } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
@@ -336,6 +336,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
 const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const [expanded, setExpanded] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
+    const [showVideo, setShowVideo] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [tramitacoes, setTramitacoes] = useState<Tramitacao[]>([]);
     
@@ -560,7 +561,8 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     }
 
     if (type === 'speech') {
-        const isAudioAvailable = item.externalLink && (item.externalLink.toLowerCase().endsWith('.mp3') || item.externalLink.toLowerCase().includes('/audio/'));
+        const hasAudio = item.urlAudio || (item.externalLink && (item.externalLink.toLowerCase().endsWith('.mp3') || item.externalLink.toLowerCase().includes('/audio/')));
+        const hasVideo = item.urlVideo;
 
         return (
             <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
@@ -585,16 +587,26 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    {/* Audio Player Container */}
-                    {showPlayer && isAudioAvailable && (
-                        <div className="w-full bg-gray-100 dark:bg-black/20 rounded-xl p-2 mb-1 animate-in fade-in slide-in-from-top-1">
-                            <audio controls autoPlay className="w-full h-8 outline-none" src={item.externalLink}>
+                    {/* Native Video Player */}
+                    {showVideo && hasVideo && (
+                        <div className="w-full bg-black rounded-xl overflow-hidden aspect-video mb-2 animate-in fade-in slide-in-from-top-1 shadow-lg">
+                            <video controls autoPlay className="w-full h-full" src={item.urlVideo}>
+                                Seu navegador não suporta vídeo HTML5.
+                            </video>
+                        </div>
+                    )}
+
+                    {/* Native Audio Player */}
+                    {showPlayer && hasAudio && (
+                        <div className="w-full bg-gray-100 dark:bg-black/20 rounded-xl p-2 mb-1 animate-in fade-in slide-in-from-top-1 border border-white/10">
+                            <audio controls autoPlay className="w-full h-8 outline-none" src={item.urlAudio || item.externalLink}>
                                 Seu navegador não suporta áudio.
                             </audio>
                         </div>
                     )}
 
                     <div className="flex gap-2 flex-wrap">
+                        {/* Botão de Transcrição */}
                         {item.transcription && (
                             <button 
                                 onClick={() => setExpanded(!expanded)} 
@@ -604,20 +616,33 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                             </button>
                         )}
                         
-                        {item.externalLink && (
-                            isAudioAvailable ? (
-                                <button 
-                                    onClick={() => setShowPlayer(!showPlayer)} 
-                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-colors backdrop-blur-md ${showPlayer ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 group-hover:bg-red-50/50 dark:group-hover:bg-red-900/20 group-hover:text-red-600'}`}
-                                >
-                                    {showPlayer ? <X size={14} className="pl-0.5" /> : <PlayCircle size={14} className="pl-0.5" />}
-                                    {showPlayer ? "Fechar Áudio" : "Ouvir Discurso"}
-                                </button>
-                            ) : (
-                                <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-600 dark:text-gray-300 group-hover:bg-red-50/50 dark:group-hover:bg-red-900/20 group-hover:text-red-600 transition-colors backdrop-blur-md">
-                                    <ExternalLink size={14} className="pl-0.5" /> Ver Fonte
-                                </a>
-                            )
+                        {/* Botão de Vídeo */}
+                        {hasVideo && (
+                            <button 
+                                onClick={() => { setShowVideo(!showVideo); setShowPlayer(false); }} 
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-colors backdrop-blur-md ${showVideo ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-red-50/50 dark:hover:bg-red-900/20 hover:text-red-600'}`}
+                            >
+                                {showVideo ? <X size={14} className="pl-0.5" /> : <Video size={14} className="pl-0.5" />}
+                                {showVideo ? "Fechar Vídeo" : "Ver Vídeo"}
+                            </button>
+                        )}
+
+                        {/* Botão de Áudio */}
+                        {hasAudio && (
+                            <button 
+                                onClick={() => { setShowPlayer(!showPlayer); setShowVideo(false); }} 
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-colors backdrop-blur-md ${showPlayer ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-green-50/50 dark:hover:bg-green-900/20 hover:text-green-600'}`}
+                            >
+                                {showPlayer ? <X size={14} className="pl-0.5" /> : <Volume2 size={14} className="pl-0.5" />}
+                                {showPlayer ? "Fechar Áudio" : "Ouvir Original"}
+                            </button>
+                        )}
+
+                        {/* Fonte Externa (Fallback) */}
+                        {item.externalLink && !hasAudio && !hasVideo && (
+                            <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-600 dark:text-gray-300 group-hover:bg-red-50/50 dark:group-hover:bg-red-900/20 group-hover:text-red-600 transition-colors backdrop-blur-md">
+                                <ExternalLink size={14} className="pl-0.5" /> Ver Fonte
+                            </a>
                         )}
                     </div>
                 </div>
@@ -1093,6 +1118,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     ) : (
                                         <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">
                                             Informações de carreira não disponíveis na base oficial.
+                                        </div>
+                                    )
+                                )}
+                            </div>
+
+                            {/* Lideranças Partidárias */}
+                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
+                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
+                                    <Crown size={20} className="text-blue-500"/> Lideranças e Cargos
+                                </h3>
+                                {isLoadingDetails ? (
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                    </div>
+                                ) : (
+                                    candidate.leaderships && candidate.leaderships.length > 0 ? (
+                                        <div className="space-y-4 relative">
+                                            {/* Linha vertical conectando */}
+                                            <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+                                            
+                                            {candidate.leaderships.slice(0, 5).map((lead, i) => (
+                                                <div key={i} className="flex gap-4 relative z-10 group">
+                                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-yellow-500 group-hover:text-yellow-500 transition-colors">
+                                                        <Crown size={18} className="text-gray-400 group-hover:text-yellow-500"/>
+                                                    </div>
+                                                    <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
+                                                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{lead.title}</h4>
+                                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{lead.entity}</p>
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-200 dark:border-yellow-800">
+                                                                {new Date(lead.start).toLocaleDateString('pt-BR')} {lead.end ? `- ${new Date(lead.end).toLocaleDateString('pt-BR')}` : '- Atual'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {candidate.leaderships.length > 5 && (
+                                                <p className="text-center text-xs font-bold text-gray-400 mt-4">...e mais {candidate.leaderships.length - 5} cargos anteriores</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">
+                                            Nenhum cargo de liderança registrado.
                                         </div>
                                     )
                                 )}

@@ -1,5 +1,5 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front, Bloc, Tramitacao } from '../types';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front, Bloc, Tramitacao, Leadership } from '../types';
 import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
@@ -386,6 +386,17 @@ const fetchSecretarios = async (id: number): Promise<Secretary[]> => {
     }));
 };
 
+const fetchLiderancas = async (id: number): Promise<Leadership[]> => {
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/liderancas?ordem=DESC&ordenarPor=dataInicio`, 2, true);
+    if (!data || !data.dados) return [];
+    return data.dados.map((l: any) => ({
+        title: l.titulo,
+        entity: l.unidadeLideranca,
+        start: l.dataInicio,
+        end: l.dataFim
+    }));
+};
+
 const fetchProfissoes = async (id: number) => {
     const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/profissoes`, 2, true);
     if (!data || !data.dados) return undefined;
@@ -653,6 +664,8 @@ export const fetchDiscursos = async (id: number, year?: number, pagina = 1): Pro
         summary: formatText(d.sumario || d.transcricao || "Discurso em plenário."),
         transcription: d.transcricao || d.sumario, // V2 puts full text in 'transcricao' often
         type: d.keywords ? d.keywords.split(',')[0] : 'Discurso',
+        urlAudio: d.urlAudio,
+        urlVideo: d.urlVideo,
         externalLink: d.urlAudio || `https://www.camara.leg.br/deputados/${id}`
     }));
 };
@@ -1132,7 +1145,8 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
             fetchEmendasStats(pol.id),
             fetchTimeline(pol.id),
             fetchMapDeVotosReais(),
-            fetchSecretarios(pol.id)
+            fetchSecretarios(pol.id),
+            fetchLiderancas(pol.id)
         ]);
 
         const getValue = (res: PromiseSettledResult<any>, def: any) => res.status === 'fulfilled' ? res.value : def;
@@ -1152,6 +1166,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
         const timeline = getValue(results[12], []);
         const allVotesResult = getValue(results[13], {});
         const staff = getValue(results[14], []);
+        const leaderships = getValue(results[15], []);
 
         const roles = robustPol.roles && robustPol.roles.length > 0 ? robustPol.roles : await fetchDeputadoOrgaos(pol.id).catch(() => []);
 
@@ -1181,7 +1196,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (msg: s
         
         const finalProfile = {
             ...robustPol, 
-            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats, staff,
+            speeches, fronts, bills, reportedBills, votingHistory, votes: myVotes, roles, travels, remuneration, agenda, amendmentStats, staff, leaderships,
             assets: [], donors: [],
             expensesBreakdown: expensesData.breakdown,
             expensesHistory: expensesData.history,
