@@ -130,6 +130,48 @@ export const generateNewsImage = async (headline: string): Promise<string | null
     }
 };
 
+// NOVO: Função para analisar Lei
+export const generateLawAnalysis = async (title: string, ementa: string, keywords: string): Promise<{summary: string, riders: string, impact: string}> => {
+    const ai = getAi();
+    if (!ai) return { 
+        summary: "IA indisponível no momento.", 
+        riders: "Não foi possível analisar.", 
+        impact: "Consulte a fonte oficial." 
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Analise este Projeto de Lei:
+            Título: ${title}
+            Ementa: ${ementa}
+            Palavras-chave: ${keywords}
+
+            Atue como um analista político sênior. Responda em JSON:
+            1. summary: Resumo simples e direto do que muda na lei (sem juridiquês).
+            2. riders: Identifique possíveis "Jabutis" (temas estranhos ao principal) se houver, ou diga "Nenhum jabuti aparente".
+            3. impact: O impacto real na vida de um jovem brasileiro da Geração Z.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summary: { type: Type.STRING },
+                        riders: { type: Type.STRING },
+                        impact: { type: Type.STRING }
+                    },
+                    required: ["summary", "riders", "impact"]
+                }
+            }
+        });
+
+        const jsonStr = response.text?.trim() || "";
+        return JSON.parse(jsonStr);
+    } catch (e) {
+        return { summary: "Erro na análise.", riders: "-", impact: "-" };
+    }
+};
+
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];

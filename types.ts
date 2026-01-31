@@ -61,6 +61,14 @@ export interface Stats {
   spending: number;
 }
 
+export interface Tramitacao {
+  sequence: number;
+  date: string;
+  organ: string; // Órgão onde ocorreu
+  description: string; // Despacho ou ação
+  status?: string; // Situação resultante
+}
+
 export interface Bill {
   id: string;
   title: string;
@@ -182,6 +190,12 @@ export interface TimelineItem {
   details?: string; // NOVO: Para conteúdo expandido (ex: transcrição)
 }
 
+export interface Bloc {
+  id: string;
+  name: string;
+  parties: string[]; // Siglas dos partidos que compõem o bloco
+}
+
 export interface Party {
   id: number;
   sigla: string;
@@ -190,6 +204,7 @@ export interface Party {
   urlLogo?: string;
   totalMembers?: number; // Calculado no frontend
   ideology?: 'Esquerda' | 'Centro' | 'Direita'; // Calculado no frontend
+  bloc?: string; // Nome do bloco ao qual pertence
 }
 
 export interface Politician {

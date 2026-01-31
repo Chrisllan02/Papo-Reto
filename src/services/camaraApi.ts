@@ -1,6 +1,6 @@
 
-import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front } from '../../types';
-import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../../constants';
+import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front, Bloc, Tramitacao } from '../types';
+import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -681,6 +681,30 @@ export const fetchProposicoes = async (id: number) => {
     }));
 };
 
+// NOVO: Fetch Detalhes da Proposição (keywords, link inteiro teor)
+export const fetchProposicaoCompleta = async (propId: number) => {
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/proposicoes/${propId}`, 2, true);
+    if (!data || !data.dados) return null;
+    return {
+        keywords: data.dados.keywords,
+        ementaDetalhada: data.dados.ementaDetalhada,
+        uriInteiroTeor: data.dados.urlInteiroTeor
+    };
+};
+
+// NOVO: Fetch Tramitações Detalhadas
+export const fetchTramitacoes = async (propId: number): Promise<Tramitacao[]> => {
+    const data = await fetchAPI(`${BASE_URL_CAMARA}/proposicoes/${propId}/tramitacoes`, 2, true);
+    if (!data || !data.dados) return [];
+    return data.dados.map((t: any) => ({
+        sequence: t.sequencia,
+        date: t.dataHora,
+        organ: t.siglaOrgao,
+        description: formatText(t.despacho),
+        status: t.descricaoSituacao
+    })).sort((a: Tramitacao, b: Tramitacao) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
 export const fetchRelatorias = async (id: number, year: number): Promise<Relatoria[]> => {
     const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${id}/relatorias?ano=${year}&ordem=DESC&ordenarPor=dataInicio&itens=100`, 2, true);
     if (!data || !data.dados) return [];
@@ -705,8 +729,32 @@ export const fetchVotacoesPorAno = async (id: number, year: number): Promise<Leg
     }));
 };
 
+export const fetchBlocos = async (): Promise<Bloc[]> => {
+    const result = await fetchWithCache('lista_blocos', async () => {
+        const data = await fetchAPI(`${BASE_URL_CAMARA}/blocos?ordem=ASC&ordenarPor=nome&itens=100`, 2, true);
+        if (!data || !data.dados) return [];
+        return data.dados.map((b: any) => {
+            // Parser de composição do bloco: "MDB, PSD, REPUBLICANOS" -> ["MDB", "PSD", "REPUBLICANOS"]
+            // O nome geralmente vem no formato "Bloco (MDB, PSD...)" ou apenas a lista
+            let rawParties = b.nome;
+            // Remove prefixo "Bloco" se existir e parênteses
+            rawParties = rawParties.replace(/^Bloco\s*\(?/i, '').replace(/\)$/, '');
+            
+            const parties = rawParties.split(',').map((s: string) => s.trim().toUpperCase());
+            
+            return {
+                id: b.id,
+                name: b.nome,
+                parties: parties
+            };
+        });
+    }, TTL_DYNAMIC); // Cache mais curto pois blocos mudam com frequência
+    return result || [];
+};
+
 export const fetchPartidos = async (): Promise<Party[]> => {
-    const result = await fetchWithCache('lista_partidos', async () => {
+    // 1. Fetch de Partidos
+    const partiesResult = await fetchWithCache('lista_partidos', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/partidos?ordem=ASC&ordenarPor=sigla&itens=100`, 2, true);
         if (!data || !data.dados) return getStaticParties();
         return data.dados.map((p: any) => ({
@@ -718,7 +766,44 @@ export const fetchPartidos = async (): Promise<Party[]> => {
             ideology: PM[p.sigla]?.ideology || 'Centro'
         }));
     }, TTL_PERMANENT);
-    return result || getStaticParties();
+
+    const parties: Party[] = partiesResult || getStaticParties();
+
+    // 2. Fetch de Blocos e Cruzamento
+    try {
+        const blocs = await fetchBlocos();
+        
+        // Criar um mapa reverso: Sigla -> Nome do Bloco
+        const partyToBlocMap: Record<string, string> = {};
+        blocs.forEach(bloc => {
+            bloc.parties.forEach(sigla => {
+                // Normaliza a sigla para match seguro
+                const cleanSigla = sigla.split(' ')[0]; // Pega a primeira palavra caso tenha algo composto estranho
+                partyToBlocMap[cleanSigla] = bloc.name;
+                
+                // Hack para Federações (ex: "Federação PSDB CIDADANIA")
+                if (sigla.includes('Federação')) {
+                    if (sigla.includes('PSDB')) partyToBlocMap['PSDB'] = bloc.name;
+                    if (sigla.includes('CIDADANIA')) partyToBlocMap['CIDADANIA'] = bloc.name;
+                    if (sigla.includes('PT')) partyToBlocMap['PT'] = bloc.name;
+                    if (sigla.includes('PCdoB')) partyToBlocMap['PCdoB'] = bloc.name;
+                    if (sigla.includes('PV')) partyToBlocMap['PV'] = bloc.name;
+                    if (sigla.includes('PSOL')) partyToBlocMap['PSOL'] = bloc.name;
+                    if (sigla.includes('REDE')) partyToBlocMap['REDE'] = bloc.name;
+                }
+            });
+        });
+
+        // Enriquecer a lista de partidos com o bloco
+        return parties.map(p => ({
+            ...p,
+            bloc: partyToBlocMap[p.sigla.toUpperCase()] || 'Sem Bloco'
+        }));
+
+    } catch (e) {
+        console.warn("Erro ao cruzar dados de blocos:", e);
+        return parties; // Retorna sem blocos em caso de erro
+    }
 };
 
 export const fetchDeputados = async (): Promise<Politician[]> => {

@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, ArrowDown, History, Check } from 'lucide-react';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, ArrowDown, History, Check, BrainCircuit, ScanSearch, Sparkles } from 'lucide-react';
 import { Politician, FeedItem, YearStats, Tramitacao } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
-import { fetchTramitacoes } from '../services/camaraApi';
+import { fetchTramitacoes, fetchProposicaoCompleta } from '../services/camaraApi';
+import { generateLawAnalysis } from '../services/ai';
 
 export interface ProfileViewProps {
   candidate: Politician;
@@ -338,8 +339,43 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [tramitacoes, setTramitacoes] = useState<Tramitacao[]>([]);
     
+    // AI Analysis States
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [aiResult, setAiResult] = useState<{summary: string, riders: string, impact: string} | null>(null);
+    const [fullTextLink, setFullTextLink] = useState<string | null>(null);
+
     const type = item._type;
     
+    const handleAnalyzeBill = async () => {
+        if (aiResult) {
+            setExpanded(true); // Se já analisou, só expande
+            return;
+        }
+
+        setIsAnalyzing(true);
+        setExpanded(true); // Expande para mostrar loader
+
+        try {
+            const propId = parseInt(item.id.replace(/\D/g, ''));
+            if (!propId) throw new Error("ID inválido");
+
+            const details = await fetchProposicaoCompleta(propId);
+            
+            if (details) {
+                setFullTextLink(details.uriInteiroTeor);
+                const analysis = await generateLawAnalysis(item.title, details.ementaDetalhada || item.description, details.keywords || "");
+                setAiResult(analysis);
+            } else {
+                setAiResult({ summary: "Detalhes não disponíveis.", riders: "-", impact: "-" });
+            }
+        } catch (e) {
+            console.error("Erro na análise IA", e);
+            setAiResult({ summary: "Erro ao conectar com IA.", riders: "Tente novamente.", impact: "-" });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     // --- LOAD TRAMITACAO LOGIC ---
     const handleExpandBill = async () => {
         setExpanded(!expanded);
@@ -379,13 +415,24 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                     <p className={`text-sm text-gray-600 dark:text-gray-400 leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>{item.description}</p>
                 </div>
                 
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                     <button 
                         onClick={handleExpandBill}
                         className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline p-2 -ml-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 w-fit transition-colors"
                     >
-                        {expanded ? <><ArrowDown className="rotate-180" size={12}/> Ocultar Tramitação</> : <><History size={12}/> Ver Histórico</>}
+                        {expanded && !aiResult ? <><ArrowDown className="rotate-180" size={12}/> Ocultar Tramitação</> : <><History size={12}/> Ver Histórico</>}
                     </button>
+                    
+                    {/* Botão RAIO-X IA */}
+                    <button 
+                        onClick={handleAnalyzeBill}
+                        disabled={isAnalyzing}
+                        className="text-xs font-black uppercase text-purple-600 dark:text-purple-400 flex items-center gap-1.5 hover:underline p-2 rounded-lg hover:bg-purple-50/50 dark:hover:bg-purple-900/20 w-fit transition-colors"
+                    >
+                        {isAnalyzing ? <Loader2 size={12} className="animate-spin"/> : <BrainCircuit size={12}/>} 
+                        {aiResult ? "Ver Análise IA" : "Raio-X (IA)"}
+                    </button>
+
                     {item.externalLink && (
                         <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-gray-500 hover:text-blue-500 flex items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 w-fit transition-colors">
                             <ExternalLink size={12} /> Íntegra
@@ -393,8 +440,45 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                     )}
                 </div>
 
-                {/* EXPANDED TIMELINE */}
-                {expanded && (
+                {/* AREA DE ANALISE IA */}
+                {expanded && (aiResult || isAnalyzing) && (
+                    <div className="mt-4 pt-4 border-t border-purple-100 dark:border-purple-900/30 animate-in slide-in-from-top-2 fade-in bg-purple-50/30 dark:bg-purple-900/10 p-4 rounded-2xl">
+                        <div className="flex items-center gap-2 mb-3 text-purple-600 dark:text-purple-400 font-black text-xs uppercase tracking-widest">
+                            <Sparkles size={14} /> Análise Inteligente (Gemini)
+                        </div>
+                        
+                        {isAnalyzing ? (
+                            <div className="space-y-3">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-5/6" />
+                            </div>
+                        ) : (
+                            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                                <div>
+                                    <p className="font-bold text-gray-900 dark:text-white mb-1">📝 Resumo Simplificado:</p>
+                                    <p className="leading-relaxed">{aiResult?.summary}</p>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-900 dark:text-white mb-1">🐢 Caça aos Jabutis:</p>
+                                    <p className="leading-relaxed italic">{aiResult?.riders}</p>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-900 dark:text-white mb-1">💥 Impacto na Vida Real:</p>
+                                    <p className="leading-relaxed">{aiResult?.impact}</p>
+                                </div>
+                                {fullTextLink && (
+                                    <a href={fullTextLink} target="_blank" className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline mt-2">
+                                        <ScanSearch size={12} /> Ler documento original (Inteiro Teor)
+                                    </a>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* EXPANDED TIMELINE (Se não estiver vendo IA ou se quiser ver ambos) */}
+                {expanded && !aiResult && !isAnalyzing && (
                     <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 animate-in slide-in-from-top-2 fade-in">
                         <div className="flex justify-between items-center mb-4">
                             <h5 className="text-xs font-black uppercase text-gray-400 tracking-widest">Linha do Tempo</h5>
