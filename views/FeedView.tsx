@@ -499,19 +499,44 @@ const StateSpotlightWidget = ({ politicians, onSelectCandidate, onGoToExplore }:
                 <div className="relative -mx-4 md:-mx-0 px-4 md:px-0">
                     <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth">
                         {statePoliticians.map((pol) => {
+                            const ideology = getIdeology(pol.party);
                             const cardStyle = getIdeologyStyle(pol.party);
+                            const isSenator = pol.role.toLowerCase().includes('senad');
+                            
+                            // Configuração do Indicador Visual (Barra Lateral + Dot)
+                            let indicatorBorder = 'border-l-amber-400';
+                            let dotColor = 'bg-amber-500';
+                            
+                            if (ideology === 'Esquerda') {
+                                indicatorBorder = 'border-l-rose-500';
+                                dotColor = 'bg-rose-500';
+                            } else if (ideology === 'Direita') {
+                                indicatorBorder = 'border-l-indigo-500';
+                                dotColor = 'bg-indigo-500';
+                            }
                             
                             return (
                                 <div 
                                     key={pol.id} 
                                     onClick={() => onSelectCandidate(pol)}
-                                    className={`snap-center shrink-0 w-56 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 ${cardStyle}`}
+                                    className={`snap-center shrink-0 w-56 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 border-l-[6px] ${indicatorBorder} ${cardStyle}`}
                                 >
-                                    <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-[3px] border-white/50 dark:border-gray-600 shadow-md">
-                                        <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
+                                    <div className="relative w-24 h-24 mb-4">
+                                        <div className={`w-full h-full rounded-full overflow-hidden shadow-md ${isSenator ? 'border-[3px] border-yellow-400 dark:border-yellow-500 ring-4 ring-yellow-400/20' : 'border-[3px] border-white/50 dark:border-gray-600'}`}>
+                                            <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
+                                        </div>
+                                        {isSenator && (
+                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-[8px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg tracking-widest border border-white/20 z-10 whitespace-nowrap">
+                                                Senado
+                                            </div>
+                                        )}
                                     </div>
                                     <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
-                                    <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase bg-white/40 dark:bg-white/5 px-3 py-1 rounded-md border border-white/20">{pol.party}</p>
+                                    
+                                    <div className="flex items-center gap-2 bg-white/40 dark:bg-white/5 px-3 py-1 rounded-md border border-white/20">
+                                        <div className={`w-2 h-2 rounded-full ${dotColor} shadow-sm`} title={`Ideologia: ${ideology}`}></div>
+                                        <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{pol.party}</p>
+                                    </div>
                                 </div>
                             );
                         })}
