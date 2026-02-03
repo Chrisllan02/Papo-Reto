@@ -468,28 +468,46 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'projects' | 'money' | 'cabinet' | 'agenda' | 'career'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
-  const [selectedYear, setSelectedYear] = useState<number | 'total'>(2025);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // --- SWIPE TO BACK LOGIC ---
+  // --- SWIPE TO BACK LOGIC (REFINED) ---
   const touchStartRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null); // New ref for Y axis
   const [translateX, setTranslateX] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-      // Inicia apenas se o toque for na borda esquerda (20% da tela)
-      if (e.touches[0].clientX < window.innerWidth * 0.2) {
+      // Inicia apenas se o toque for estritamente na borda esquerda (10% da tela ou 35px)
+      // Evita conflitos com scrolls internos que começam "quase" na borda
+      const threshold = Math.min(window.innerWidth * 0.1, 35);
+      
+      if (e.touches[0].clientX < threshold) {
           touchStartRef.current = e.touches[0].clientX;
+          touchStartYRef.current = e.touches[0].clientY;
       }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
       if (touchStartRef.current !== null) {
-          const delta = e.touches[0].clientX - touchStartRef.current;
+          const currentX = e.touches[0].clientX;
+          const currentY = e.touches[0].clientY;
+          const deltaX = currentX - touchStartRef.current;
+          const deltaY = currentY - (touchStartYRef.current || 0);
+
+          // Axis Locking: Se o movimento vertical for maior que o horizontal, assume que é scroll e cancela o swipe
+          if (Math.abs(deltaY) > Math.abs(deltaX)) {
+              touchStartRef.current = null;
+              touchStartYRef.current = null;
+              setTranslateX(0);
+              return;
+          }
+
           // Permite apenas arrastar para a direita (voltar)
-          if (delta > 0) {
-              setTranslateX(delta);
+          if (deltaX > 0) {
+              // Previne navegação nativa do browser em alguns casos
+              if (e.cancelable && deltaX > 10) e.preventDefault();
+              setTranslateX(deltaX);
           }
       }
   };
@@ -502,11 +520,32 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           }
           setTranslateX(0);
           touchStartRef.current = null;
+          touchStartYRef.current = null;
       }
   };
 
   const { candidate: enrichedCandidate, isLoadingDetails, loadingStatus } = usePoliticianProfile(initialCandidate);
   const candidate = enrichedCandidate || initialCandidate;
+
+  // Lógica inteligente para definir o ano inicial
+  // Se o ano atual não tiver dados (ex: Janeiro), tenta o ano anterior.
+  const [selectedYear, setSelectedYear] = useState<number | 'total'>('total');
+
+  useEffect(() => {
+      if (candidate.yearlyStats) {
+          const y = new Date().getFullYear();
+          // Verifica se tem sessões no ano atual. Se não, fallback para ano anterior.
+          if (candidate.yearlyStats[y]?.totalSessions > 0) {
+              setSelectedYear(y);
+          } else if (candidate.yearlyStats[y - 1]?.totalSessions > 0) {
+              setSelectedYear(y - 1);
+          } else {
+              // Se nem ano anterior tiver (início de mandato ou erro), mantém 'total' ou tenta o primeiro disponível
+              const available = Object.keys(candidate.yearlyStats).map(Number).sort((a,b) => b-a);
+              if (available.length > 0) setSelectedYear(available[0]);
+          }
+      }
+  }, [candidate.yearlyStats]);
 
   // --- CATEGORIZAÇÃO DE FRENTES PARLAMENTARES (DNA DE INTERESSES) ---
   const frontCategories = useMemo(() => {
@@ -539,7 +578,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           .sort((a, b) => b[1].count - a[1].count)
           .map(([name, data]) => ({
               name,
-              count: data.count,
               percent: (data.count / total) * 100, // Use precise percent for drawing
               ...data
           }));

@@ -139,7 +139,7 @@ function App() {
             html.high-contrast svg {
                 stroke: #FFFF00 !important;
                 color: #FFFF00 !important;
-                fill: none !important;
+                /* fill: none !important; REMOVIDO para permitir gráficos e mapas */
             }
             html.high-contrast svg.text-white {
                 stroke: #FFFF00 !important;

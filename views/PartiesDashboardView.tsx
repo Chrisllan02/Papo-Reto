@@ -1,10 +1,9 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X } from 'lucide-react';
+import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { QUIZ_QUESTIONS } from '../constants';
-import BrazilMap from '../components/BrazilMap';
 
 interface PartiesDashboardViewProps {
   politicians: Politician[];
@@ -205,11 +204,82 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
     );
 };
 
-// --- GEO DISTRIBUTION WIDGET ---
+// --- WIDGET MOSAICO DE REGIÕES (SUBSTITUTO DO MAPA) ---
+const REGIONS_STRUCT = [
+    { name: 'Norte', states: ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400' },
+    { name: 'Nordeste', states: ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'], color: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30 text-orange-700 dark:text-orange-400' },
+    { name: 'Centro-Oeste', states: ['DF', 'GO', 'MT', 'MS'], color: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
+    { name: 'Sudeste', states: ['ES', 'MG', 'RJ', 'SP'], color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-700 dark:text-blue-400' },
+    { name: 'Sul', states: ['PR', 'RS', 'SC'], color: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
+];
+
+// --- NOVO COMPONENTE: PIE CHART DE PARTIDOS ---
+const PartyPieChart = ({ data, total }: { data: { name: string, value: number, percent: number, color: string }[], total: number }) => {
+    const size = 200;
+    const strokeWidth = 40;
+    const center = size / 2;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    
+    let accumulatedPercent = 0;
+
+    return (
+        <div className="flex flex-col items-center justify-center w-full h-full py-4">
+            <div className="relative w-48 h-48 flex items-center justify-center shrink-0 mb-4">
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl">
+                    {/* Fundo */}
+                    <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
+                    
+                    {data.map((item, i) => {
+                        const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
+                        const rotation = (accumulatedPercent / 100) * 360;
+                        const offset = 0; 
+                        accumulatedPercent += item.percent;
+
+                        return (
+                            <circle
+                                key={item.name}
+                                cx={center}
+                                cy={center}
+                                r={radius}
+                                strokeWidth={strokeWidth}
+                                fill="none"
+                                stroke={item.color}
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={offset}
+                                strokeLinecap="butt" 
+                                transform={`rotate(${rotation} ${center} ${center})`}
+                                className="transition-all duration-1000 ease-out hover:opacity-90"
+                            />
+                        );
+                    })}
+                </svg>
+                {/* Texto Central */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{total}</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Repres.</span>
+                </div>
+            </div>
+
+            {/* Legenda */}
+            <div className="w-full grid grid-cols-2 gap-2 px-2">
+                {data.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between bg-white/50 dark:bg-white/5 px-2 py-1.5 rounded-lg border border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
+                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">{item.name}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-gray-500">{Math.round(item.percent)}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) => {
     const [selectedState, setSelectedState] = useState<string | null>(null);
 
-    // Dados gerais para o Mapa (Heatmap)
     const stateCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         politicians.forEach(p => {
@@ -218,57 +288,74 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
         return counts;
     }, [politicians]);
 
-    // Dados para a Lista (Drill-down)
-    const listData = useMemo(() => {
-        if (selectedState) {
-            // Se estado selecionado, mostra os partidos daquele estado
-            const statePols = politicians.filter(p => p.state === selectedState);
-            const totalInState = Math.max(statePols.length, 1);
-            
-            const partyCounts: Record<string, number> = {};
-            statePols.forEach(p => {
-                const pName = p.party || 'S/P';
-                partyCounts[pName] = (partyCounts[pName] || 0) + 1;
+    // Prepara dados para o Gráfico de Pizza
+    const pieChartData = useMemo(() => {
+        const sourcePoliticians = selectedState 
+            ? politicians.filter(p => p.state === selectedState) 
+            : politicians;
+        
+        const total = Math.max(sourcePoliticians.length, 1);
+        const partyCounts: Record<string, number> = {};
+        
+        sourcePoliticians.forEach(p => {
+            const pName = p.party || 'S/P';
+            partyCounts[pName] = (partyCounts[pName] || 0) + 1;
+        });
+
+        // Cores fixas para partidos principais ou paleta dinâmica
+        const getPartyColor = (idx: number, name: string) => {
+            const colors = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316']; // Blue, Red, Yellow, Green, Purple, Orange
+            // Tenta cor por ideologia ou fallback para index
+            const ide = getIdeology(name);
+            if (name === 'Outros') return '#9ca3af'; // Gray
+            if (ide === 'Esquerda') return '#f43f5e';
+            if (ide === 'Direita') return '#3b82f6';
+            if (ide === 'Centro') return '#f59e0b';
+            return colors[idx % colors.length];
+        };
+
+        const sorted = Object.entries(partyCounts)
+            .sort((a, b) => b[1] - a[1]);
+
+        // Pega Top 5 e agrupa o resto em "Outros"
+        const top5 = sorted.slice(0, 5);
+        const othersCount = sorted.slice(5).reduce((acc, curr) => acc + curr[1], 0);
+        
+        const finalData = top5.map(([name, val], i) => ({
+            name,
+            value: val,
+            percent: (val / total) * 100,
+            color: getPartyColor(i, name)
+        }));
+
+        if (othersCount > 0) {
+            finalData.push({
+                name: 'Outros',
+                value: othersCount,
+                percent: (othersCount / total) * 100,
+                color: '#94a3b8' // Slate 400
             });
-
-            const sorted = Object.entries(partyCounts)
-                .sort((a, b) => (b[1] as number) - (a[1] as number))
-                .slice(0, 5); 
-
-            return {
-                title: `Força em ${selectedState}`,
-                subtitle: 'Maiores Bancadas Partidárias',
-                items: sorted,
-                total: totalInState,
-                isParties: true
-            };
-        } else {
-            // Se nenhum estado, mostra o ranking nacional de estados
-            const total = Math.max(politicians.length, 1);
-            const topStates = Object.entries(stateCounts)
-                .sort((a, b) => (b[1] as number) - (a[1] as number))
-                .slice(0, 5);
-
-            return {
-                title: 'Força Regional',
-                subtitle: 'Maiores Bancadas Estaduais',
-                items: topStates,
-                total: total,
-                isParties: false
-            };
         }
-    }, [politicians, stateCounts, selectedState]);
+
+        return {
+            title: selectedState ? `Partidos em ${selectedState}` : 'Cenário Partidário Nacional',
+            subtitle: selectedState ? 'Distribuição Estadual' : 'Distribuição no Congresso',
+            data: finalData,
+            total
+        };
+    }, [politicians, selectedState]);
 
     return (
-        <section className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-4 md:p-6 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-h-[550px] w-full">
-            <div className="flex items-center justify-between mb-6">
+        <section className="bg-white/90 dark:bg-midnight/90 backdrop-blur-3xl rounded-[2.5rem] p-4 md:p-6 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-h-[550px] w-full relative overflow-hidden">
+            
+            <div className="flex items-center justify-between mb-6 relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm backdrop-blur-sm">
                         <Globe size={18} aria-hidden="true" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">{listData.title}</h3>
-                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">{listData.subtitle}</p>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Força Regional</h3>
+                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Distribuição nos Estados</p>
                     </div>
                 </div>
                 {selectedState && (
@@ -281,50 +368,59 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                 )}
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 items-center h-full">
-                {/* Map Area - Expanded Width on Desktop */}
-                <div 
-                    className="w-full lg:w-3/5 h-[450px] rounded-[2rem] relative z-0 border border-gray-100/50 dark:border-white/5"
-                    style={{ 
-                        overflow: 'hidden',
-                        transform: 'translateZ(0)', // Force hardware acceleration context
-                        WebkitMaskImage: '-webkit-radial-gradient(white, black)', // Fix for Safari border-radius clipping
-                        maskImage: 'radial-gradient(white, black)',
-                        isolation: 'isolate'
-                    }}
-                >
-                    <BrazilMap 
-                        data={stateCounts} 
-                        heatmapMode={true} 
-                        selectedState={selectedState || undefined}
-                        onSelectState={(uf) => setSelectedState(prev => prev === uf ? null : uf)}
-                    />
+            <div className="flex flex-col lg:flex-row gap-8 items-stretch h-full relative z-10">
+                {/* Mosaico de Regiões (Novo Seletor) */}
+                <div className="w-full lg:w-3/5">
+                    {/* Instruction Alert */}
+                    <div className="mb-4 flex items-center gap-2 text-blue-600 dark:text-blue-400 animate-pulse">
+                        <MousePointerClick size={16} />
+                        <span className="text-xs font-black uppercase tracking-widest">Toque em um estado para filtrar</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min h-auto">
+                        {REGIONS_STRUCT.map(region => (
+                            <div key={region.name} className={`p-4 rounded-3xl border ${region.color} flex flex-col gap-3 relative overflow-hidden group ${region.name === 'Sul' ? 'sm:col-span-2 lg:col-span-2' : ''}`}>
+                                <div className="flex justify-between items-center relative z-10">
+                                    <span className="font-black uppercase tracking-wider text-sm">{region.name}</span>
+                                    <span className="text-[10px] font-bold bg-white/50 dark:bg-black/20 px-2 py-1 rounded-full opacity-80">
+                                        {region.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0)} Reps
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 relative z-10">
+                                    {region.states.map(uf => {
+                                        const isActive = selectedState === uf;
+                                        const count = stateCounts[uf] || 0;
+                                        return (
+                                            <button
+                                                key={uf}
+                                                onClick={() => setSelectedState(prev => prev === uf ? null : uf)}
+                                                className={`flex-1 min-w-[3.5rem] py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-0.5 border ${
+                                                    isActive
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105 z-20'
+                                                    : 'bg-white/60 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-transparent hover:bg-white hover:shadow-md'
+                                                }`}
+                                            >
+                                                <span>{uf}</span>
+                                                <span className={`text-[8px] font-bold ${isActive ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>{count}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Ranking List - Adjust width accordingly */}
-                <div className="w-full lg:w-2/5 space-y-3 animate-in slide-in-from-right-4 fade-in duration-300" key={selectedState || 'br'}>
-                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">
-                        {listData.isParties ? `Top 5 Partidos em ${selectedState}` : 'Estados com mais Representantes'}
-                    </p>
-                    {listData.items.map(([label, rawCount], index) => {
-                        const count = Number(rawCount);
-                        const percent = ((count / listData.total) * 100).toFixed(1);
-                        const maxVal = listData.items[0][1] as number;
-                        return (
-                            <div key={label} className="flex items-center gap-3">
-                                <span className="w-6 text-[10px] font-black text-gray-400">#{index + 1}</span>
-                                <div className="flex-1 bg-gray-100/50 dark:bg-white/5 rounded-full h-8 relative overflow-hidden flex items-center px-3 backdrop-blur-sm border border-gray-200/20 dark:border-white/5">
-                                    <div 
-                                        className={`absolute top-0 left-0 bottom-0 transition-all duration-1000 ${listData.isParties ? 'bg-orange-100/80 dark:bg-orange-900/40' : 'bg-blue-100/80 dark:bg-blue-900/40'}`}
-                                        style={{ width: `${(count / maxVal) * 100}%` }}
-                                    ></div>
-                                    <span className="relative z-10 text-xs font-bold text-gray-700 dark:text-gray-200">{label}</span>
-                                    <span className={`relative z-10 ml-auto text-xs font-black ${listData.isParties ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>{count}</span>
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400 w-10 text-right">{percent}%</span>
-                            </div>
-                        );
-                    })}
+                {/* Pie Chart Card (Substituindo Lista) */}
+                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
+                    <div className="mb-2 text-center">
+                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{pieChartData.title}</h4>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{pieChartData.subtitle}</p>
+                    </div>
+                    
+                    <div className="flex-1 flex items-center justify-center">
+                        <PartyPieChart data={pieChartData.data} total={pieChartData.total} />
+                    </div>
                 </div>
             </div>
         </section>

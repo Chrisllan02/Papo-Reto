@@ -6,6 +6,7 @@ import { speakContent } from '../services/ai';
 import { getIdeology } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
 import { useAppContext } from '../contexts/AppContext';
+import { Glossary, DICTIONARY } from '../components/Glossary';
 
 interface FeedViewProps {
   politicians: Politician[];
@@ -180,10 +181,14 @@ const getDidacticContext = (title: string, description: string | undefined, type
     };
 };
 
+// --- SINGLETON AUDIO CONTEXT ---
+// Previne vazamento de memória (máximo de 6 contextos por navegador)
+let sharedAudioContext: AudioContext | null = null;
+
 const AudioPlayer = ({ text, isDarkText }: { text: string, isDarkText: boolean }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const audioContextRef = useRef<AudioContext | null>(null);
+    // Remove local AudioContext reference to use singleton
     const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
     const handlePlay = async () => {
@@ -198,14 +203,20 @@ const AudioPlayer = ({ text, isDarkText }: { text: string, isDarkText: boolean }
             const audioData = await speakContent(text);
             if (!audioData) throw new Error("Audio generation failed");
 
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+            // Initialize Singleton lazily on first user interaction
+            if (!sharedAudioContext) {
+                sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+            }
+            
+            // Resume if suspended (common browser policy)
+            if (sharedAudioContext.state === 'suspended') {
+                await sharedAudioContext.resume();
             }
 
-            const buffer = await decodeAudioData(audioData, audioContextRef.current, 24000, 1);
-            const source = audioContextRef.current.createBufferSource();
+            const buffer = await decodeAudioData(audioData, sharedAudioContext, 24000, 1);
+            const source = sharedAudioContext.createBufferSource();
             source.buffer = buffer;
-            source.connect(audioContextRef.current.destination);
+            source.connect(sharedAudioContext.destination);
             
             source.onended = () => setIsPlaying(false);
             source.start();
@@ -246,6 +257,31 @@ const AudioPlayer = ({ text, isDarkText }: { text: string, isDarkText: boolean }
             </span>
         </button>
     );
+};
+
+// --- Helper para Renderizar Texto com Glossário ---
+const renderWithGlossary = (text: string) => {
+    if (!text) return null;
+    
+    // Escapa caracteres especiais para o Regex e ordena por tamanho (maior primeiro para match exato de frases longas)
+    const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const terms = Object.keys(DICTIONARY).sort((a, b) => b.length - a.length).map(escapeRegExp);
+    
+    if (terms.length === 0) return text;
+
+    // Cria regex para capturar os termos
+    const regex = new RegExp(`(${terms.join('|')})`, 'gi');
+    const parts = text.split(regex);
+
+    return parts.map((part, i) => {
+        // Verifica se a parte é um termo do dicionário (case insensitive)
+        const match = Object.keys(DICTIONARY).find(t => t.toLowerCase() === part.toLowerCase());
+        
+        if (match) {
+            return <Glossary key={i} term={match}>{part}</Glossary>;
+        }
+        return part;
+    });
 };
 
 const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: FeedItem, politician?: Politician, onClose: () => void, onGoToProfile: (p: Politician) => void }) => {
@@ -304,9 +340,9 @@ const FeedDetailModal = ({ item, politician, onClose, onGoToProfile }: { item: F
                     <div className="mb-10 space-y-6">
                         <div className="bg-nuit/5 dark:bg-nuit/10 p-6 rounded-3xl border border-nuit/10 dark:border-nuit/20 backdrop-blur-md relative overflow-hidden shadow-sm">
                             <div className="absolute top-0 left-0 w-1.5 h-full bg-nuit"></div>
-                            <p className="text-midnight dark:text-blue-100 text-base md:text-lg font-medium leading-relaxed">
-                                {didacticContent.text}
-                            </p>
+                            <div className="text-midnight dark:text-blue-100 text-base md:text-lg font-medium leading-relaxed">
+                                {renderWithGlossary(didacticContent.text)}
+                            </div>
                         </div>
 
                         {didacticContent.constitution && (
