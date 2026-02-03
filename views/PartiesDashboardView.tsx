@@ -247,7 +247,7 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
                                 stroke={item.color}
                                 strokeDasharray={strokeDasharray}
                                 strokeDashoffset={offset}
-                                strokeLinecap="butt" 
+                                strokeLinecap="round" 
                                 transform={`rotate(${rotation} ${center} ${center})`}
                                 className="transition-all duration-1000 ease-out hover:opacity-90"
                             />
@@ -412,7 +412,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                 </div>
 
                 {/* Pie Chart Card (Substituindo Lista) */}
-                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
+                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-[2.5rem] border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
                     <div className="mb-2 text-center">
                         <h4 className="font-black text-gray-900 dark:text-white text-sm">{pieChartData.title}</h4>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{pieChartData.subtitle}</p>
