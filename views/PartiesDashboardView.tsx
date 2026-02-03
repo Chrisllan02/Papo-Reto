@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, LayoutGrid } from 'lucide-react';
+import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { QUIZ_QUESTIONS } from '../constants';
@@ -31,7 +31,6 @@ interface PartyStats {
   cohesionIndex: number; 
   regionStats: RegionStats;
   members: Politician[];
-  isBloc?: boolean; // NOVO: Flag para diferenciar
 }
 
 const getRegion = (uf: string): keyof RegionStats => {
@@ -351,14 +350,11 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
     ].join(" ");
 }
 
-const ParliamentHemicycle = ({ data, onClick, activeParty, viewMode }: { data: PartyStats[], onClick: (name: string) => void, activeParty: string | null, viewMode: 'parties' | 'blocs' }) => {
+const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[], onClick: (name: string) => void, activeParty: string | null }) => {
     const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0) || 513;
     
     // Sort logic
     const sortedParties = useMemo(() => {
-        if (viewMode === 'blocs') {
-            return [...data].sort((a, b) => b.totalMembers - a.totalMembers);
-        }
         const orderMap: Record<string, number> = { 'Esquerda': 1, 'Centro': 2, 'Direita': 3 };
         return [...data].sort((a, b) => {
             const ideA = getIdeology(a.name);
@@ -371,17 +367,10 @@ const ParliamentHemicycle = ({ data, onClick, activeParty, viewMode }: { data: P
             if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;
         });
-    }, [data, viewMode]);
+    }, [data]);
 
-    // Color Logic for Blocs (Dynamic Hashing)
-    const getBlocColor = (name: string) => {
-        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const hue = hash % 360;
-        return `hsl(${hue}, 60%, 50%)`;
-    };
-
-    const getPartyColor = (name: string, isBloc: boolean) => {
-        if (isBloc) return getBlocColor(name);
+    // Updated Colors for Hemisphere (Rose, Indigo, Amber)
+    const getPartyColor = (name: string) => {
         const ideology = getIdeology(name);
         if (ideology === 'Esquerda') return '#F43F5E'; // Rose 500
         if (ideology === 'Direita') return '#4F46E5'; // Indigo 600
@@ -410,14 +399,11 @@ const ParliamentHemicycle = ({ data, onClick, activeParty, viewMode }: { data: P
                         <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Composição do Congresso</p>
                      </div>
                  </div>
-                 
-                 {viewMode === 'parties' && (
-                     <div className="flex gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10 backdrop-blur-sm">
-                         <span className="flex items-center gap-1.5 text-rose-600"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
-                         <span className="flex items-center gap-1.5 text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
-                         <span className="flex items-center gap-1.5 text-indigo-600"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> Dir.</span>
-                     </div>
-                 )}
+                 <div className="flex gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10 backdrop-blur-sm">
+                     <span className="flex items-center gap-1.5 text-rose-600"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
+                     <span className="flex items-center gap-1.5 text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
+                     <span className="flex items-center gap-1.5 text-indigo-600"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> Dir.</span>
+                 </div>
             </div>
 
             {/* Graphic Container: Ensure min-height on mobile for better visibility */}
@@ -449,7 +435,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty, viewMode }: { data: P
                         const pathData = describeArc(centerX, centerY, radius, start, end);
                         const isActive = activeParty === party.name;
                         const isDimmed = activeParty && !isActive;
-                        const color = getPartyColor(party.name, !!party.isBloc);
+                        const color = getPartyColor(party.name);
 
                         return (
                             <g key={party.name} className="group">
@@ -493,7 +479,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty, viewMode }: { data: P
                             : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-transparent hover:bg-white/60 dark:hover:bg-white/10 shadow-sm'
                         }`}
                     >
-                        <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: getPartyColor(p.name, !!p.isBloc) }}></span>
+                        <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: getPartyColor(p.name) }}></span>
                         {p.name} 
                         <span className="opacity-60 ml-0.5 pl-1 border-l border-current">({p.totalMembers})</span>
                     </button>
@@ -508,15 +494,17 @@ const CohesionCard = ({ data, selectedParty }: { data: PartyStats[], selectedPar
     const avgCohesion = data.reduce((acc, p) => acc + p.cohesionIndex, 0) / (data.length || 1);
     const stats = selectedParty ? data.find(p => p.name === selectedParty) : null;
     const cohesion = stats ? stats.cohesionIndex : avgCohesion;
+    const diff = cohesion - avgCohesion;
     
     // Configurações do Visual
+    const isAboveAvg = diff >= 0;
     const radius = 80;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (cohesion / 100) * circumference;
     
     const getStatus = (score: number) => {
         if (score >= 90) return { label: 'Fidelidade Alta', color: 'text-green-500', bg: 'bg-green-100/50 dark:bg-green-900/20' };
-        if (score >= 70) return { label: 'Fidelidade Média', color: 'text-blue-500', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; 
+        if (score >= 70) return { label: 'Fidelidade Média', color: 'text-blue-500', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; // ALTERADO PARA AZUL
         return { label: 'Fidelidade Baixa', color: 'text-red-500', bg: 'bg-red-100/50 dark:bg-red-900/20' };
     };
 
@@ -601,26 +589,16 @@ const CohesionCard = ({ data, selectedParty }: { data: PartyStats[], selectedPar
 
 const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'parties' | 'blocs'>('parties');
 
-  const { partyStats, ideologyStats } = useMemo(() => {
+  const { partyStats, ideologyStats, dominantIdeology } = useMemo(() => {
     const groups: Record<string, PartyStats> = {};
     const ideologyGroups: Record<string, number> = { 'Esquerda': 0, 'Centro': 0, 'Direita': 0 };
 
     politicians.forEach(pol => {
-        // Decide se agrupa por Partido ou Bloco
-        let groupName = 'OUTROS';
-        const partyData = parties.find(p => p.sigla === pol.party);
-        
-        if (viewMode === 'blocs') {
-            groupName = partyData?.bloc || 'Sem Bloco';
-        } else {
-            groupName = pol.party ? pol.party.trim().toUpperCase() : 'OUTROS';
-        }
-
-        if (!groups[groupName]) {
-            groups[groupName] = {
-                name: groupName,
+        const partyName = pol.party ? pol.party.trim().toUpperCase() : 'OUTROS';
+        if (!groups[partyName]) {
+            groups[partyName] = {
+                name: partyName,
                 totalMembers: 0,
                 femaleCount: 0,
                 totalSpending: 0,
@@ -628,20 +606,15 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                 avgAttendance: 0,
                 cohesionIndex: 0,
                 regionStats: { Norte: 0, Nordeste: 0, CentroOeste: 0, Sudeste: 0, Sul: 0 },
-                members: [],
-                isBloc: viewMode === 'blocs'
+                members: []
             };
         }
-        const g = groups[groupName];
+        const g = groups[partyName];
         g.members.push(pol);
         g.totalMembers += 1;
         if (pol.sex === 'F') g.femaleCount += 1;
-        
-        if (viewMode === 'parties') {
-            const ideology = getIdeology(groupName);
-            ideologyGroups[ideology] += 1;
-        }
-        
+        const ideology = getIdeology(partyName);
+        ideologyGroups[ideology] += 1;
         g.avgAttendance += (pol.stats.attendancePct || 0);
         g.regionStats[getRegion(pol.state)] += 1;
     });
@@ -649,48 +622,38 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
     Object.values(groups).forEach(g => {
         if (g.totalMembers > 0) {
             g.avgAttendance /= g.totalMembers;
-            g.cohesionIndex = viewMode === 'blocs' ? 75 : 85; // Blocos são naturalmente menos coesos
+            g.cohesionIndex = 85; 
         }
+    });
+
+    let max = 0;
+    let dom = 'Centro';
+    Object.entries(ideologyGroups).forEach(([k, v]) => {
+        if (v > max) { max = v; dom = k; }
     });
 
     return {
         partyStats: Object.values(groups).filter(g => g.totalMembers > 0),
-        ideologyStats: ideologyGroups
+        ideologyStats: ideologyGroups,
+        dominantIdeology: dom
     };
-  }, [politicians, viewMode, parties]);
+  }, [politicians]);
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32">
         <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-8 relative z-10 px-safe">
-            <div className="pt-safe flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
-                    <p className="text-[10px] md:text-sm font-bold text-gray-500 uppercase tracking-widest mt-1.5">Raio-X das Forças do Congresso Nacional</p>
-                </div>
-
-                {/* View Mode Toggle */}
-                <div className="bg-white/50 dark:bg-white/5 p-1 rounded-xl flex border border-gray-100 dark:border-white/10">
-                    <button 
-                        onClick={() => { setViewMode('parties'); setExpandedPartyName(null); }}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${viewMode === 'parties' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-white/5'}`}
-                    >
-                        Partidos
-                    </button>
-                    <button 
-                        onClick={() => { setViewMode('blocs'); setExpandedPartyName(null); }}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${viewMode === 'blocs' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-white/5'}`}
-                    >
-                        Blocos
-                    </button>
-                </div>
+            <div className="pt-safe">
+                <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
+                <p className="text-[10px] md:text-sm font-bold text-gray-500 uppercase tracking-widest mt-1.5">Raio-X das Forças do Congresso Nacional</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
                 <FemaleRepresentationWidget politicians={politicians} />
             </div>
 
+            {/* Change to flex-col to better control vertical flow and prevent overlap */}
             <div className="flex flex-col gap-8">
-                <ParliamentHemicycle data={partyStats} onClick={(name) => setExpandedPartyName(name)} activeParty={expandedPartyName} viewMode={viewMode} />
+                <ParliamentHemicycle data={partyStats} onClick={(name) => setExpandedPartyName(name)} activeParty={expandedPartyName} />
                 
                 <div className="w-full pb-4">
                     <GeoDistributionWidget politicians={politicians} />
@@ -702,7 +665,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                             <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 shadow-sm backdrop-blur-sm">
                                 <Compass size={18} aria-hidden="true" />
                             </div>
-                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Espectro Político (Partidos)</h3>
+                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Espectro Político</h3>
                         </div>
                         <IdeologySpectrum left={ideologyStats['Esquerda']} center={ideologyStats['Centro']} right={ideologyStats['Direita']} />
                     </div>

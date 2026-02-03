@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, ArrowDown, History, Check } from 'lucide-react';
-import { Politician, FeedItem, YearStats, Tramitacao } from '../types';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2 } from 'lucide-react';
+import { Politician, FeedItem, YearStats } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
-import { fetchTramitacoes } from '../services/camaraApi';
 
 export interface ProfileViewProps {
   candidate: Politician;
@@ -81,6 +80,7 @@ const PresenceBar = ({ label, present, justified, unjustified, total }: { label:
 };
 
 // --- HELPER DE CATEGORIZAÇÃO VISUAL ---
+// Centraliza a lógica de cores para usar tanto no gráfico quanto nas tags
 const getFrontCategoryStyle = (title: string) => {
     const t = title.toLowerCase();
     
@@ -97,7 +97,7 @@ const getFrontCategoryStyle = (title: string) => {
     return { name: 'Outros', bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', stroke: '#94a3b8' };
 };
 
-// --- NEW EXPOSED SECTIONS ---
+// --- NEW EXPOSED SECTIONS (REPLACING MODALS) ---
 
 const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: boolean }) => (
     <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
@@ -335,40 +335,11 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
 const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const [expanded, setExpanded] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
-    const [loadingHistory, setLoadingHistory] = useState(false);
-    const [tramitacoes, setTramitacoes] = useState<Tramitacao[]>([]);
-    
     const type = item._type;
     
-    // --- LOAD TRAMITACAO LOGIC ---
-    const handleExpandBill = async () => {
-        setExpanded(!expanded);
-        if (!expanded && tramitacoes.length === 0 && item.id) {
-            setLoadingHistory(true);
-            try {
-                // Check if ID is just the number or full path
-                // Typically we store ID, but verify based on usage in Explore/Feed
-                // Assuming item.id is numeric or mappable
-                const propId = parseInt(item.id.replace(/\D/g, ''));
-                if (propId) {
-                    const history = await fetchTramitacoes(propId);
-                    setTramitacoes(history);
-                }
-            } catch (e) {
-                console.error("Failed to fetch history", e);
-            } finally {
-                setLoadingHistory(false);
-            }
-        }
-    };
-
     if (type === 'bill') {
-        const timeSince = tramitacoes.length > 0 
-            ? Math.floor((Date.now() - new Date(tramitacoes[0].date).getTime()) / (1000 * 60 * 60 * 24))
-            : 0;
-
         return (
-            <article className={`bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2 ${expanded ? 'border-blue-200 dark:border-blue-900/50' : ''}`}>
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-start">
                     <span className={`text-xs font-black uppercase px-3 py-1 rounded-full backdrop-blur-md ${getStatusColor(item.status)}`}>{item.status}</span>
                     <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
@@ -376,62 +347,12 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                 <div>
                     <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2">Proposta de Lei</span>
                     <h4 className="font-bold text-gray-900 dark:text-white leading-tight mb-2 text-lg">{item.title}</h4>
-                    <p className={`text-sm text-gray-600 dark:text-gray-400 leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>{item.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">{item.description}</p>
                 </div>
-                
-                <div className="flex gap-2 mt-2">
-                    <button 
-                        onClick={handleExpandBill}
-                        className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline p-2 -ml-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 w-fit transition-colors"
-                    >
-                        {expanded ? <><ArrowDown className="rotate-180" size={12}/> Ocultar Tramitação</> : <><History size={12}/> Ver Histórico</>}
-                    </button>
-                    {item.externalLink && (
-                        <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-gray-500 hover:text-blue-500 flex items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 w-fit transition-colors">
-                            <ExternalLink size={12} /> Íntegra
-                        </a>
-                    )}
-                </div>
-
-                {/* EXPANDED TIMELINE */}
-                {expanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 animate-in slide-in-from-top-2 fade-in">
-                        <div className="flex justify-between items-center mb-4">
-                            <h5 className="text-xs font-black uppercase text-gray-400 tracking-widest">Linha do Tempo</h5>
-                            {timeSince > 30 && tramitacoes.length > 0 && (
-                                <span className="bg-red-100 dark:bg-red-900/30 text-red-600 text-[10px] font-bold px-2 py-1 rounded-md border border-red-200 dark:border-red-900/50">
-                                    Parado há {timeSince} dias
-                                </span>
-                            )}
-                        </div>
-
-                        {loadingHistory ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="animate-spin text-blue-500" size={24} />
-                            </div>
-                        ) : tramitacoes.length > 0 ? (
-                            <div className="relative pl-4 space-y-6 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200 dark:before:bg-gray-700">
-                                {tramitacoes.slice(0, 5).map((t, idx) => (
-                                    <div key={idx} className="relative pl-6">
-                                        <div className={`absolute left-[-19px] top-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${idx === 0 ? 'bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-900/30' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">{new Date(t.date).toLocaleDateString('pt-BR')} • {t.organ}</span>
-                                            <p className="text-xs font-bold text-gray-800 dark:text-gray-200 leading-snug">{t.description}</p>
-                                            {t.status && <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400 mt-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded w-fit">{t.status}</span>}
-                                        </div>
-                                    </div>
-                                ))}
-                                {tramitacoes.length > 5 && (
-                                    <div className="relative pl-6">
-                                        <div className="absolute left-[-17px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase italic">...mais {tramitacoes.length - 5} movimentações antigas</span>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-xs text-gray-400 text-center py-4">Sem histórico registrado.</p>
-                        )}
-                    </div>
+                {item.externalLink && (
+                    <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="mt-auto text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline p-2 -ml-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 w-fit transition-colors">
+                        Ver Íntegra <ExternalLink size={12} />
+                    </a>
                 )}
             </article>
         );
@@ -618,6 +539,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           .sort((a, b) => b[1].count - a[1].count)
           .map(([name, data]) => ({
               name,
+              count: data.count,
               percent: (data.count / total) * 100, // Use precise percent for drawing
               ...data
           }));
