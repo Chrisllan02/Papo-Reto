@@ -108,6 +108,13 @@ export interface Role {
   endDate?: string; // NOVO: Para histórico
 }
 
+export interface Leadership {
+  title: string; // "Líder", "Vice-Líder"
+  entity: string; // "Partido X", "Governo", "Minoria"
+  start: string;
+  end?: string;
+}
+
 export interface Occupation {
   title: string;
   entity?: string;
@@ -243,6 +250,7 @@ export interface Politician {
   speeches?: Speech[];
   fronts?: Front[];
   roles?: Role[]; 
+  leaderships?: Leadership[]; // NOVO: Cargos de Liderança
   occupations?: Occupation[]; // NOVO: Histórico de Ocupações
   suplentes?: string[]; // NOVO: Apenas para senadores
   staff?: Secretary[]; // NOVO: Secretários
