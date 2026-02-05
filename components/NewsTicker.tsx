@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../services/ai';
 import { NewsArticle } from '../types';
@@ -46,11 +45,11 @@ const NewsTicker: React.FC = () => {
     const currentNews = news[index % news.length];
 
     // Lógica de Cores Semânticas (Urgente vs Suave)
-    const getNewsTheme = (text: string, title: string) => {
-        const combined = (text + " " + title).toLowerCase();
+    const getNewsTheme = (context: string, title: string) => {
+        const combined = (context + " " + title).toLowerCase();
         
         // Urgente / Negativo / Crítico
-        if (combined.match(/(urgência|urgente|crise|denúncia|veto|rejeitado|polêmica|investigação|cassação|cpi)/)) {
+        if (combined.match(/(urgência|urgente|crise|denúncia|veto|rejeitado|polêmica|investigação|cassação|cpi|negada|recusada)/)) {
             return {
                 gradient: 'from-red-900 to-orange-900',
                 icon: AlertTriangle,
@@ -75,12 +74,12 @@ const NewsTicker: React.FC = () => {
         };
     };
 
-    const theme = getNewsTheme(currentNews.summary || "", currentNews.title);
+    const theme = getNewsTheme(currentNews.summary.context || "", currentNews.title);
     const ThemeIcon = theme.icon;
 
     return (
         <section 
-            className={`w-full relative overflow-hidden rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group h-[420px] md:h-64 hover:shadow-2xl hover:scale-[1.01]`}
+            className={`w-full relative overflow-hidden rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group h-[220px] md:h-64 hover:shadow-2xl hover:scale-[1.01]`}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             aria-label="Destaque de notícia política"
@@ -94,10 +93,10 @@ const NewsTicker: React.FC = () => {
             {/* Ambient Light */}
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none opacity-50"></div>
 
-            <div className="relative z-10 p-6 md:p-8 flex flex-col h-full text-white">
+            <div className="relative z-10 p-5 md:p-8 flex flex-col h-full text-white">
                 
                 {/* Header: Source & Status */}
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-2 md:mb-4">
                     <div className="flex items-center gap-2 animate-in fade-in">
                         <span className={`backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-1.5 ${theme.labelColor}`}>
                             <ThemeIcon size={12} /> {currentNews.source}
@@ -121,16 +120,21 @@ const NewsTicker: React.FC = () => {
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col justify-start mt-2">
                     {/* Title */}
-                    <h3 className="font-black leading-tight tracking-tight drop-shadow-md text-xl md:text-3xl mb-4 line-clamp-3">
+                    <h3 className="font-black leading-tight tracking-tight drop-shadow-md text-xl md:text-3xl mb-3 md:mb-4 line-clamp-3">
                         {currentNews.title}
                     </h3>
                     
-                    {/* Summary (Always Visible) */}
-                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    {/* Summary (Structured Context + Main) */}
+                    <div className="bg-white/10 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="flex items-start gap-3">
                             <Sparkles size={16} className="text-yellow-300 shrink-0 mt-0.5" />
-                            <p className="text-sm font-medium leading-relaxed text-white/90 line-clamp-4 md:line-clamp-3">
-                                {currentNews.summary || "Resumo indisponível."}
+                            <p className="text-sm font-medium leading-relaxed text-white/90 line-clamp-3 md:line-clamp-3">
+                                {/* Contexto em Destaque */}
+                                <strong className="text-white font-black uppercase tracking-wide text-xs bg-white/20 px-1.5 py-0.5 rounded mr-2">
+                                    {currentNews.summary.context}
+                                </strong>
+                                {/* Texto Principal Limpo */}
+                                {currentNews.summary.main}
                             </p>
                         </div>
                     </div>

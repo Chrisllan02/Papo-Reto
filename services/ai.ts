@@ -23,9 +23,9 @@ const getAi = () => {
     }
 };
 
-// Cache Utils para AI
-const NEWS_CACHE_KEY = 'paporeto_news_v8_daily'; 
-const NEWS_HISTORY_KEY = 'paporeto_news_history_v1';
+// Cache Utils
+const NEWS_CACHE_KEY = 'paporeto_news_v11_clean'; // Version Bump: v11 to purge old emojis
+const NEWS_HISTORY_KEY = 'paporeto_news_history_v2'; // Version bump para limpar estrutura antiga
 const NEWS_CACHE_TTL = 1000 * 60 * 60 * 4; // 4 Horas
 
 const getCache = (key: string, ttl: number) => {
@@ -71,35 +71,36 @@ export interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
 }
 
-// --- DICIONÁRIO DIDÁTICO ---
-const LEGISLATIVE_GLOSSARY: Record<string, string> = {
-    'requerimento de urgência': 'Os deputados votaram para **acelerar este projeto**, permitindo que ele pule a análise das comissões e seja votado imediatamente no Plenário.',
-    'medida provisória': 'Esta é uma norma com **força de lei imediata** editada pelo Presidente. O Congresso está decidindo se ela continua valendo definitivamente.',
-    'projeto de lei complementar': 'Votação de uma lei que detalha regras específicas exigidas pela Constituição. Exige aprovação da maioria absoluta (257 deputados).',
-    'proposta de emenda à constituição': 'Uma das votações mais importantes. Tenta **mudar a Constituição Federal**, a lei máxima do país. Exige apoio de 308 deputados.',
-    'redação final': 'O texto já foi aprovado no mérito. Esta votação serve apenas para **confirmar a gramática e a técnica jurídica** antes de enviar para o Senado ou Sanção.',
-    'destaque': 'Votação separada para tentar **retirar ou alterar um trecho específico** do texto principal que já foi discutido.',
-    'requerimento de retirada': 'Um pedido para **adiar a discussão** deste tema. Se aprovado, o assunto sai da pauta de hoje.',
-    'projeto de resolução': 'Decisão interna sobre regras da própria Câmara ou de seus membros (como cassações ou salários).',
-    'projeto de decreto legislativo': 'O Congresso usando seu poder para fiscalizar o Executivo, aprovar tratados internacionais ou sustar atos do Presidente.',
-};
+// --- MOTOR DE TRADUÇÃO LEGISLATIVA (DETERMINÍSTICO) ---
 
-// --- GERAÇÃO DE TÍTULO (MANCHETE JORNALÍSTICA) ---
-function cleanLegislativeTitle(rawText: string): string {
+// 1. Dicionário de Títulos (Manchetes)
+const TITLE_TRANSLATION_MAP: Array<{ regex: RegExp, template: string }> = [
+    { regex: /aprovado o requerimento de urgência/i, template: "Votação Acelerada: Urgência Aprovada" },
+    { regex: /mantido o texto/i, template: "Veto Preservado: Texto Original Mantido" },
+    { regex: /rejeitado o texto/i, template: "Veto Derrubado: Congresso Altera a Lei" },
+    { regex: /encaminhada à publicação/i, template: "Projeto Protocolado Oficialmente" },
+    { regex: /aprovada a redação final/i, template: "Texto Final Aprovado na Câmara" },
+    { regex: /designado relator/i, template: "Relator Escolhido para o Projeto" },
+    { regex: /novo despacho/i, template: "Atualização no Processo Legislativo" },
+    { regex: /retirado de pauta/i, template: "Votação Adiada: Retirado de Pauta" },
+    { regex: /rejeitado o requerimento/i, template: "Proposta Negada pelo Plenário" },
+    { regex: /aprovado o projeto/i, template: "Aprovado: Projeto Segue Tramitação" },
+    { regex: /transformado na lei/i, template: "Sanção: Nova Lei em Vigor" }
+];
+
+function generateJournalisticTitle(rawText: string): string {
     if (!rawText) return "Movimentação no Congresso";
+    const text = rawText.trim();
 
-    let text = rawText.trim();
-    let prefix = "";
+    // 1. Tenta encontrar um padrão exato
+    for (const rule of TITLE_TRANSLATION_MAP) {
+        if (rule.regex.test(text)) {
+            return rule.template;
+        }
+    }
 
-    // Identificar Ação para Prefixo
-    if (text.match(/requerimento de urgência/i)) prefix = "Urgência: ";
-    else if (text.match(/redação final/i)) prefix = "Texto Final: ";
-    else if (text.match(/destaque/i)) prefix = "Destaque: ";
-    else if (text.match(/projeto de lei/i)) prefix = "Lei: ";
-    else if (text.match(/proposta de emenda/i)) prefix = "PEC: ";
-
-    // Limpeza Brutal
-    text = text
+    // 2. Se não achar, tenta limpar e formatar o texto bruto
+    let cleaned = text
         .replace(/^(Votação|Discussão|Apreciação) (única )?(em \w+ turno )?(d[oa]s? )?/i, "")
         .replace(/^Aprovação d[oa] /i, "")
         .replace(/Projeto de Lei n\.? ?\d+(\/\d+)?/i, "")
@@ -109,82 +110,92 @@ function cleanLegislativeTitle(rawText: string): string {
         .replace(/Parecer.*proferido.*/i, "")
         .replace(/ - \d{2}\/\d{2}\/\d{4}.*$/, "");
 
-    // Extração do Tema
-    const matchInstitui = text.match(/(?:que|visando|para) (institui|cria|autoriza|obriga|concede|reconhece|altera|dispõe|regulamenta) (.*?)(?:;|\.|$)/i);
+    // Extração do tema principal se possível
+    const matchInstitui = cleaned.match(/(?:que|visando|para) (institui|cria|autoriza|obriga|concede|reconhece|altera|dispõe|regulamenta) (.*?)(?:;|\.|$)/i);
     if (matchInstitui) {
-        text = matchInstitui[2].trim();
+        cleaned = matchInstitui[2].trim();
     } else {
-        // Se não achou verbo claro, tenta pegar o início
-        text = text.split(/,|;/)[0]; 
+        cleaned = cleaned.split(/,|;/)[0]; // Pega até a primeira vírgula
     }
 
-    // Capitalização
-    text = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-    
-    // Limite de tamanho
-    if (text.length > 60) text = text.substring(0, 57) + "...";
+    // Capitalização e limite
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+    if (cleaned.length > 55) cleaned = cleaned.substring(0, 52) + "...";
 
-    return (prefix + text).replace(/\s+/g, ' ').trim();
+    return cleaned || "Atualização Legislativa";
 }
 
-// --- TRADUTOR DIDÁTICO (CORPO DA NOTÍCIA) ---
-function summarizeLegislativeText(rawText: string): string {
-    if (!rawText) return "Detalhes não informados pela fonte oficial.";
+// 2. Motor de Resumos (Contexto + Texto)
+function generateStructuredSummary(rawText: string): { context: string, main: string } {
+    const defaultResponse = {
+        context: "Tramitação Legislativa",
+        main: rawText || "Detalhes não disponíveis no momento."
+    };
 
-    let summary = "";
+    if (!rawText) return defaultResponse;
     const lowerText = rawText.toLowerCase();
 
-    // 1. Identificar o "O Que É" (Glossário)
-    let explanation = "";
-    for (const [key, value] of Object.entries(LEGISLATIVE_GLOSSARY)) {
-        if (lowerText.includes(key)) {
-            explanation = value;
-            break;
-        }
-    }
-
-    // 2. Identificar o "Sobre o Que É" (Assunto)
+    // Extração do "Assunto" (Tenta limpar o juridiquês)
     let subject = rawText;
-    
-    // Tenta limpar o "juridiquês" do assunto
     const matchSubject = rawText.match(/(?:institui|cria|sobre|acerca d[eo]|referente [aà])\s+(.*?)(?:;|\.|,|$)/i);
     if (matchSubject && matchSubject[1]) {
         subject = matchSubject[1].trim();
-    } else {
-        // Fallback: limpa prefixos
-        subject = subject.replace(/^(Votação|Discussão).*?(nº \d+)?/i, "").trim();
     }
-
-    // Tradução de termos específicos no assunto
+    
+    // Limpeza final do assunto
     subject = subject
-        .replace(/abre crédito extraordinário/gi, "libera dinheiro extra fora do orçamento")
-        .replace(/em favor de/gi, "para")
-        .replace(/encargos financeiros/gi, "impostos e taxas")
-        .replace(/dispõe sobre/gi, "trata de");
+        .replace(/n\.º? ?\d+(\/\d+)?/g, "") // Remove números de lei
+        .replace(/Dispõe sobre/i, "trata de")
+        .replace(/Altera a Lei/i, "altera a legislação sobre");
 
-    // 3. Montar o Texto Final
-    if (explanation) {
-        summary = `🎓 **Entenda:** ${explanation}\n\n📌 **O Tema:** O texto original trata de ${subject}.`;
-    } else {
-        // Se não for um termo do glossário, foca em explicar a ação
-        if (lowerText.includes('aprovad')) {
-            summary = `✅ **Aprovado:** Os deputados concordaram com este texto. Ele trata de: ${subject}.`;
-        } else if (lowerText.includes('rejeitad') || lowerText.includes('retirad')) {
-            summary = `🛑 **Parado:** A proposta foi rejeitada ou retirada da pauta. O tema era: ${subject}.`;
-        } else {
-            summary = `🗳️ **Em Debate:** O Plenário está discutindo sobre ${subject}. Acompanhe o resultado.`;
-        }
+    // Definição do Contexto (Bold Text)
+    let context = "Em Análise";
+    let explanation = `O texto trata de: ${subject}.`;
+
+    if (lowerText.includes('urgência')) {
+        context = "Regime de Urgência";
+        explanation = `Os deputados aprovaram a aceleração deste projeto. Isso significa que a proposta sobre ${subject} pulará comissões e será votada diretamente no Plenário.`;
+    } else if (lowerText.includes('medida provisória')) {
+        context = "Medida Provisória";
+        explanation = `O Congresso analisa uma norma do Presidente com força de lei imediata. O tema é: ${subject}.`;
+    } else if (lowerText.includes('emenda à constituição') || lowerText.includes('pec')) {
+        context = "Mudança na Constituição";
+        explanation = `Uma das votações mais importantes. Tenta alterar a lei máxima do país sobre ${subject}. Exige 308 votos.`;
+    } else if (lowerText.includes('redação final')) {
+        context = "Revisão Final";
+        explanation = `O mérito já foi aprovado. Agora, os deputados confirmam apenas a gramática e técnica jurídica do texto sobre ${subject} antes de enviar ao Senado ou Sanção.`;
+    } else if (lowerText.includes('retirado')) {
+        context = "Adiado";
+        explanation = `A discussão sobre ${subject} foi removida da pauta de hoje e deve voltar em outra sessão.`;
+    } else if (lowerText.includes('rejeitado')) {
+        context = "Proposta Recusada";
+        explanation = `A maioria dos parlamentares ou a Mesa Diretora negou o pedido ou projeto referente a ${subject}.`;
+    } else if (lowerText.includes('aprovado')) {
+        context = "Aprovado no Plenário";
+        explanation = `Os deputados concordaram com a proposta. O texto sobre ${subject} segue para a próxima etapa legislativa.`;
     }
 
-    return summary;
+    // Garante que a explicação não fique gigante ou vazia
+    if (explanation.length > 200) explanation = explanation.substring(0, 197) + "...";
+
+    return {
+        context: context,
+        main: explanation
+    };
 }
 
-// Helper Functions Required for NewsTicker and NewsHistoryView
+// Persistência Inteligente (Evita Duplicatas)
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
-        const uniqueNew = newArticles.filter(n => !currentHistory.some(h => h.title === n.title));
+        
+        // Cria um Set de assinaturas (título + data) para checagem rápida
+        const existingSignatures = new Set(currentHistory.map(h => `${h.title}|${h.time}`));
+        
+        const uniqueNew = newArticles.filter(n => !existingSignatures.has(`${n.title}|${n.time}`));
+        
         if (uniqueNew.length > 0) {
+            // Adiciona novos no topo e limita a 50 itens
             const updatedHistory = [...uniqueNew, ...currentHistory].slice(0, 50);
             setCache(NEWS_HISTORY_KEY, updatedHistory);
         }
@@ -194,16 +205,36 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
 export const getNewsHistory = (): NewsArticle[] => getCache(NEWS_HISTORY_KEY, 0) || [];
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
-export function getEmergencyNews() {
+export function getEmergencyNews(): NewsArticle[] {
     return [
-        { title: "Sessão Deliberativa na Câmara", source: "Agência Câmara", url: "https://www.camara.leg.br", time: "Hoje", summary: "Deputados debatem pautas prioritárias para o país em sessão deliberativa no plenário.", imageUrl: STATIC_FALLBACK_IMAGES[0] },
-        { title: "Votações no Senado Federal", source: "Agência Senado", url: "https://www12.senado.leg.br", time: "Hoje", summary: "Senadores analisam medidas provisórias e projetos de lei em tramitação.", imageUrl: STATIC_FALLBACK_IMAGES[1] },
-        { title: "Pauta Econômica em Debate", source: "Portal da Câmara", url: "https://www.camara.leg.br/noticias/", time: "Recente", summary: "Líderes discutem diretrizes para o orçamento e novas propostas econômicas.", imageUrl: STATIC_FALLBACK_IMAGES[2] }
+        { 
+            title: "Sessão Deliberativa na Câmara", 
+            source: "Agência Câmara", 
+            url: "https://www.camara.leg.br", 
+            time: "Hoje", 
+            summary: {
+                context: "Atividade em Plenário",
+                main: "Deputados debatem pautas prioritárias para o país em sessão deliberativa. Acompanhe os resultados."
+            },
+            imageUrl: STATIC_FALLBACK_IMAGES[0] 
+        },
+        { 
+            title: "Votações no Senado Federal", 
+            source: "Agência Senado", 
+            url: "https://www12.senado.leg.br", 
+            time: "Hoje", 
+            summary: {
+                context: "Senado em Ação",
+                main: "Senadores analisam medidas provisórias e projetos de lei em tramitação. Decisões impactam diretamente a legislação federal."
+            },
+            imageUrl: STATIC_FALLBACK_IMAGES[1] 
+        }
     ];
 }
 
-// REPLACED AI NEWS GENERATION WITH REAL API DATA
+// FETCH REAL API DATA
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
+    // Tenta usar cache primeiro
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) return cachedNews;
 
@@ -224,9 +255,9 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             const date = new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR');
             const time = new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
-            // Nova Lógica de Processamento
-            const title = cleanLegislativeTitle(item.descricao);
-            const summary = summarizeLegislativeText(item.descricao);
+            // Usando os novos motores determinísticos
+            const title = generateJournalisticTitle(item.descricao);
+            const summaryStructure = generateStructuredSummary(item.descricao);
 
             let sourceUrl = `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`;
             if (item.uriProposicaoObjeto) {
@@ -239,20 +270,17 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
                 source: "Câmara dos Deputados",
                 url: sourceUrl,
                 time: `${date} às ${time}`,
-                summary: summary,
+                summary: summaryStructure,
                 imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
             };
         });
 
-        // Simulação de AI (Lightweight) para enriquecer se necessário, mas aqui confiamos no novo parser
-        const enrichedData = newsItems;
-
-        if (enrichedData.length > 0) {
-            setCache(NEWS_CACHE_KEY, enrichedData);
-            saveToHistory(enrichedData);
+        if (newsItems.length > 0) {
+            setCache(NEWS_CACHE_KEY, newsItems);
+            saveToHistory(newsItems);
         }
         
-        return enrichedData;
+        return newsItems;
 
     } catch (error: any) {
         console.warn("News Fetch Error:", error);
@@ -288,25 +316,8 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
 };
 
 export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    const ai = getAi();
-    if (!ai) return null;
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: { parts: [{ text: `Fotojornalismo profissional...: '${headline}'.` }] },
-            config: { imageConfig: { aspectRatio: "16:9" } }
-        });
-        if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-            }
-        }
-        return null;
-    } catch (e: any) { return null; }
-};
-
-export const getNewsSummary = async (title: string, source: string): Promise<string> => {
-    return "Resumo detalhado indisponível no momento. Consulte a fonte oficial.";
+    // Placeholder - Image Generation is expensive/slow for real-time tickers
+    return null;
 };
 
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {

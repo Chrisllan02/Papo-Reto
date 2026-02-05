@@ -102,13 +102,24 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                         </div>
                                     </div>
                                     <div className="p-6 flex flex-col flex-1">
-                                        <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight mb-4 line-clamp-3 group-hover:text-blue-600 transition-colors">
+                                        {/* Título */}
+                                        <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight mb-3 line-clamp-3 group-hover:text-blue-600 transition-colors">
                                             {item.title}
                                         </h3>
                                         
+                                        {/* Resumo Estruturado */}
+                                        <div className="mb-4">
+                                            <span className="inline-block bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase px-2 py-0.5 rounded mb-2 border border-blue-100 dark:border-blue-900/30">
+                                                {item.summary.context}
+                                            </span>
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 font-medium leading-relaxed line-clamp-4">
+                                                {item.summary.main}
+                                            </p>
+                                        </div>
+                                        
                                         <div className="mt-auto pt-4 border-t border-gray-100 dark:border-white/10 flex justify-between items-center">
                                             <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1.5 uppercase tracking-wide">
-                                                <Calendar size={12}/> Arquivado
+                                                <Calendar size={12}/> {item.time.split('às')[0]}
                                             </span>
                                             <a 
                                                 href={item.url} 

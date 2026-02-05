@@ -1,6 +1,7 @@
 
 import { Politician, FeedItem, TimelineItem, ExpenseHistoryItem, QuizQuestion, YearStats, LegislativeVote, Relatoria, Role, LegislativeEvent, Party, Travel, Remuneration, AmendmentStats, QuizVoteStats, PresenceStats, Occupation, Speech, Secretary, Front } from '../types';
 import { QUIZ_QUESTIONS, REAL_VOTE_CONFIG, PARTY_METADATA as PM } from '../constants';
+import { detectCategory } from '../utils/legislativeTranslator';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const BASE_URL_SENADO = 'https://legis.senado.leg.br/dadosabertos';
@@ -812,7 +813,8 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                 date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
                 description: formatText(v.descricao),
                 status: 'Concluído',
-                sourceUrl: sourceUrl
+                sourceUrl: sourceUrl,
+                category: detectCategory(v.descricao + ' ' + v.siglaOrgao) // Pre-calculated category
             };
         }).map((v: any) => ({ ...v, title: v.description.length > 80 ? v.description.slice(0, 80) + '...' : v.description }));
     }, TTL_DYNAMIC);

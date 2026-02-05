@@ -262,6 +262,8 @@ export interface QuizQuestion {
   stats?: QuizVoteStats; // NOVO: Dados agregados da votação
 }
 
+export type FeedCategory = 'education' | 'health' | 'economy' | 'security' | 'work' | 'environment' | 'justice' | 'activity';
+
 export interface FeedItem {
   id: number;
   type: 'voto' | 'despesa' | 'educacao';
@@ -277,6 +279,7 @@ export interface FeedItem {
   sourceUrl?: string; 
   tags?: string[];
   status?: 'Aprovado' | 'Rejeitado' | 'Tramitação' | 'Urgência';
+  category?: FeedCategory; // Nova propriedade tipada para evitar lógica de string no frontend
   reactions?: {
     support: number;
     angry: number;
@@ -354,6 +357,9 @@ export interface NewsArticle {
   source: string;
   url: string;
   time: string;
-  imageUrl?: string; // NOVO
-  summary?: string; // NOVO: Resumo pré-gerado
+  imageUrl?: string;
+  summary: {
+    context: string; // O "Entenda" ou Ação Principal (ex: Urgência Aprovada)
+    main: string;    // O Texto Explicativo (ex: O projeto trata de...)
+  };
 }
