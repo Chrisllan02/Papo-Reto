@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Activity, Coffee } from 'lucide-react';
-import { FeedItem, Politician } from '../types';
+import { FeedItem, Politician, EducationalArticle } from '../types';
 import NewsTicker from '../components/NewsTicker';
 import FeedDetailModal from '../components/FeedDetailModal';
 import StateSpotlightWidget from '../components/StateSpotlightWidget';
@@ -9,7 +9,7 @@ import FeedCard from '../components/FeedCard';
 interface FeedViewProps {
   politicians: Politician[];
   feedItems: FeedItem[];
-  articles: any[];
+  articles: EducationalArticle[];
   onSelectCandidate: (pol: Politician) => void;
   onEducationClick: (id: number) => void;
   onSeeMore: () => void;

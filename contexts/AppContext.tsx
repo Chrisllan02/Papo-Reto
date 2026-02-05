@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Politician, FeedItem, Party } from '../types';
+import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { useInitialData } from '../hooks/useCamaraData';
 
 // --- Types ---
@@ -8,7 +8,7 @@ interface AppState {
   activeTab: string;
   politicians: Politician[];
   feedItems: FeedItem[];
-  articles: any[];
+  articles: EducationalArticle[];
   parties: Party[];
   isLoading: boolean;
   

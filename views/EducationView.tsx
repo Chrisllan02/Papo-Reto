@@ -1,20 +1,66 @@
-
 import React, { useMemo } from 'react';
 import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText } from 'lucide-react';
+import { EducationalArticle } from '../types';
 
 interface EducationViewProps {
   educationId: number;
-  articles: any[];
+  articles: EducationalArticle[];
   onBack: () => void;
   onSelectArticle: (id: number) => void;
 }
 
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
   const article = useMemo(() => articles.find(a => a.id === educationId), [articles, educationId]);
+  
+  // Lógica inteligente para "Próximo Artigo"
   const nextItem = useMemo(() => {
       const currentIndex = articles.findIndex(a => a.id === educationId);
+      const currentArticle = articles[currentIndex];
+
+      if (!currentArticle || articles.length === 0) return articles[0];
+
+      // 1. Prioridade: Próximo artigo do mesmo tópico (Fluxo de Aprendizado)
+      // Agrupa artigos do mesmo tema
+      const sameTopicArticles = articles.filter(a => a.topic === currentArticle.topic);
+      // Descobre onde o atual está dentro desse grupo
+      const indexInTopic = sameTopicArticles.findIndex(a => a.id === educationId);
+
+      // Se não for o último do tópico, avança dentro do tópico
+      if (indexInTopic !== -1 && indexInTopic < sameTopicArticles.length - 1) {
+          return sameTopicArticles[indexInTopic + 1];
+      }
+
+      // 2. Fallback: Se acabou o tópico, vai para o próximo da lista geral (Mudança de Tópico / Cíclico)
       return articles[(currentIndex + 1) % articles.length];
   }, [articles, educationId]);
+
+  // Renderizador de Texto Rico (Parágrafos + Negrito Básico)
+  const renderRichText = (text: string) => {
+      if (!text) return null;
+      
+      // Divide por quebra de linha dupla para criar parágrafos
+      const paragraphs = text.split(/\n\n+/);
+
+      return paragraphs.map((paragraph, pIndex) => {
+          // Processa negrito (**texto**) dentro do parágrafo
+          const parts = paragraph.split(/(\*\*.*?\*\*)/g);
+          
+          return (
+              <p key={pIndex} className="text-gray-700 dark:text-gray-300 font-medium leading-loose text-lg md:text-xl mb-6 last:mb-0 text-justify hyphens-auto">
+                  {parts.map((part, i) => {
+                      if (part.startsWith('**') && part.endsWith('**')) {
+                          return (
+                              <strong key={i} className="font-black text-gray-900 dark:text-white">
+                                  {part.slice(2, -2)}
+                              </strong>
+                          );
+                      }
+                      return part;
+                  })}
+              </p>
+          );
+      });
+  };
 
   if (!article) return null;
 
@@ -65,9 +111,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
             <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-gray-100 dark:border-gray-800">
                 
                 <div className="prose dark:prose-invert prose-lg max-w-none mb-10">
-                    <p className="text-gray-700 dark:text-gray-300 font-medium leading-loose text-lg md:text-xl">
-                        {article.text}
-                    </p>
+                    {renderRichText(article.text)}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
@@ -95,29 +139,33 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                 </div>
 
                 {/* Next Suggestion - INCREASED PADDING BOTTOM FOR MOBILE */}
-                <div className="pt-8 border-t border-gray-200 dark:border-gray-800 pb-48 md:pb-0">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Continue Aprendendo</p>
-                    <button 
-                        type="button"
-                        onClick={() => onSelectArticle(nextItem.id)}
-                        className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
-                    >
-                        <div className="bg-white/90 dark:bg-gray-900 rounded-[2.3rem] p-5 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextItem.colorFrom.replace('from-', 'text-')}`}>
-                                    {renderIcon(nextItem.icon, 20, "opacity-80")}
+                {nextItem && (
+                    <div className="pt-8 border-t border-gray-200 dark:border-gray-800 pb-48 md:pb-0">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+                            {nextItem.topic === article.topic ? 'Continue no tema' : 'Próximo Tópico'}
+                        </p>
+                        <button 
+                            type="button"
+                            onClick={() => onSelectArticle(nextItem.id)}
+                            className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
+                        >
+                            <div className="bg-white/90 dark:bg-gray-900 rounded-[2.3rem] p-5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextItem.colorFrom.replace('from-', 'text-')}`}>
+                                        {renderIcon(nextItem.icon, 20, "opacity-80")}
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Próximo</p>
+                                        <h4 className="font-bold text-gray-900 dark:text-white text-base md:text-lg line-clamp-1">{nextItem.title}</h4>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Próximo</p>
-                                    <h4 className="font-bold text-gray-900 dark:text-white text-base md:text-lg line-clamp-1">{nextItem.title}</h4>
+                                <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
+                                    <ArrowRight size={18}/>
                                 </div>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
-                                <ArrowRight size={18}/>
-                            </div>
-                        </div>
-                    </button>
-                </div>
+                        </button>
+                    </div>
+                )}
 
             </div>
         </div>
@@ -126,4 +174,3 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
 };
 
 export default EducationView;
-    

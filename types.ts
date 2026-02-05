@@ -306,6 +306,18 @@ export interface LegislativeEvent {
   type: string;
 }
 
+export interface EducationalArticle {
+  id: number;
+  title: string;
+  text: string;
+  topic: string;
+  legislation?: string;
+  impact?: string;
+  colorFrom: string;
+  colorTo: string;
+  icon: string;
+}
+
 // --- AI Chat Types ---
 export interface ChatMessage {
   id: string;

@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Politician, FeedItem, Party } from '../types';
+import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { 
     fetchDeputados, 
     fetchSenadores, 
@@ -18,7 +18,7 @@ export const useInitialData = () => {
     const [politicians, setPoliticians] = useState<Politician[]>(POLITICIANS_DB);
     const [feedItems, setFeedItems] = useState<FeedItem[]>(FEED_ITEMS);
     const [parties, setParties] = useState<Party[]>(getStaticParties());
-    const [articles, setArticles] = useState<any[]>(EDUCATION_CAROUSEL); // Mantendo tipo any[] compatível com AppContext
+    const [articles, setArticles] = useState<EducationalArticle[]>(EDUCATION_CAROUSEL as EducationalArticle[]); 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
