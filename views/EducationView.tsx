@@ -89,7 +89,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                     >
                         <ChevronLeft size={24}/>
                     </button>
-                    <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20">
+                    <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20 drop-shadow-md">
                         {article.topic}
                     </div>
                 </div>

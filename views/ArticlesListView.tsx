@@ -204,12 +204,12 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                         <h3 className={`text-2xl font-black mb-3 leading-tight drop-shadow-md transition-colors text-white`}>
                                             {item.title}
                                         </h3>
-                                        <p className={`text-sm font-medium leading-relaxed line-clamp-3 mb-6 transition-colors text-white/90`}>
+                                        <p className={`text-sm font-medium leading-relaxed line-clamp-3 mb-6 transition-colors text-white/90 drop-shadow-md`}>
                                             {item.text}
                                         </p>
 
                                         {/* Footer */}
-                                        <div className="mt-auto pt-6 border-t border-white/20 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white group-hover:gap-3 transition-all">
+                                        <div className="mt-auto pt-6 border-t border-white/20 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white group-hover:gap-3 transition-all drop-shadow-md">
                                             {isRead ? 'Ler Novamente' : 'Ler Agora'} <ArrowRight size={14} className="text-white"/>
                                         </div>
                                     </div>

@@ -45,7 +45,7 @@ export const useInitialData = () => {
                             const styles = [
                                 { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb', activeColor: 'bg-spring/20 text-picture' },
                                 { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote', activeColor: 'bg-nuit/10 text-nuit' },
-                                { colorFrom: 'from-spring', colorTo: 'to-mantis', icon: 'ScrollText', activeColor: 'bg-praxeti text-midnight border border-spring' },
+                                { colorFrom: 'from-lime-700', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-lime-900/20 text-lime-900 border border-lime-700' }, // FIXED: Darker Contrast
                                 { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb', activeColor: 'bg-praxeti text-midnight' },
                                 { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote', activeColor: 'bg-blue-50 text-nuit' },
                                 { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-green-50 text-picture' }
@@ -54,7 +54,10 @@ export const useInitialData = () => {
                             let icon = base.icon;
                             const t = topic ? topic.toLowerCase() : '';
                             if (t.includes('orçamento') || t.includes('dinheiro') || t.includes('fundo') || t.includes('gasto')) icon = 'Banknote';
-                            if (t.includes('lei') || t.includes('pec') || t.includes('pl') || t.includes('constituição')) icon = 'ScrollText';
+                            if (t.includes('lei') || t.includes('pec') || t.includes('pl') || t.includes('constituição')) {
+                                icon = 'ScrollText';
+                                base = { colorFrom: 'from-amber-700', colorTo: 'to-orange-900', icon: 'ScrollText', activeColor: 'bg-amber-100 text-amber-900' }; // FIXED: Darker Contrast
+                            }
                             return { ...base, icon };
                         };
 

@@ -50,8 +50,8 @@ export const EDUCATION_CAROUSEL = [
     topic: "Legislação",
     legislation: "CF/88, Art. 59 (Processo Legislativo), Art. 60 (Emendas) e Art. 61 (Leis)",
     impact: "Mudanças na Constituição (PEC) são quase irreversíveis. Leis comuns (PL) mudam com mais facilidade.",
-    colorFrom: "from-yellow-500", 
-    colorTo: "to-yellow-700",
+    colorFrom: "from-amber-700", 
+    colorTo: "to-orange-900",
     icon: "ScrollText"
   }
 ];
