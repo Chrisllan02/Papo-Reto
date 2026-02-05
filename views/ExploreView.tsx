@@ -1,9 +1,10 @@
 
-import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayoutEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart, Filter, User } from 'lucide-react';
 import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
 import { PARTY_METADATA } from '../services/camaraApi';
+import { getIdeologyTheme } from '../utils/themeUtils';
 import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';
 
@@ -43,40 +44,8 @@ interface PartyCardProps {
 
 const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     const ideology = group.ideology || 'Centro';
+    const theme = getIdeologyTheme(ideology);
     
-    // Cores Semânticas Definidas
-    const getTheme = (ideo: string) => {
-        if (ideo === 'Esquerda') return {
-            bg: 'bg-rose-50/80 dark:bg-rose-900/10',
-            border: 'border-rose-100 dark:border-rose-900/30',
-            iconBg: 'bg-[#C41E3A]',
-            text: 'text-rose-900 dark:text-rose-100',
-            badgeBg: 'bg-rose-100 dark:bg-rose-900/40',
-            badgeText: 'text-[#C41E3A] dark:text-rose-300',
-            label: 'ESQ'
-        };
-        if (ideo === 'Direita') return {
-            bg: 'bg-indigo-50/80 dark:bg-indigo-900/10',
-            border: 'border-indigo-100 dark:border-indigo-900/30',
-            iconBg: 'bg-[#2E3192]',
-            text: 'text-indigo-900 dark:text-indigo-100',
-            badgeBg: 'bg-indigo-100 dark:bg-indigo-900/40',
-            badgeText: 'text-[#2E3192] dark:text-indigo-300',
-            label: 'DIR'
-        };
-        // Centro
-        return {
-            bg: 'bg-amber-50/80 dark:bg-amber-900/10',
-            border: 'border-amber-100 dark:border-amber-900/30',
-            iconBg: 'bg-[#E69138]',
-            text: 'text-amber-900 dark:text-amber-100',
-            badgeBg: 'bg-amber-100 dark:bg-amber-900/40',
-            badgeText: 'text-[#E69138] dark:text-amber-300',
-            label: 'CEN'
-        };
-    };
-
-    const theme = getTheme(ideology);
     const badgeLabel = group.name;
     const previewMembers = group.members.slice(0, 4);
 
@@ -153,12 +122,31 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     const [viewMode, setViewMode] = useState<ViewMode>('parties');
     const [showStateSelector, setShowStateSelector] = useState(false);
 
+    // Refs para Persistência de Scroll
+    const partiesListRef = useRef<HTMLDivElement>(null);
+    const scrollPositionRef = useRef(0);
+
     useEffect(() => {
         if (preselectedState) {
             setSelectedUF(preselectedState);
             setViewMode('candidates');
         }
     }, [preselectedState]);
+
+    // Restaura o scroll quando volta para a lista de partidos
+    useLayoutEffect(() => {
+        if (viewMode === 'parties' && !selectedParty && partiesListRef.current) {
+            partiesListRef.current.scrollTop = scrollPositionRef.current;
+        }
+    }, [viewMode, selectedParty]);
+
+    // Wrapper para salvar scroll antes de mudar estado
+    const handleSelectPartyWrapper = (name: string) => {
+        if (partiesListRef.current) {
+            scrollPositionRef.current = partiesListRef.current.scrollTop;
+        }
+        setSelectedParty(name);
+    };
 
     // Lógica de Busca Inteligente (Mista)
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,9 +369,9 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => {
                                         const isActive = selectedIdeology === ideology;
                                         let activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-600/20'; // Default
-                                        if (ideology === 'Esquerda') activeClass = 'bg-rose-600 text-white shadow-md shadow-rose-600/20';
-                                        if (ideology === 'Direita') activeClass = 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20';
-                                        if (ideology === 'Centro') activeClass = 'bg-amber-500 text-white shadow-md shadow-amber-500/20';
+                                        if (ideology !== 'Todos') {
+                                            activeClass = getIdeologyTheme(ideology).activeClass;
+                                        }
 
                                         return (
                                             <button
@@ -423,12 +411,15 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                 <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
                     {viewMode === 'parties' && !selectedParty && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 overflow-y-auto pb-32 custom-scrollbar pr-1">
+                        <div 
+                            ref={partiesListRef}
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 overflow-y-auto pb-32 custom-scrollbar pr-1"
+                        >
                             {partiesData.map((group) => (
                                 <PartyCard 
                                     key={group.name} 
                                     group={group} 
-                                    onSelect={setSelectedParty} 
+                                    onSelect={handleSelectPartyWrapper} 
                                 />
                             ))}
                         </div>
@@ -468,7 +459,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     </button>
                                 </div>
                             ) : (
-                                <div className="flex-1">
+                                <div className="flex-1 min-h-0">
                                     <AutoSizer>
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);

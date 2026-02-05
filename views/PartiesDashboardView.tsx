@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
+import { getIdeologyTheme } from '../utils/themeUtils';
 import { QUIZ_QUESTIONS } from '../constants';
 
 interface PartiesDashboardViewProps {
@@ -161,11 +162,14 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
     const total = Math.max(left + center + right, 1);
     const maxVal = Math.max(left, center, right, 1); 
 
-    // Updated colors to avoid semantic conflict
+    const leftTheme = getIdeologyTheme('Esquerda');
+    const centerTheme = getIdeologyTheme('Centro');
+    const rightTheme = getIdeologyTheme('Direita');
+
     const data = [
-        { label: 'Esq.', fullLabel: 'Esquerda', count: left, color: 'bg-rose-500', track: 'bg-rose-100/50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400' },
-        { label: 'Cent.', fullLabel: 'Centro', count: center, color: 'bg-amber-400', track: 'bg-amber-100/50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400' },
-        { label: 'Dir.', fullLabel: 'Direita', count: right, color: 'bg-indigo-600', track: 'bg-indigo-100/50 dark:bg-indigo-900/20', text: 'text-indigo-600 dark:text-indigo-400' }
+        { label: 'Esq.', fullLabel: 'Esquerda', count: left, color: leftTheme.fillColorClass, track: leftTheme.trackBg, text: leftTheme.textColorClass },
+        { label: 'Cent.', fullLabel: 'Centro', count: center, color: centerTheme.fillColorClass, track: centerTheme.trackBg, text: centerTheme.textColorClass },
+        { label: 'Dir.', fullLabel: 'Direita', count: right, color: rightTheme.fillColorClass, track: rightTheme.trackBg, text: rightTheme.textColorClass }
     ];
 
     return (
@@ -305,13 +309,10 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
         // Cores fixas para partidos principais ou paleta dinâmica
         const getPartyColor = (idx: number, name: string) => {
             const colors = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316']; // Blue, Red, Yellow, Green, Purple, Orange
-            // Tenta cor por ideologia ou fallback para index
             const ide = getIdeology(name);
+            // Uso do Theme Utils para consistência
             if (name === 'Outros') return '#9ca3af'; // Gray
-            if (ide === 'Esquerda') return '#f43f5e';
-            if (ide === 'Direita') return '#3b82f6';
-            if (ide === 'Centro') return '#f59e0b';
-            return colors[idx % colors.length];
+            return getIdeologyTheme(ide).baseColor;
         };
 
         const sorted = Object.entries(partyCounts)
@@ -465,12 +466,10 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
         });
     }, [data]);
 
-    // Updated Colors for Hemisphere (Rose, Indigo, Amber)
+    // Updated Colors for Hemisphere (Rose, Indigo, Amber) using Theme Utils
     const getPartyColor = (name: string) => {
         const ideology = getIdeology(name);
-        if (ideology === 'Esquerda') return '#F43F5E'; // Rose 500
-        if (ideology === 'Direita') return '#4F46E5'; // Indigo 600
-        return '#FBBF24'; // Amber 400
+        return getIdeologyTheme(ideology).baseColor;
     };
 
     // Configuration for the rounded hemicycle
