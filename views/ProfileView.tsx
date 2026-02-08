@@ -466,7 +466,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
 };
 
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
-  const [profileTab, setProfileTab] = useState<'activities' | 'projects' | 'money' | 'cabinet' | 'agenda' | 'career'>('activities');
+  const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
@@ -891,9 +891,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           <div className="min-w-0">
               {/* Tab Selector */}
               <div className="sticky top-0 z-40 bg-white/70 dark:bg-midnight/90 backdrop-blur-3xl p-1.5 rounded-2xl md:rounded-full border border-white/50 dark:border-white/10 shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
-                 {(['activities', 'money', 'cabinet', 'agenda', 'career'] as const).map(tab => (
+                 {(['activities', 'money'] as const).map(tab => (
                      <button key={tab} id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
-                        {tab === 'money' ? 'Custos Detalhados' : tab === 'cabinet' ? 'Equipe' : tab === 'activities' ? 'Atuação & Votos' : tab === 'agenda' ? 'Agenda' : tab === 'career' ? 'Trajetória' : 'Leis'}
+                        {tab === 'money' ? 'Custos Detalhados' : 'Atuação'}
                      </button>
                  ))}
               </div>
@@ -902,80 +902,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="outline-none">
                     {profileTab === 'activities' && (
                         <div>
-                            <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-                                {['all', 'propositions', 'reported', 'votes', 'speeches'].map(f => (
-                                    <button 
-                                        key={f}
-                                        onClick={() => setActivityFilter(f as any)} 
-                                        className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white/50 dark:bg-midnight/50 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}
-                                    >
-                                        {f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="space-y-4">
-                                {isLoadingDetails && combinedActivities.length === 0 ? (
-                                    <>
-                                        <SkeletonFeedItem />
-                                        <SkeletonFeedItem />
-                                        <SkeletonFeedItem />
-                                    </>
-                                ) : (
-                                    combinedActivities.length > 0 ? combinedActivities.map((item, i) => (
-                                        <ActivityCard key={`${item._type}-${i}`} item={item} />
-                                    )) : (
-                                        <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhuma atividade encontrada neste filtro</div>
-                                    )
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {profileTab === 'career' && (
-                        <div className="space-y-6">
-                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
-                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
-                                    <Briefcase size={20} className="text-blue-500"/> Histórico Profissional
-                                </h3>
-                                
-                                {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? (
-                                    <div className="space-y-4">
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                    </div>
-                                ) : (
-                                    candidate.occupations && candidate.occupations.length > 0 ? (
-                                        <div className="space-y-4 relative">
-                                            {/* Linha vertical conectando */}
-                                            <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
-                                            
-                                            {candidate.occupations.sort((a,b) => (b.startYear || 0) - (a.startYear || 0)).map((job, i) => (
-                                                <div key={i} className="flex gap-4 relative z-10 group">
-                                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-blue-500 group-hover:text-blue-500 transition-colors">
-                                                        <Briefcase size={18} className="text-gray-400 group-hover:text-blue-500"/>
-                                                    </div>
-                                                    <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
-                                                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{job.title}</h4>
-                                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{job.entity} {job.state ? `- ${job.state}` : ''}</p>
-                                                        <div className="mt-2 flex items-center gap-2">
-                                                            <span className="text-[10px] font-bold bg-gray-200 dark:bg-white/10 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300">
-                                                                {job.startYear} {job.endYear ? `- ${job.endYear}` : '- Atual'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">
-                                            Informações de carreira não disponíveis na base oficial.
-                                        </div>
-                                    )
-                                )}
-                            </div>
-
-                            {/* Frentes Parlamentares */}
-                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
+                            {/* Frentes Parlamentares - MOVED HERE */}
+                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
                                     <Flag size={20} className="text-blue-500"/> Frentes Parlamentares
                                 </h3>
@@ -1044,33 +972,76 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
-                    {profileTab === 'agenda' && (
-                        <div className="space-y-4">
-                            {isLoadingDetails && (!candidate.agenda || candidate.agenda.length === 0) ? (
-                                <Skeleton className="h-32 w-full rounded-[2.5rem]" />
-                            ) : (
-                                candidate.agenda && candidate.agenda.length > 0 ? candidate.agenda.map((event, i) => {
-                                    const isLive = event.status?.toLowerCase().includes('andamento');
-                                    return (
-                                        <div key={i} className="bg-white/90 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col md:flex-row gap-6 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 animate-in fade-in">
-                                            {isLive && (<div className="absolute top-0 right-0 px-4 py-2 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-lg animate-pulse">Ao Vivo</div>)}
-                                            <div className="flex md:flex-col items-center md:justify-center gap-3 shrink-0 md:w-32 md:border-r border-gray-100 dark:border-gray-800">
-                                                <div className="p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl text-blue-600 dark:text-blue-400 backdrop-blur-sm"><CalendarDays size={24} /></div>
-                                                <div className="text-center"><p className="text-xs font-black text-gray-900 dark:text-white uppercase">{event.startTime.split(' ')[0]}</p><p className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">{event.startTime.split(' ')[1]}</p></div>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex flex-wrap gap-2 mb-2"><span className="px-3 py-1 rounded-full bg-gray-100/50 dark:bg-white/5 text-[9px] font-black uppercase text-gray-500 tracking-wider backdrop-blur-sm">{event.type}</span><span className="px-3 py-1 rounded-full bg-gray-100/50 dark:bg-white/5 text-[9px] font-black uppercase text-gray-500 tracking-wider flex items-center gap-1 backdrop-blur-sm"><MapPin size={10}/> {event.location}</span></div>
-                                                <h4 className="text-lg font-black text-gray-900 dark:text-white mb-2 leading-tight">{event.description}</h4>
-                                                <p className="text-sm text-gray-500 font-medium">Situação: {event.status}</p>
-                                            </div>
+
+                            {/* Trajetória Profissional - MOVED HERE */}
+                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
+                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
+                                    <Briefcase size={20} className="text-blue-500"/> Trajetória Profissional
+                                </h3>
+                                
+                                {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? (
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                        <Skeleton className="h-16 w-full rounded-2xl" />
+                                    </div>
+                                ) : (
+                                    candidate.occupations && candidate.occupations.length > 0 ? (
+                                        <div className="space-y-4 relative">
+                                            {/* Linha vertical conectando */}
+                                            <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+                                            
+                                            {candidate.occupations.sort((a,b) => (b.startYear || 0) - (a.startYear || 0)).map((job, i) => (
+                                                <div key={i} className="flex gap-4 relative z-10 group">
+                                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-blue-500 group-hover:text-blue-500 transition-colors">
+                                                        <Briefcase size={18} className="text-gray-400 group-hover:text-blue-500"/>
+                                                    </div>
+                                                    <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
+                                                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{job.title}</h4>
+                                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{job.entity} {job.state ? `- ${job.state}` : ''}</p>
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold bg-gray-200 dark:bg-white/10 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300">
+                                                                {job.startYear} {job.endYear ? `- ${job.endYear}` : '- Atual'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">
+                                            Informações de carreira não disponíveis na base oficial.
                                         </div>
                                     )
-                                }) : (
-                                    <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhum evento agendado para os próximos 15 dias</div>
-                                )
-                            )}
+                                )}
+                            </div>
+
+                            <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                                {['all', 'propositions', 'reported', 'votes', 'speeches'].map(f => (
+                                    <button 
+                                        key={f}
+                                        onClick={() => setActivityFilter(f as any)} 
+                                        className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white/50 dark:bg-midnight/50 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}
+                                    >
+                                        {f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="space-y-4">
+                                {isLoadingDetails && combinedActivities.length === 0 ? (
+                                    <>
+                                        <SkeletonFeedItem />
+                                        <SkeletonFeedItem />
+                                        <SkeletonFeedItem />
+                                    </>
+                                ) : (
+                                    combinedActivities.length > 0 ? combinedActivities.map((item, i) => (
+                                        <ActivityCard key={`${item._type}-${i}`} item={item} />
+                                    )) : (
+                                        <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhuma atividade encontrada neste filtro</div>
+                                    )
+                                )}
+                            </div>
                         </div>
                     )}
                     {profileTab === 'money' && (
@@ -1171,43 +1142,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              )}
                          </div>
                     )}
-                    
-                    {profileTab === 'cabinet' && (
-                        <div className="space-y-6">
-                             <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in">
-                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">Equipe de Gabinete</h3>
-                                {isLoadingDetails && (!candidate.staff || candidate.staff.length === 0) ? (
-                                    <div className="space-y-4">
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                        <Skeleton className="h-16 w-full rounded-2xl" />
-                                    </div>
-                                ) : (
-                                    candidate.staff && candidate.staff.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {candidate.staff.map((sec, i) => (
-                                                <div key={i} className="flex items-center gap-4 p-5 rounded-3xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
-                                                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shadow-sm text-lg">
-                                                        {sec.name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-gray-900 dark:text-white uppercase">{sec.name}</p>
-                                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{sec.role}</p>
-                                                        <p className="text-[9px] text-gray-400 mt-0.5">{sec.group}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">
-                                            Informação de secretários não disponível.
-                                        </div>
-                                    )
-                                )}
-                             </div>
-                        </div>
-                    )}
-
                   </div>
               </div>
           </div>

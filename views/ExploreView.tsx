@@ -3,7 +3,7 @@ import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayou
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart, Filter, User } from 'lucide-react';
 import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology } from '../services/camaraApi';
-import { PARTY_METADATA } from '../services/camaraApi';
+import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
 import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';

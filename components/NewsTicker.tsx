@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../services/ai';
 import { NewsArticle } from '../types';
@@ -14,13 +15,14 @@ const NewsTicker: React.FC = () => {
     const [index, setIndex] = useState(0);
     const [paused, setPaused] = useState(false);
     
-    // 2. Background Fetch (Silent Update)
+    // 2. Background Fetch (Silent Update) & Polling
     useEffect(() => {
         const updateNews = async () => {
             try {
                 const fresh = await fetchDailyNews();
                 if (fresh && fresh.length > 0) {
-                    const isDifferent = fresh[0].title !== news[0]?.title || fresh[0].time !== news[0]?.time;
+                    // Verifica se houve mudança real para evitar re-render desnecessário
+                    const isDifferent = fresh[0].id !== news[0]?.id || fresh[0].time !== news[0]?.time;
                     if (isDifferent) {
                         setNews(fresh);
                     }
@@ -29,7 +31,13 @@ const NewsTicker: React.FC = () => {
                 console.error("Silent news update failed", error);
             }
         };
-        updateNews();
+
+        updateNews(); // Initial fetch
+
+        // Polling a cada 5 minutos (300.000ms)
+        const pollInterval = setInterval(updateNews, 300000);
+
+        return () => clearInterval(pollInterval);
     }, []);
 
     useEffect(() => {

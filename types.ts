@@ -365,11 +365,12 @@ export interface WorkspaceEvent {
 }
 
 export interface NewsArticle {
-  id?: string; // NOVO: ID para chaves únicas no React
+  id?: string;
   title: string;
   source: string;
   url: string;
   time: string;
+  timestamp?: number; // NOVO: Timestamp numérico para controle de expiração (30 dias)
   imageUrl?: string;
   summary: {
     context: string; 

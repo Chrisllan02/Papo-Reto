@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search, X, Sparkles, Trash2, Share2, ImageOff, RefreshCw, Loader2, LayoutGrid, List as ListIcon, AlignLeft } from 'lucide-react';
-import { getNewsHistory, clearNewsHistory, chatWithGemini } from '../services/ai';
+import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search, X, Sparkles, Share2, ImageOff, RefreshCw, Loader2, LayoutGrid, AlignLeft } from 'lucide-react';
+import { getNewsHistory, chatWithGemini } from '../services/ai';
 import { NewsArticle } from '../types';
 import html2canvas from 'html2canvas';
 
@@ -148,7 +148,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
         generateAndShare();
     }, [sharingItem]);
 
-    // 1. Filtragem Otimizada com useMemo e Debounce
+    // 1. Filtragem Otimizada com Mapeamento Semântico
     const filteredHistory = useMemo(() => {
         let items = history;
 
@@ -162,18 +162,38 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             );
         }
 
-        // Filtro de Tags
+        // Filtro de Tags (Lógica Semântica Corrigida)
         if (selectedTag !== 'Todos') {
-            items = items.filter(h => 
-                h.source.includes(selectedTag) || 
-                h.summary.context.includes(selectedTag)
-            );
+            items = items.filter(h => {
+                const source = (h.source || '').toLowerCase();
+                const url = (h.url || '').toLowerCase();
+                const context = (h.summary.context || '').toLowerCase();
+                const title = (h.title || '').toLowerCase();
+
+                if (selectedTag === 'Câmara') {
+                    // Pega tudo relacionado à Câmara
+                    return source.includes('câmara') || source.includes('plenário') || source.includes('protocolo') || source.includes('agenda') || url.includes('camara.leg.br');
+                }
+                
+                if (selectedTag === 'Senado') {
+                    // Pega tudo relacionado ao Senado
+                    return source.includes('senado') || url.includes('senado.leg.br');
+                }
+                
+                if (selectedTag === 'Urgente') {
+                    // Pega baseada em palavras-chave de impacto
+                    const urgentKeywords = ['urgência', 'urgente', 'crise', 'polêmica', 'aprovado', 'rejeitado', 'sanção', 'veto', 'imediat'];
+                    return urgentKeywords.some(k => context.includes(k) || title.includes(k));
+                }
+
+                return source.includes(selectedTag.toLowerCase());
+            });
         }
 
         return items;
     }, [history, debouncedQuery, selectedTag]);
 
-    // 2. Agrupamento Temporal Avançado
+    // 2. Agrupamento Temporal Avançado (Baseado em Timestamp)
     const groupedHistory = useMemo(() => {
         const groups: Record<string, NewsArticle[]> = { 
             'Hoje': [], 
@@ -184,27 +204,32 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
         };
         
         const now = new Date();
-        now.setHours(0,0,0,0);
+        now.setHours(0,0,0,0); // Normaliza para meia-noite de hoje
 
         filteredHistory.forEach(item => {
-            let itemDate = new Date();
-            try {
-                // Tenta lidar com formatos "DD/MM/YYYY" e "DD/MM/YYYY às HH:mm"
-                const datePart = item.time.includes('às') ? item.time.split('às')[0].trim() : item.time.trim();
-                const [day, month, year] = datePart.split('/').map(Number);
-                
-                if (!day || !month || !year) throw new Error("Data inválida");
-                
-                itemDate = new Date(year, month - 1, day);
-                itemDate.setHours(0,0,0,0);
-            } catch (e) {
-                // Se falhar o parse, considera "Antigos" para não quebrar a UI
-                groups['Antigos'].push(item);
-                return;
+            let itemDate: Date;
+
+            // Prioridade total para o Timestamp numérico (mais preciso)
+            if (item.timestamp) {
+                itemDate = new Date(item.timestamp);
+            } else {
+                // Fallback para parse de string (Legado)
+                try {
+                    const datePart = item.time.includes('às') ? item.time.split('às')[0].trim() : item.time.trim();
+                    const [day, month, year] = datePart.split('/').map(Number);
+                    if (!day || !month || !year) throw new Error("Data inválida");
+                    itemDate = new Date(year, month - 1, day);
+                } catch (e) {
+                    groups['Antigos'].push(item);
+                    return;
+                }
             }
+            
+            // Zera horas para comparação de dias inteiros
+            itemDate.setHours(0,0,0,0);
 
             const diffTime = now.getTime() - itemDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays === 0) groups['Hoje'].push(item);
             else if (diffDays === 1) groups['Ontem'].push(item);
@@ -215,14 +240,6 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
 
         return groups;
     }, [filteredHistory]);
-
-    // 3. Ações
-    const handleClearHistory = () => {
-        if (confirm("Tem certeza que deseja limpar todo o histórico de notícias?")) {
-            clearNewsHistory();
-            setHistory([]);
-        }
-    };
 
     const triggerShare = (e: React.MouseEvent, item: NewsArticle) => {
         e.stopPropagation();
@@ -338,7 +355,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                             </div>
                         </div>
 
-                        {/* Layout Toggle & Actions */}
+                        {/* Layout Toggle - Lixeira Removida */}
                         <div className="flex gap-2">
                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-white/10">
                                 <button
@@ -356,16 +373,6 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                     <AlignLeft size={16} />
                                 </button>
                             </div>
-
-                            {history.length > 0 && (
-                                <button 
-                                    onClick={handleClearHistory}
-                                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-transparent hover:border-red-200"
-                                    title="Limpar Histórico"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            )}
                         </div>
                     </div>
 
@@ -430,9 +437,9 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                             <div className="w-20 h-20 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
                                 <Newspaper className="h-10 w-10 text-gray-400" strokeWidth={1.5}/>
                             </div>
-                            <h3 className="text-lg font-black text-gray-700 dark:text-white mb-2">Histórico Vazio</h3>
+                            <h3 className="text-lg font-black text-gray-700 dark:text-white mb-2">Nenhum resultado</h3>
                             <p className="text-xs text-gray-500 max-w-xs leading-relaxed">
-                                Nenhuma notícia encontrada com os filtros atuais.
+                                Nenhuma notícia encontrada com os filtros "{selectedTag}" ou busca atual.
                             </p>
                             {history.length > 0 && (
                                 <button onClick={() => { setQuery(''); setSelectedTag('Todos'); }} className="mt-6 text-blue-600 font-bold text-xs uppercase hover:underline">

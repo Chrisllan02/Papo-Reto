@@ -24,10 +24,9 @@ const getAi = () => {
 };
 
 // Cache Utils
-// ATUALIZADO PARA V15 PARA GARANTIR NOVA POLÍTICA DE RETENÇÃO DE 1 MÊS
-const NEWS_CACHE_KEY = 'paporeto_news_v15_fresh'; 
-const NEWS_HISTORY_KEY = 'paporeto_news_history_v3_ids'; 
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 1; // 1 Hora (Updates frequentes)
+const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
+const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
+const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -48,6 +47,7 @@ const setCache = (key: string, data: any) => {
         console.warn('Cache full, clearing old keys');
         try {
             localStorage.removeItem('paporeto_img_cache_v2'); 
+            localStorage.removeItem('paporeto_news_v20_dynamic'); 
             localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
         } catch(err) {
             console.error("Critical storage error", err);
@@ -57,13 +57,31 @@ const setCache = (key: string, data: any) => {
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-const STATIC_FALLBACK_IMAGES = [
-    "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop", 
-    "https://images.unsplash.com/photo-1575320181282-9afab399332c?q=80&w=800&auto=format&fit=crop", 
-    "https://images.unsplash.com/photo-1555848962-6e79363ec58f?q=80&w=800&auto=format&fit=crop", 
-    "https://images.unsplash.com/photo-1529101091760-6149d4c46b7d?q=80&w=800&auto=format&fit=crop", 
-    "https://images.unsplash.com/photo-1590333748338-d629e4564ad9?q=80&w=800&auto=format&fit=crop"
-];
+// --- ENGINE DE IMAGENS SEMÂNTICA ---
+const SEMANTIC_IMAGES_MAP: Record<string, string> = {
+    congress: "https://images.unsplash.com/photo-1555848962-6e79363ec58f?q=80&w=800&auto=format&fit=crop",
+    justice: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
+    economy: "https://images.unsplash.com/photo-1611974765270-ca12586343bb?q=80&w=800&auto=format&fit=crop",
+    health: "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=800&auto=format&fit=crop",
+    education: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=800&auto=format&fit=crop",
+    tech: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
+    security: "https://images.unsplash.com/photo-1555963966-b7ae5404b6ed?q=80&w=800&auto=format&fit=crop",
+    environment: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop",
+    brazil: "https://images.unsplash.com/photo-1590333748338-d629e4564ad9?q=80&w=800&auto=format&fit=crop"
+};
+
+const getSmartImage = (text: string): string => {
+    const t = text.toLowerCase();
+    if (t.match(/economia|orçamento|gasto|dinheiro|tribut|imposto|finança|dólar|bolsa/)) return SEMANTIC_IMAGES_MAP.economy;
+    if (t.match(/saúde|médico|hospital|doença|vacina|sus|pandemia/)) return SEMANTIC_IMAGES_MAP.health;
+    if (t.match(/educação|escola|ensino|aluno|universidade|professor/)) return SEMANTIC_IMAGES_MAP.education;
+    if (t.match(/segurança|polícia|crime|armas|violência|prisão/)) return SEMANTIC_IMAGES_MAP.security;
+    if (t.match(/ambiente|floresta|clima|água|natureza|sustent|amazônia/)) return SEMANTIC_IMAGES_MAP.environment;
+    if (t.match(/tecnologia|internet|digital|inovação|rede social|ia|cyber/)) return SEMANTIC_IMAGES_MAP.tech;
+    if (t.match(/justiça|lei|stf|julgamento|direito|tribunal|jurídico/)) return SEMANTIC_IMAGES_MAP.justice;
+    if (t.match(/congresso|câmara|senado|plenário|parlamentar|deputado|política/)) return SEMANTIC_IMAGES_MAP.congress;
+    return SEMANTIC_IMAGES_MAP.brazil;
+};
 
 export interface AIResponse {
     text: string;
@@ -74,109 +92,141 @@ export interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
 }
 
-// --- MOTOR DE TRADUÇÃO LEGISLATIVA (DETERMINÍSTICO) ---
-
-// 1. Dicionário de Títulos (Manchetes)
-const TITLE_TRANSLATION_MAP: Array<{ regex: RegExp, template: string }> = [
-    { regex: /aprovado o requerimento de urgência/i, template: "Votação Acelerada: Urgência Aprovada" },
-    { regex: /mantido o texto/i, template: "Veto Preservado: Texto Original Mantido" },
-    { regex: /rejeitado o texto/i, template: "Veto Derrubado: Congresso Altera a Lei" },
+// --- MOTOR DE TRADUÇÃO JORNALÍSTICA (REGEX) ---
+const TITLE_RULES: Array<{ regex: RegExp, template: string }> = [
+    { regex: /oitivas? de testemunhas?/i, template: "CPI: Depoimento de Testemunhas" },
+    { regex: /e votação de propostas/i, template: "Comissão: Votação de Projetos" },
+    { regex: /audiência pública/i, template: "Debate Público na Câmara" },
+    { regex: /reunião deliberativa/i, template: "Comissão: Votação de Pauta" },
+    { regex: /sessão deliberativa/i, template: "Plenário: Decisão sobre Leis" },
+    { regex: /seminário/i, template: "Seminário Legislativo" },
+    { regex: /aprovado o requerimento de urgência/i, template: "Urgência Aprovada: Votação Acelerada" },
+    { regex: /mantido o texto/i, template: "Veto Preservado: Lei Mantida" },
+    { regex: /rejeitado o texto/i, template: "Veto Derrubado: Lei Alterada" },
     { regex: /encaminhada à publicação/i, template: "Projeto Protocolado Oficialmente" },
     { regex: /aprovada a redação final/i, template: "Texto Final Aprovado na Câmara" },
     { regex: /designado relator/i, template: "Relator Escolhido para o Projeto" },
-    { regex: /novo despacho/i, template: "Atualização no Processo Legislativo" },
+    { regex: /novo despacho/i, template: "Nova Fase na Tramitação" },
     { regex: /retirado de pauta/i, template: "Votação Adiada: Retirado de Pauta" },
     { regex: /rejeitado o requerimento/i, template: "Proposta Negada pelo Plenário" },
-    { regex: /aprovado o projeto/i, template: "Aprovado: Projeto Segue Tramitação" },
+    { regex: /aprovado o projeto/i, template: "Aprovado: Projeto Segue" },
     { regex: /transformado na lei/i, template: "Sanção: Nova Lei em Vigor" }
 ];
 
-function generateJournalisticTitle(rawText: string): string {
+function generateJournalisticTitle(rawText: string, type: 'voto' | 'evento' | 'proposicao' = 'voto'): string {
     if (!rawText) return "Movimentação no Congresso";
     const text = rawText.trim();
 
-    // 1. Tenta encontrar um padrão exato
-    for (const rule of TITLE_TRANSLATION_MAP) {
-        if (rule.regex.test(text)) {
-            return rule.template;
-        }
+    // 1. Regras Diretas (Substituição Completa)
+    for (const rule of TITLE_RULES) {
+        if (rule.regex.test(text)) return rule.template;
     }
 
-    // 2. Se não achar, tenta limpar e formatar o texto bruto
-    let cleaned = text
+    let cleaned = text;
+
+    // 2. Limpeza de "Lixo Burocrático"
+    cleaned = cleaned.replace(/PAUTA SUJEITA A ALTERAÇÕES.*/i, "");
+    cleaned = cleaned.replace(/A - Deliberação.*/i, "");
+    cleaned = cleaned.replace(/E votação.*/i, ""); 
+    cleaned = cleaned.replace(/ - \d{2}\/\d{2}\/\d{4}.*$/, "");
+    cleaned = cleaned.replace(/n\.? ?\d+(\/\d+)?/gi, ""); 
+
+    // 3. Prefixos Inteligentes
+    if (type === 'proposicao') {
+        cleaned = cleaned.replace(/^Altera a Lei.*para/i, "Nova Proposta: ");
+        cleaned = cleaned.replace(/^Institui o/i, "Criação: ");
+        cleaned = cleaned.replace(/^Dispõe sobre/i, "Debate: ");
+        cleaned = cleaned.replace(/^Requer a realização de/i, "Pedido: ");
+        cleaned = cleaned.replace(/^Requer a/i, "Pedido: ");
+        cleaned = cleaned.replace(/^Requer/i, "Requerimento: ");
+    }
+
+    // 4. Limpeza Geral
+    cleaned = cleaned
         .replace(/^(Votação|Discussão|Apreciação) (única )?(em \w+ turno )?(d[oa]s? )?/i, "")
         .replace(/^Aprovação d[oa] /i, "")
-        .replace(/Projeto de Lei n\.? ?\d+(\/\d+)?/i, "")
-        .replace(/Proposta de Emenda à Constituição n\.? ?\d+(\/\d+)?/i, "")
-        .replace(/Medida Provisória n\.? ?\d+(\/\d+)?/i, "")
-        .replace(/Requerimento n\.? ?\d+(\/\d+)?/i, "")
-        .replace(/Parecer.*proferido.*/i, "")
-        .replace(/ - \d{2}\/\d{2}\/\d{4}.*$/, "");
+        .replace(/Projeto de Lei/i, "PL")
+        .replace(/Proposta de Emenda à Constituição/i, "PEC")
+        .replace(/Medida Provisória/i, "MP")
+        .trim();
 
-    // Extração do tema principal se possível
+    // 5. Extração de Assunto
     const matchInstitui = cleaned.match(/(?:que|visando|para) (institui|cria|autoriza|obriga|concede|reconhece|altera|dispõe|regulamenta) (.*?)(?:;|\.|$)/i);
     if (matchInstitui) {
-        cleaned = matchInstitui[2].trim();
+        const action = matchInstitui[1];
+        const subject = matchInstitui[2];
+        cleaned = `${action.charAt(0).toUpperCase() + action.slice(1)} ${subject}`;
     } else {
-        cleaned = cleaned.split(/,|;/)[0]; // Pega até a primeira vírgula
+        cleaned = cleaned.split(/,|;/)[0]; 
     }
 
-    // Capitalização e limite
-    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
-    if (cleaned.length > 55) cleaned = cleaned.substring(0, 52) + "...";
+    // 6. Formatação Final
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    if (cleaned.endsWith('.') || cleaned.endsWith(':') || cleaned.endsWith('-')) cleaned = cleaned.slice(0, -1).trim();
+    if (cleaned.length > 60) cleaned = cleaned.substring(0, 57) + "...";
 
-    return cleaned || "Atualização Legislativa";
+    return cleaned || "Nova Proposta Legislativa";
 }
 
-// 2. Motor de Resumos (Contexto + Texto)
-function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' = 'voto'): { context: string, main: string } {
+function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'proposicao' = 'voto'): { context: string, main: string } {
     const defaultResponse = {
-        context: type === 'evento' ? "Agenda Oficial" : "Tramitação",
+        context: type === 'evento' ? "Agenda Oficial" : type === 'proposicao' ? "Novo Projeto" : "Tramitação",
         main: rawText || "Detalhes não disponíveis no momento."
     };
 
     if (!rawText) return defaultResponse;
     const lowerText = rawText.toLowerCase();
-
-    // Extração do "Assunto"
-    let subject = rawText;
+    
+    // Limpeza pesada para o resumo
+    let subject = rawText.replace(/PAUTA SUJEITA A ALTERAÇÕES.*/i, "").trim();
+    
     const matchSubject = rawText.match(/(?:institui|cria|sobre|acerca d[eo]|referente [aà])\s+(.*?)(?:;|\.|,|$)/i);
-    if (matchSubject && matchSubject[1]) {
-        subject = matchSubject[1].trim();
-    }
+    if (matchSubject && matchSubject[1]) subject = matchSubject[1].trim();
     subject = subject.replace(/n\.º? ?\d+(\/\d+)?/g, "").replace(/Dispõe sobre/i, "trata de");
 
-    // Lógica para EVENTOS (Sessões)
     if (type === 'evento') {
         let context = "Atividade Legislativa";
         if (lowerText.includes('sessão deliberativa')) context = "Sessão no Plenário";
         else if (lowerText.includes('comissão')) context = "Debate em Comissão";
         else if (lowerText.includes('audiência')) context = "Audiência Pública";
         else if (lowerText.includes('solene')) context = "Sessão Solene";
+        else if (lowerText.includes('oitiva')) context = "Investigação/CPI";
 
-        let explanation = `Ocorrência registrada na agenda oficial da Câmara: ${rawText}.`;
-        if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
+        let explanation = rawText;
+        if (lowerText.includes('oitiva')) explanation = "Deputados ouvem testemunhas e investigados em comissão.";
+        else if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
         else if (lowerText.includes('convocada')) explanation = "Reunião convocada para debater pautas prioritárias.";
+        else explanation = subject.length > 10 ? `Na pauta: ${subject}` : rawText;
         
         return { context, main: explanation };
     }
 
-    // Lógica para VOTAÇÕES
+    if (type === 'proposicao') {
+        let context = "Projeto de Lei";
+        if (lowerText.includes('pec')) context = "Proposta Constitucional";
+        else if (lowerText.includes('requerimento')) context = "Requerimento";
+        else if (lowerText.includes('medida provisória')) context = "Medida Provisória";
+
+        let explanation = `Nova proposta: ${subject}.`;
+        if (subject.length > 150) explanation = subject.substring(0, 147) + "...";
+        return { context, main: explanation };
+    }
+
     let context = "Em Análise";
     let explanation = `O texto trata de: ${subject}.`;
 
     if (lowerText.includes('urgência')) {
         context = "Regime de Urgência";
-        explanation = `Aprovação para acelerar o projeto sobre ${subject}, pulando etapas de comissões.`;
+        explanation = `Aprovação para acelerar o projeto, pulando etapas de comissões.`;
     } else if (lowerText.includes('medida provisória')) {
         context = "Medida Provisória";
-        explanation = `Análise de norma presidencial com força de lei imediata sobre ${subject}.`;
+        explanation = `Análise de norma presidencial com força de lei imediata.`;
     } else if (lowerText.includes('pec')) {
         context = "Mudança na Constituição";
-        explanation = `Votação de Emenda Constitucional (PEC) sobre ${subject}. Exige quórum alto.`;
+        explanation = `Votação de Emenda Constitucional (PEC). Exige quórum alto.`;
     } else if (lowerText.includes('aprovado')) {
         context = "Aprovado no Plenário";
-        explanation = `Os deputados deram sinal verde para a proposta sobre ${subject}.`;
+        explanation = `Os deputados deram sinal verde para a proposta.`;
     }
 
     if (explanation.length > 200) explanation = explanation.substring(0, 197) + "...";
@@ -184,20 +234,33 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' = 'v
     return { context, main: explanation };
 }
 
-// Persistência Inteligente
+// --- GESTÃO DE HISTÓRICO ---
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getNewsHistory();
-        const existingSignatures = new Set(currentHistory.map(h => `${h.title}|${h.time}`));
-        const uniqueNew = newArticles.filter(n => !existingSignatures.has(`${n.title}|${n.time}`));
-        
-        if (uniqueNew.length > 0) {
-            const stampedNew = uniqueNew.map(n => ({ ...n, id: n.id || generateId() }));
-            // AUMENTADO PARA 300 ITENS (Aprox. 1 Mês de Histórico com ~10 notícias/dia)
-            const updatedHistory = [...stampedNew, ...currentHistory].slice(0, 300);
-            setCache(NEWS_HISTORY_KEY, updatedHistory);
-        }
-    } catch (e) { console.error("Erro ao salvar histórico", e); }
+        let allArticles = [...newArticles, ...currentHistory];
+
+        const seenSignatures = new Set();
+        allArticles = allArticles.filter(item => {
+            if (!item.title) return false;
+            if (item.id && item.id.startsWith('emergency-')) return false;
+            const sig = `${item.title.trim()}|${item.time.trim()}`;
+            if (seenSignatures.has(sig)) return false;
+            seenSignatures.add(sig);
+            return true;
+        });
+
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        allArticles = allArticles.filter(item => {
+            if (item.timestamp) return (now - item.timestamp) < THIRTY_DAYS_MS;
+            return true;
+        });
+
+        allArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        setCache(NEWS_HISTORY_KEY, allArticles.slice(0, 300));
+    } catch (e) { console.error("Erro crítico ao salvar histórico", e); }
 };
 
 export const getNewsHistory = (): NewsArticle[] => {
@@ -220,8 +283,9 @@ export function getEmergencyNews(): NewsArticle[] {
             source: "Agência Câmara", 
             url: "https://www.camara.leg.br", 
             time: "Hoje", 
+            timestamp: Date.now(),
             summary: { context: "Atividade em Plenário", main: "Deputados debatem pautas prioritárias para o país em sessão deliberativa." },
-            imageUrl: STATIC_FALLBACK_IMAGES[0] 
+            imageUrl: SEMANTIC_IMAGES_MAP.congress 
         },
         { 
             id: 'emergency-2',
@@ -229,88 +293,118 @@ export function getEmergencyNews(): NewsArticle[] {
             source: "Agência Senado", 
             url: "https://www12.senado.leg.br", 
             time: "Hoje", 
+            timestamp: Date.now(),
             summary: { context: "Senado em Ação", main: "Senadores analisam medidas provisórias e projetos de lei em tramitação." },
-            imageUrl: STATIC_FALLBACK_IMAGES[1] 
+            imageUrl: SEMANTIC_IMAGES_MAP.brazil
         }
     ];
 }
 
-// --- FETCH REAL API DATA (HÍBRIDO: VOTAÇÕES + EVENTOS) ---
+// --- GERAÇÃO DE IMAGEM DE NOTÍCIA (GOOGLE GEMINI) ---
+export const generateNewsImage = async (headline: string): Promise<string | null> => {
+    const ai = getAi();
+    if (!ai) return null;
+    try {
+        const prompt = `Create a high-quality abstract 3D isometric editorial illustration for a news article titled: "${headline}".
+        Style: Minimalist, Corporate Memphis 3D, Political symbolism.
+        Mandatory Constraints: NO TEXT, NO HUMAN FACES, NO REALISTIC PEOPLE, NO CROWDS.
+        Colors: Professional palette inspired by Brazil (Deep Green, Navy Blue, Golden Yellow, White, Grey).
+        Composition: Clean background, single central subject (e.g. 3D gavel, document, stylized building, chart, abstract shapes).`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: { parts: [{ text: prompt }] },
+            config: { imageConfig: { aspectRatio: "16:9" } }
+        });
+        
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+            }
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+};
+
+// --- FETCH REAL API DATA ---
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
-    // 1. Tenta Cache
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) return cachedNews;
 
-    // Define local extended type to include rawDate for sorting
-    type NewsArticleWithRaw = NewsArticle & { rawDate: number };
-
     try {
-        // 2. Fetch Paralelo: Votações (Decisões) + Eventos (Atividade Recente)
-        // Isso resolve o problema de dias sem votação parecerem que o app parou.
-        // ADICIONADO: Cache busting com timestamp para evitar cache agressivo do navegador
-        const timestamp = Date.now();
         const headers = { 'Accept': 'application/json' };
-        // Configuração de fetch com no-store para garantir dados frescos
         const fetchConfig = { headers, cache: 'no-store' as RequestCache };
 
-        const [votacoesRes, eventosRes] = await Promise.allSettled([
-            fetch(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=10&_t=${timestamp}`, fetchConfig),
-            fetch(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&itens=10&_t=${timestamp}`, fetchConfig)
+        const dateLimit = new Date();
+        dateLimit.setDate(dateLimit.getDate() - 30);
+        const dateStr = dateLimit.toISOString().split('T')[0];
+
+        const [votacoesRes, eventosRes, proposicoesRes] = await Promise.allSettled([
+            fetch(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStr}&itens=5`, fetchConfig),
+            fetch(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=5`, fetchConfig),
+            fetch(`https://dadosabertos.camara.leg.br/api/v2/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`, fetchConfig)
         ]);
 
-        let combinedData: NewsArticleWithRaw[] = [];
+        let combinedData: NewsArticle[] = [];
 
-        // Processa Votações
+        const createNewsObject = (item: any, type: 'voto' | 'evento' | 'proposicao', rawDateStr: string): NewsArticle => {
+            const dateObj = new Date(rawDateStr);
+            // USA O NOVO GERADOR DE TÍTULOS JORNALÍSTICOS AQUI
+            const title = generateJournalisticTitle(item.descricao || item.ementa || item.descricaoTipo, type);
+            const smartImage = getSmartImage(title + " " + (item.descricao || ""));
+
+            return {
+                id: item.id ? item.id.toString() : generateId(),
+                title: title,
+                source: type === 'voto' ? "Plenário" : type === 'evento' ? "Agenda" : "Protocolo",
+                url: type === 'evento' 
+                    ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes` 
+                    : (type === 'proposicao' ? `https://www.camara.leg.br/propostas-legislativas/${item.id}` : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`),
+                time: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                timestamp: dateObj.getTime(),
+                summary: generateStructuredSummary(item.descricao || item.ementa || item.descricaoTipo, type),
+                imageUrl: smartImage
+            };
+        };
+
         if (votacoesRes.status === 'fulfilled' && votacoesRes.value.ok) {
             const json = await votacoesRes.value.json();
-            if (json.dados) {
-                const votes: NewsArticleWithRaw[] = json.dados.map((item: any, index: number) => ({
-                    id: item.id || generateId(),
-                    rawDate: new Date(item.dataHoraRegistro).getTime(),
-                    title: generateJournalisticTitle(item.descricao),
-                    source: "Plenário",
-                    url: `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`,
-                    time: new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    summary: generateStructuredSummary(item.descricao, 'voto'),
-                    imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
-                }));
-                combinedData = [...combinedData, ...votes];
-            }
+            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'voto', d.dataHoraRegistro)));
         }
 
-        // Processa Eventos (Para dias sem votação)
+        if (proposicoesRes.status === 'fulfilled' && proposicoesRes.value.ok) {
+            const json = await proposicoesRes.value.json();
+            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'proposicao', d.dataApresentacao || new Date().toISOString())));
+        }
+
         if (eventosRes.status === 'fulfilled' && eventosRes.value.ok) {
             const json = await eventosRes.value.json();
-            if (json.dados) {
-                const events: NewsArticleWithRaw[] = json.dados.map((item: any, index: number) => ({
-                    id: item.id?.toString() || generateId(),
-                    rawDate: new Date(item.dataHoraInicio).getTime(),
-                    title: item.descricaoTipo || "Atividade na Câmara",
-                    source: "Agenda",
-                    url: `https://www.camara.leg.br/eventos-sessoes-e-reunioes`,
-                    time: new Date(item.dataHoraInicio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + new Date(item.dataHoraInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    summary: generateStructuredSummary(item.descricao || item.descricaoTipo, 'evento'),
-                    imageUrl: STATIC_FALLBACK_IMAGES[(index + 2) % STATIC_FALLBACK_IMAGES.length] // Offset images
-                }));
-                combinedData = [...combinedData, ...events];
-            }
+            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'evento', d.dataHoraInicio)));
         }
 
-        // 3. Ordenação e Deduplicação
         if (combinedData.length === 0) return getEmergencyNews();
 
-        // Remove duplicatas por título exato
-        const uniqueData = Array.from(new Map(combinedData.map(item => [item.title + item.time, item])).values());
+        const uniqueMap = new Map();
+        combinedData.forEach(item => uniqueMap.set(item.title + item.time, item));
+        
+        const sortedNews = Array.from(uniqueMap.values())
+            .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0))
+            .slice(0, 8);
 
-        // Ordena por data (mais recente primeiro) e pega os top 6
-        const sortedNews = uniqueData
-            .sort((a, b) => b.rawDate - a.rawDate)
-            .slice(0, 6)
-            .map(({ rawDate, ...item }) => item); // Remove propriedade auxiliar rawDate
+        if (sortedNews.length > 0) {
+            const topNews = sortedNews[0];
+            if (!topNews.imageUrl?.startsWith('data:image')) {
+                try {
+                    const generatedImage = await generateNewsImage(topNews.title);
+                    if (generatedImage) topNews.imageUrl = generatedImage;
+                } catch (err) { }
+            }
+        }
 
         setCache(NEWS_CACHE_KEY, sortedNews);
         saveToHistory(sortedNews);
-        
         return sortedNews;
 
     } catch (error: any) {
@@ -346,10 +440,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     }
 };
 
-export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    return null;
-};
-
+// ... Resto das funções auxiliares (getSearchContext, chatWithGemini, etc.) mantidas intactas ...
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
     const ai = getAi();
     if (!ai) return null;
