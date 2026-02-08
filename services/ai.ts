@@ -24,9 +24,10 @@ const getAi = () => {
 };
 
 // Cache Utils
-const NEWS_CACHE_KEY = 'paporeto_news_v11_clean'; // Version Bump: v11 to purge old emojis
-const NEWS_HISTORY_KEY = 'paporeto_news_history_v2'; // Version bump para limpar estrutura antiga
-const NEWS_CACHE_TTL = 1000 * 60 * 60 * 4; // 4 Horas
+// ATUALIZADO PARA V15 PARA GARANTIR NOVA POLÍTICA DE RETENÇÃO DE 1 MÊS
+const NEWS_CACHE_KEY = 'paporeto_news_v15_fresh'; 
+const NEWS_HISTORY_KEY = 'paporeto_news_history_v3_ids'; 
+const NEWS_CACHE_TTL = 1000 * 60 * 60 * 1; // 1 Hora (Updates frequentes)
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -53,6 +54,8 @@ const setCache = (key: string, data: any) => {
         }
     }
 };
+
+const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const STATIC_FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1541872703-74c5e4436bb7?q=80&w=800&auto=format&fit=crop", 
@@ -126,161 +129,189 @@ function generateJournalisticTitle(rawText: string): string {
 }
 
 // 2. Motor de Resumos (Contexto + Texto)
-function generateStructuredSummary(rawText: string): { context: string, main: string } {
+function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' = 'voto'): { context: string, main: string } {
     const defaultResponse = {
-        context: "Tramitação Legislativa",
+        context: type === 'evento' ? "Agenda Oficial" : "Tramitação",
         main: rawText || "Detalhes não disponíveis no momento."
     };
 
     if (!rawText) return defaultResponse;
     const lowerText = rawText.toLowerCase();
 
-    // Extração do "Assunto" (Tenta limpar o juridiquês)
+    // Extração do "Assunto"
     let subject = rawText;
     const matchSubject = rawText.match(/(?:institui|cria|sobre|acerca d[eo]|referente [aà])\s+(.*?)(?:;|\.|,|$)/i);
     if (matchSubject && matchSubject[1]) {
         subject = matchSubject[1].trim();
     }
-    
-    // Limpeza final do assunto
-    subject = subject
-        .replace(/n\.º? ?\d+(\/\d+)?/g, "") // Remove números de lei
-        .replace(/Dispõe sobre/i, "trata de")
-        .replace(/Altera a Lei/i, "altera a legislação sobre");
+    subject = subject.replace(/n\.º? ?\d+(\/\d+)?/g, "").replace(/Dispõe sobre/i, "trata de");
 
-    // Definição do Contexto (Bold Text)
+    // Lógica para EVENTOS (Sessões)
+    if (type === 'evento') {
+        let context = "Atividade Legislativa";
+        if (lowerText.includes('sessão deliberativa')) context = "Sessão no Plenário";
+        else if (lowerText.includes('comissão')) context = "Debate em Comissão";
+        else if (lowerText.includes('audiência')) context = "Audiência Pública";
+        else if (lowerText.includes('solene')) context = "Sessão Solene";
+
+        let explanation = `Ocorrência registrada na agenda oficial da Câmara: ${rawText}.`;
+        if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
+        else if (lowerText.includes('convocada')) explanation = "Reunião convocada para debater pautas prioritárias.";
+        
+        return { context, main: explanation };
+    }
+
+    // Lógica para VOTAÇÕES
     let context = "Em Análise";
     let explanation = `O texto trata de: ${subject}.`;
 
     if (lowerText.includes('urgência')) {
         context = "Regime de Urgência";
-        explanation = `Os deputados aprovaram a aceleração deste projeto. Isso significa que a proposta sobre ${subject} pulará comissões e será votada diretamente no Plenário.`;
+        explanation = `Aprovação para acelerar o projeto sobre ${subject}, pulando etapas de comissões.`;
     } else if (lowerText.includes('medida provisória')) {
         context = "Medida Provisória";
-        explanation = `O Congresso analisa uma norma do Presidente com força de lei imediata. O tema é: ${subject}.`;
-    } else if (lowerText.includes('emenda à constituição') || lowerText.includes('pec')) {
+        explanation = `Análise de norma presidencial com força de lei imediata sobre ${subject}.`;
+    } else if (lowerText.includes('pec')) {
         context = "Mudança na Constituição";
-        explanation = `Uma das votações mais importantes. Tenta alterar a lei máxima do país sobre ${subject}. Exige 308 votos.`;
-    } else if (lowerText.includes('redação final')) {
-        context = "Revisão Final";
-        explanation = `O mérito já foi aprovado. Agora, os deputados confirmam apenas a gramática e técnica jurídica do texto sobre ${subject} antes de enviar ao Senado ou Sanção.`;
-    } else if (lowerText.includes('retirado')) {
-        context = "Adiado";
-        explanation = `A discussão sobre ${subject} foi removida da pauta de hoje e deve voltar em outra sessão.`;
-    } else if (lowerText.includes('rejeitado')) {
-        context = "Proposta Recusada";
-        explanation = `A maioria dos parlamentares ou a Mesa Diretora negou o pedido ou projeto referente a ${subject}.`;
+        explanation = `Votação de Emenda Constitucional (PEC) sobre ${subject}. Exige quórum alto.`;
     } else if (lowerText.includes('aprovado')) {
         context = "Aprovado no Plenário";
-        explanation = `Os deputados concordaram com a proposta. O texto sobre ${subject} segue para a próxima etapa legislativa.`;
+        explanation = `Os deputados deram sinal verde para a proposta sobre ${subject}.`;
     }
 
-    // Garante que a explicação não fique gigante ou vazia
     if (explanation.length > 200) explanation = explanation.substring(0, 197) + "...";
 
-    return {
-        context: context,
-        main: explanation
-    };
+    return { context, main: explanation };
 }
 
-// Persistência Inteligente (Evita Duplicatas)
+// Persistência Inteligente
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
-        const currentHistory = getCache(NEWS_HISTORY_KEY, 0) as NewsArticle[] || [];
-        
-        // Cria um Set de assinaturas (título + data) para checagem rápida
+        const currentHistory = getNewsHistory();
         const existingSignatures = new Set(currentHistory.map(h => `${h.title}|${h.time}`));
-        
         const uniqueNew = newArticles.filter(n => !existingSignatures.has(`${n.title}|${n.time}`));
         
         if (uniqueNew.length > 0) {
-            // Adiciona novos no topo e limita a 50 itens
-            const updatedHistory = [...uniqueNew, ...currentHistory].slice(0, 50);
+            const stampedNew = uniqueNew.map(n => ({ ...n, id: n.id || generateId() }));
+            // AUMENTADO PARA 300 ITENS (Aprox. 1 Mês de Histórico com ~10 notícias/dia)
+            const updatedHistory = [...stampedNew, ...currentHistory].slice(0, 300);
             setCache(NEWS_HISTORY_KEY, updatedHistory);
         }
     } catch (e) { console.error("Erro ao salvar histórico", e); }
 };
 
-export const getNewsHistory = (): NewsArticle[] => getCache(NEWS_HISTORY_KEY, 0) || [];
+export const getNewsHistory = (): NewsArticle[] => {
+    const raw = getCache(NEWS_HISTORY_KEY, 0); 
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(item => item && typeof item.title === 'string');
+};
+
+export const clearNewsHistory = (): void => {
+    try { localStorage.removeItem(NEWS_HISTORY_KEY); } catch (e) { console.error(e); }
+};
+
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
 export function getEmergencyNews(): NewsArticle[] {
     return [
         { 
+            id: 'emergency-1',
             title: "Sessão Deliberativa na Câmara", 
             source: "Agência Câmara", 
             url: "https://www.camara.leg.br", 
             time: "Hoje", 
-            summary: {
-                context: "Atividade em Plenário",
-                main: "Deputados debatem pautas prioritárias para o país em sessão deliberativa. Acompanhe os resultados."
-            },
+            summary: { context: "Atividade em Plenário", main: "Deputados debatem pautas prioritárias para o país em sessão deliberativa." },
             imageUrl: STATIC_FALLBACK_IMAGES[0] 
         },
         { 
+            id: 'emergency-2',
             title: "Votações no Senado Federal", 
             source: "Agência Senado", 
             url: "https://www12.senado.leg.br", 
             time: "Hoje", 
-            summary: {
-                context: "Senado em Ação",
-                main: "Senadores analisam medidas provisórias e projetos de lei em tramitação. Decisões impactam diretamente a legislação federal."
-            },
+            summary: { context: "Senado em Ação", main: "Senadores analisam medidas provisórias e projetos de lei em tramitação." },
             imageUrl: STATIC_FALLBACK_IMAGES[1] 
         }
     ];
 }
 
-// FETCH REAL API DATA
+// --- FETCH REAL API DATA (HÍBRIDO: VOTAÇÕES + EVENTOS) ---
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
-    // Tenta usar cache primeiro
+    // 1. Tenta Cache
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
     if (cachedNews && cachedNews.length > 0) return cachedNews;
 
+    // Define local extended type to include rawDate for sorting
+    type NewsArticleWithRaw = NewsArticle & { rawDate: number };
+
     try {
-        const response = await fetch('https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=5', {
-            headers: { 'Accept': 'application/json' }
-        });
+        // 2. Fetch Paralelo: Votações (Decisões) + Eventos (Atividade Recente)
+        // Isso resolve o problema de dias sem votação parecerem que o app parou.
+        // ADICIONADO: Cache busting com timestamp para evitar cache agressivo do navegador
+        const timestamp = Date.now();
+        const headers = { 'Accept': 'application/json' };
+        // Configuração de fetch com no-store para garantir dados frescos
+        const fetchConfig = { headers, cache: 'no-store' as RequestCache };
 
-        if (!response.ok) throw new Error("Falha na API da Câmara");
+        const [votacoesRes, eventosRes] = await Promise.allSettled([
+            fetch(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=10&_t=${timestamp}`, fetchConfig),
+            fetch(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&itens=10&_t=${timestamp}`, fetchConfig)
+        ]);
 
-        const json = await response.json();
-        
-        if (!json.dados || json.dados.length === 0) {
-            return getEmergencyNews();
-        }
+        let combinedData: NewsArticleWithRaw[] = [];
 
-        const newsItems: NewsArticle[] = json.dados.map((item: any, index: number) => {
-            const date = new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR');
-            const time = new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            // Usando os novos motores determinísticos
-            const title = generateJournalisticTitle(item.descricao);
-            const summaryStructure = generateStructuredSummary(item.descricao);
-
-            let sourceUrl = `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`;
-            if (item.uriProposicaoObjeto) {
-                const propId = item.uriProposicaoObjeto.split('/').pop();
-                if (propId) sourceUrl = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
+        // Processa Votações
+        if (votacoesRes.status === 'fulfilled' && votacoesRes.value.ok) {
+            const json = await votacoesRes.value.json();
+            if (json.dados) {
+                const votes: NewsArticleWithRaw[] = json.dados.map((item: any, index: number) => ({
+                    id: item.id || generateId(),
+                    rawDate: new Date(item.dataHoraRegistro).getTime(),
+                    title: generateJournalisticTitle(item.descricao),
+                    source: "Plenário",
+                    url: `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`,
+                    time: new Date(item.dataHoraRegistro).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + new Date(item.dataHoraRegistro).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    summary: generateStructuredSummary(item.descricao, 'voto'),
+                    imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
+                }));
+                combinedData = [...combinedData, ...votes];
             }
-
-            return {
-                title: title,
-                source: "Câmara dos Deputados",
-                url: sourceUrl,
-                time: `${date} às ${time}`,
-                summary: summaryStructure,
-                imageUrl: STATIC_FALLBACK_IMAGES[index % STATIC_FALLBACK_IMAGES.length]
-            };
-        });
-
-        if (newsItems.length > 0) {
-            setCache(NEWS_CACHE_KEY, newsItems);
-            saveToHistory(newsItems);
         }
+
+        // Processa Eventos (Para dias sem votação)
+        if (eventosRes.status === 'fulfilled' && eventosRes.value.ok) {
+            const json = await eventosRes.value.json();
+            if (json.dados) {
+                const events: NewsArticleWithRaw[] = json.dados.map((item: any, index: number) => ({
+                    id: item.id?.toString() || generateId(),
+                    rawDate: new Date(item.dataHoraInicio).getTime(),
+                    title: item.descricaoTipo || "Atividade na Câmara",
+                    source: "Agenda",
+                    url: `https://www.camara.leg.br/eventos-sessoes-e-reunioes`,
+                    time: new Date(item.dataHoraInicio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + new Date(item.dataHoraInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    summary: generateStructuredSummary(item.descricao || item.descricaoTipo, 'evento'),
+                    imageUrl: STATIC_FALLBACK_IMAGES[(index + 2) % STATIC_FALLBACK_IMAGES.length] // Offset images
+                }));
+                combinedData = [...combinedData, ...events];
+            }
+        }
+
+        // 3. Ordenação e Deduplicação
+        if (combinedData.length === 0) return getEmergencyNews();
+
+        // Remove duplicatas por título exato
+        const uniqueData = Array.from(new Map(combinedData.map(item => [item.title + item.time, item])).values());
+
+        // Ordena por data (mais recente primeiro) e pega os top 6
+        const sortedNews = uniqueData
+            .sort((a, b) => b.rawDate - a.rawDate)
+            .slice(0, 6)
+            .map(({ rawDate, ...item }) => item); // Remove propriedade auxiliar rawDate
+
+        setCache(NEWS_CACHE_KEY, sortedNews);
+        saveToHistory(sortedNews);
         
-        return newsItems;
+        return sortedNews;
 
     } catch (error: any) {
         console.warn("News Fetch Error:", error);
@@ -316,7 +347,6 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
 };
 
 export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    // Placeholder - Image Generation is expensive/slow for real-time tickers
     return null;
 };
 

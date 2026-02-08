@@ -365,13 +365,14 @@ export interface WorkspaceEvent {
 }
 
 export interface NewsArticle {
+  id?: string; // NOVO: ID para chaves únicas no React
   title: string;
   source: string;
   url: string;
   time: string;
   imageUrl?: string;
   summary: {
-    context: string; // O "Entenda" ou Ação Principal (ex: Urgência Aprovada)
-    main: string;    // O Texto Explicativo (ex: O projeto trata de...)
+    context: string; 
+    main: string;    
   };
 }
