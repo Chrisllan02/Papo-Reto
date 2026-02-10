@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2 } from 'lucide-react';
-import { Politician, FeedItem, YearStats } from '../types';
+import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, Video, VolumeX, MonitorOff, FileCheck, Calendar, Scale, AlertTriangle, Link, Crown, Star, MessageSquare } from 'lucide-react';
+import { Politician, FeedItem, YearStats, ExpenseItem, Speech } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
 
@@ -16,6 +16,7 @@ export interface ProfileViewProps {
   onToggleFollow?: () => void;
 }
 
+// ... (Other existing helper components: getStatusColor, SocialIcon, PresenceBar, getFrontCategoryStyle) ...
 const getStatusColor = (status: string) => {
     const s = status.toLowerCase();
     if (s.includes('aprovado')) return 'bg-blue-100/50 text-blue-900 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200'; 
@@ -79,8 +80,6 @@ const PresenceBar = ({ label, present, justified, unjustified, total }: { label:
     );
 };
 
-// --- HELPER DE CATEGORIZAÇÃO VISUAL ---
-// Centraliza a lógica de cores para usar tanto no gráfico quanto nas tags
 const getFrontCategoryStyle = (title: string) => {
     const t = title.toLowerCase();
     
@@ -97,8 +96,183 @@ const getFrontCategoryStyle = (title: string) => {
     return { name: 'Outros', bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', stroke: '#94a3b8' };
 };
 
-// --- NEW EXPOSED SECTIONS (REPLACING MODALS) ---
+// --- CHART COMPONENT ---
+const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
+    // ... (Existing implementation of DailyExpensesChart) ...
+    // Agrupa despesas por dia
+    const groupedData = useMemo(() => {
+        const groups: Record<string, { total: number, count: number, dateObj: Date }> = {};
+        
+        expenses.forEach(item => {
+            if (!item.date) return;
+            // Padroniza a data YYYY-MM-DD
+            let dateKey = item.date;
+            // Se vier DD/MM/YYYY
+            if (dateKey.includes('/')) {
+                const parts = dateKey.split('/');
+                if (parts.length === 3) dateKey = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            // Se vier YYYY-MM (não tem dia), ignora para gráfico diário ou agrupa no dia 1
+            if (dateKey.length < 10) return;
 
+            if (!groups[dateKey]) {
+                groups[dateKey] = { 
+                    total: 0, 
+                    count: 0, 
+                    dateObj: new Date(dateKey + 'T12:00:00') // Force noon to avoid timezone shift
+                }; 
+            }
+            groups[dateKey].total += item.value;
+            groups[dateKey].count += 1;
+        });
+
+        // Ordena cronologicamente e pega os últimos 30 dias com dados
+        const sorted = Object.entries(groups)
+            .sort((a, b) => a[1].dateObj.getTime() - b[1].dateObj.getTime())
+            .slice(-30);
+
+        return sorted;
+    }, [expenses]);
+
+    if (groupedData.length === 0) return null;
+
+    const maxVal = Math.max(...groupedData.map(d => d[1].total));
+
+    return (
+        <div className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 mb-6">
+            <div className="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
+                <div>
+                    <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2">
+                        <Calendar size={14} className="text-blue-600 dark:text-blue-400"/> Cronologia de Gastos
+                    </h4>
+                    <p className="text-[9px] text-gray-400 mt-1 uppercase tracking-wide opacity-70">Picos Diários e Finais de Semana</p>
+                </div>
+            </div>
+
+            {/* Chart Area */}
+            <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
+                <div className="flex items-end gap-2 h-40 min-w-max px-2">
+                    {groupedData.map(([dateStr, data]) => {
+                        const dayOfWeek = data.dateObj.getDay(); // 0 = Dom, 6 = Sab
+                        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        const heightPct = Math.max((data.total / maxVal) * 100, 5); // Min 5% height
+                        
+                        return (
+                            <div key={dateStr} className="flex flex-col items-center gap-2 group relative">
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] font-bold py-1 px-2 rounded-lg pointer-events-none whitespace-nowrap z-10">
+                                    <span className="block">{dateStr.split('-').reverse().join('/')}</span>
+                                    <span className="text-xs">R$ {data.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                    {isWeekend && <span className="block text-orange-300 uppercase text-[9px] mt-0.5">Final de Semana</span>}
+                                </div>
+
+                                {/* Bar */}
+                                <div 
+                                    className={`w-3 md:w-4 rounded-t-full transition-all duration-500 relative ${
+                                        isWeekend 
+                                        ? 'bg-orange-400 dark:bg-orange-500' 
+                                        : 'bg-blue-400 dark:bg-blue-600'
+                                    }`}
+                                    style={{ height: `${heightPct}%` }}
+                                >
+                                    {/* Top Shine */}
+                                    <div className="absolute top-0 left-0 right-0 h-1/3 bg-white/20 rounded-t-full"></div>
+                                </div>
+
+                                {/* Date Label */}
+                                <div className="flex flex-col items-center">
+                                    <span className={`text-[9px] font-bold ${isWeekend ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400'}`}>
+                                        {data.dateObj.getDate()}
+                                    </span>
+                                    <span className="text-[7px] uppercase font-black text-gray-300">
+                                        {data.dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-2 justify-center">
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-600"></div>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Dia Útil</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-orange-400 dark:bg-orange-500"></div>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Final de Semana/Feriado</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- WORD CLOUD WIDGET ---
+const WordCloudWidget = ({ speeches }: { speeches: Speech[] }) => {
+    const words = useMemo(() => {
+        if (!speeches || speeches.length === 0) return [];
+        
+        const frequency: Record<string, number> = {};
+        
+        // Coleta e conta todas as keywords
+        speeches.forEach(speech => {
+            if (speech.keywords) {
+                speech.keywords.forEach(k => {
+                    const cleanK = k.trim();
+                    if (cleanK) {
+                        frequency[cleanK] = (frequency[cleanK] || 0) + 1;
+                    }
+                });
+            }
+        });
+
+        // Transforma em array e ordena por frequência
+        return Object.entries(frequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 15) // Top 15
+            .map(([text, value]) => ({ text, value }));
+    }, [speeches]);
+
+    if (words.length === 0) return null;
+
+    const maxVal = Math.max(...words.map(w => w.value));
+
+    return (
+        <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
+            <h3 className="font-black text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
+                <MessageSquare size={20} className="text-blue-500"/> DNA do Discurso
+            </h3>
+            
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 items-center">
+                {words.map((word, i) => {
+                    const scale = 0.8 + ((word.value / maxVal) * 1.5); // Escala entre 0.8 e 2.3
+                    const opacity = 0.5 + ((word.value / maxVal) * 0.5); // Opacidade entre 0.5 e 1.0
+                    
+                    return (
+                        <span 
+                            key={i} 
+                            className="font-black uppercase tracking-tighter transition-all hover:scale-110 hover:text-blue-600 dark:hover:text-blue-400 cursor-default"
+                            style={{ 
+                                fontSize: `${scale}rem`, 
+                                opacity: opacity,
+                                color: i < 3 ? 'var(--color-primary)' : 'inherit' // Top 3 em destaque
+                            }}
+                        >
+                            {word.text}
+                        </span>
+                    );
+                })}
+            </div>
+            <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-6">
+                Termos mais utilizados em plenário
+            </p>
+        </div>
+    );
+};
+
+// ... (Existing BioCard) ...
 const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: boolean }) => (
     <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
@@ -191,6 +365,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
     // Determine which years to show.
     const sortedYears = [...availableYears].sort((a: any, b: any) => a - b);
     const currentYear = new Date().getFullYear();
+    const fidelity = displayStats.partyFidelity || 0;
 
     return (
         <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col relative overflow-hidden">
@@ -306,6 +481,34 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
                         total={displayStats.commissions?.total || 0}
                     />
 
+                    {/* FIDELIDADE PARTIDÁRIA (NOVO) */}
+                    <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 mt-2">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                                <Scale size={14} /> Fidelidade Partidária
+                            </span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md uppercase ${
+                                fidelity >= 90 ? 'bg-green-100 text-green-700' :
+                                fidelity >= 60 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                                {fidelity >= 90 ? 'Fiel à Bancada' : fidelity >= 60 ? 'Independente' : 'Rebelde'}
+                            </span>
+                        </div>
+                        
+                        <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
+                            <div 
+                                className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${
+                                    fidelity >= 90 ? 'bg-green-500' : fidelity >= 60 ? 'bg-blue-500' : 'bg-red-500'
+                                }`} 
+                                style={{ width: `${fidelity}%` }}
+                            ></div>
+                        </div>
+                        <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                            <span>0% (Rebelde)</span>
+                            <span>100% (Fiel)</span>
+                        </div>
+                    </div>
+
                     <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                         <div className="bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:border-blue-200 transition-colors">
                             <div>
@@ -335,6 +538,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
 const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     const [expanded, setExpanded] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
+    const [showVideo, setShowVideo] = useState(false);
     const type = item._type;
     
     if (type === 'bill') {
@@ -349,11 +553,20 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                     <h4 className="font-bold text-gray-900 dark:text-white leading-tight mb-2 text-lg">{item.title}</h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">{item.description}</p>
                 </div>
-                {item.externalLink && (
-                    <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="mt-auto text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline p-2 -ml-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 w-fit transition-colors">
-                        Ver Íntegra <ExternalLink size={12} />
-                    </a>
-                )}
+                
+                {/* Ações Rápidas */}
+                <div className="flex gap-2 mt-auto">
+                    {item.urlInteiroTeor && (
+                        <a href={item.urlInteiroTeor} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
+                            <FileText size={12} /> Inteiro Teor
+                        </a>
+                    )}
+                    {item.externalLink && (
+                        <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-gray-500 dark:text-gray-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-gray-100/50 dark:hover:bg-white/5 transition-colors ml-auto">
+                            Ver Site <ExternalLink size={12} />
+                        </a>
+                    )}
+                </div>
             </article>
         );
     }
@@ -361,21 +574,61 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     if (type === 'vote') {
         const isSim = item.vote.toLowerCase().includes('sim');
         const isNao = item.vote.toLowerCase().includes('não') || item.vote.toLowerCase().includes('nao');
+        const isRebel = item.isRebel;
+        
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md ${isSim ? 'bg-green-100/50 text-green-600' : isNao ? 'bg-red-100/50 text-red-600' : 'bg-gray-100/50 text-gray-600'}`}>
-                    <Vote size={28} strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Votação Nominal</span>
-                        <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+                
+                <div className="flex items-start gap-4">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md ${isSim ? 'bg-green-100/50 text-green-600' : isNao ? 'bg-red-100/50 text-red-600' : 'bg-gray-100/50 text-gray-600'}`}>
+                        <Vote size={28} strokeWidth={1.5} />
                     </div>
-                    <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight mb-2">{item.description}</h4>
-                    <span className={`text-xs font-black uppercase px-3 py-1 rounded-md inline-block backdrop-blur-md ${isSim ? 'bg-green-100/50 text-green-700' : isNao ? 'bg-red-100/50 text-red-700' : 'bg-gray-100/50 text-gray-700'}`}>
-                        Votou: {item.vote}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Votação Nominal</span>
+                            <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight mb-2 line-clamp-3" title={item.description}>{item.description}</h4>
+                    </div>
                 </div>
+
+                <div className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-3 border border-gray-100 dark:border-white/5 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold uppercase text-gray-400">Voto do Deputado</span>
+                        <span className={`text-xs font-black uppercase px-3 py-1 rounded-md ${isSim ? 'bg-green-100/50 text-green-700' : isNao ? 'bg-red-100/50 text-red-700' : 'bg-gray-100/50 text-gray-700'}`}>
+                            {item.vote}
+                        </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-white/5">
+                        <span className="text-[10px] font-bold uppercase text-gray-400">Orientação do Partido</span>
+                        <div className="flex items-center gap-2">
+                            {isRebel ? (
+                                <span className="flex items-center gap-1 text-[9px] font-bold uppercase bg-red-100/30 text-red-600 px-2 py-0.5 rounded border border-red-200/50">
+                                    <AlertTriangle size={10} /> Rebelde
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1 text-[9px] font-bold uppercase bg-green-100/30 text-green-600 px-2 py-0.5 rounded border border-green-200/50">
+                                    <CheckCircle2 size={10} /> Seguiu
+                                </span>
+                            )}
+                            <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{item.partyOrientation || 'Liberado'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {item.propositionId && (
+                    <div className="flex justify-end">
+                        <a 
+                            href={`https://www.camara.leg.br/propostas-legislativas/${item.propositionId}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline px-2 py-1 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
+                            Ver Objeto da Votação (PL/PEC) <Link size={10} />
+                        </a>
+                    </div>
+                )}
             </article>
         );
     }
@@ -397,23 +650,32 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     }
 
     if (type === 'speech') {
-        const isAudioAvailable = item.externalLink && (item.externalLink.toLowerCase().endsWith('.mp3') || item.externalLink.toLowerCase().includes('/audio/'));
+        const hasAudio = !!item.urlAudio;
+        const hasVideo = !!item.urlVideo;
+        const phase = item.phase || 'Plenário';
+        const isHighRelevance = phase.toLowerCase().includes('ordem do dia') || phase.toLowerCase().includes('grande expediente');
 
         return (
             <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 bg-red-100/50 dark:bg-red-900/20 text-red-600 rounded-full backdrop-blur-md">
-                        <Mic2 size={18} />
+                
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-red-100/50 dark:bg-red-900/20 text-red-600 rounded-full backdrop-blur-md">
+                            <Mic2 size={18} />
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Discurso</span>
+                            <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+                        </div>
                     </div>
-                    <div>
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Discurso em Plenário</span>
-                        <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+                    {/* Fase do Evento (Relevância) */}
+                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${isHighRelevance ? 'bg-orange-100/50 text-orange-700 border-orange-200' : 'bg-gray-100/50 text-gray-600 border-gray-200'}`}>
+                        {phase}
                     </div>
                 </div>
                 
-                {/* Full Transcript or Summary */}
-                <div className="relative">
-                    <p className={`text-sm md:text-base text-gray-700 dark:text-gray-300 italic mb-6 leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+                <div className="relative mb-6">
+                    <p className={`text-sm md:text-base text-gray-700 dark:text-gray-300 italic leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
                         "{item.transcription || item.summary}"
                     </p>
                     {item.transcription && !expanded && (
@@ -421,40 +683,110 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
                     )}
                 </div>
 
-                <div className="flex flex-col gap-3">
-                    {/* Audio Player Container */}
-                    {showPlayer && isAudioAvailable && (
-                        <div className="w-full bg-gray-100 dark:bg-black/20 rounded-xl p-2 mb-1 animate-in fade-in slide-in-from-top-1">
-                            <audio controls autoPlay className="w-full h-8 outline-none" src={item.externalLink}>
-                                Seu navegador não suporta áudio.
-                            </audio>
-                        </div>
-                    )}
+                {/* Keywords (Tags) */}
+                {item.keywords && item.keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {item.keywords.slice(0, 4).map((keyword: string, idx: number) => (
+                            <span key={idx} className="text-[9px] font-bold uppercase bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md border border-gray-200 dark:border-white/5">
+                                #{keyword}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
-                    <div className="flex gap-2 flex-wrap">
+                {/* --- MEDIA SECTION REFORMULADA --- */}
+                <div className="flex flex-col gap-4">
+                    
+                    {/* 1. VIDEO PLAYER - FIXED HEIGHT FALLBACK */}
+                    <div className="w-full rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-white/10 bg-black relative min-h-[200px]">
+                        {hasVideo ? (
+                            showVideo ? (
+                                <div className="relative w-full h-full aspect-video bg-black">
+                                    <video controls className="w-full h-full object-contain" src={item.urlVideo}> 
+                                        Seu navegador não suporta o elemento de vídeo.
+                                    </video>
+                                    <button 
+                                        onClick={() => setShowVideo(false)}
+                                        className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition-colors backdrop-blur-sm"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={() => { setShowVideo(true); if(showPlayer) setShowPlayer(false); }}
+                                    className="w-full h-48 md:h-64 bg-gray-900 relative group/play flex flex-col items-center justify-center hover:bg-gray-800 transition-colors"
+                                >
+                                    {/* Thumbnail Placeholder Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover/play:scale-110 transition-transform mb-3">
+                                            <PlayCircle size={32} className="text-white fill-white/20 ml-1" />
+                                        </div>
+                                        <span className="text-xs font-black text-white/80 uppercase tracking-widest">Assistir Discurso</span>
+                                    </div>
+                                </button>
+                            )
+                        ) : (
+                            // PLACEHOLDER DE VIDEO INDISPONÍVEL (VISUAL EXPLICITO)
+                            <div className="w-full h-48 md:h-64 bg-gray-100 dark:bg-white/5 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-300 dark:border-gray-700/50 relative overflow-hidden">
+                                {/* Scanlines effect */}
+                                <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.05)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 pointer-events-none bg-[length:100%_4px,6px_100%]"></div>
+                                <div className="z-10 p-4 bg-gray-200/50 dark:bg-black/40 rounded-full">
+                                    <MonitorOff size={24} className="text-gray-400 dark:text-gray-600" />
+                                </div>
+                                <div className="z-10 text-center">
+                                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Sinal de Vídeo Indisponível</p>
+                                    <p className="text-[9px] text-gray-400/70 mt-1">A Câmara não forneceu o registro visual.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 2. AUDIO PLAYER - SEMPRE VISÍVEL COMO ESTRUTURA */}
+                    <div className={`rounded-2xl p-4 border flex items-center gap-4 transition-colors ${hasAudio ? 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5' : 'bg-gray-100/30 dark:bg-white/5 border-gray-200/50 dark:border-white/5 border-dashed'}`}>
+                        {hasAudio ? (
+                            <>
+                                <div className="p-3 bg-white dark:bg-white/10 rounded-full text-blue-500 shadow-sm shrink-0">
+                                    <Volume2 size={20} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Áudio Oficial</p>
+                                    <audio controls className="w-full h-8 outline-none" src={item.urlAudio}>
+                                        Seu navegador não suporta áudio.
+                                    </audio>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="p-3 bg-gray-200 dark:bg-white/5 rounded-full text-gray-400 shrink-0">
+                                    <VolumeX size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Áudio não captado</p>
+                                    <div className="w-full h-1.5 bg-gray-200 dark:bg-white/5 rounded-full mt-2 overflow-hidden">
+                                        <div className="h-full w-full bg-gray-300 dark:bg-white/10" style={{ width: '0%' }}></div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className="flex gap-2 flex-wrap pt-2 border-t border-gray-100 dark:border-white/5">
                         {item.transcription && (
                             <button 
                                 onClick={() => setExpanded(!expanded)} 
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl text-xs font-black uppercase text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors backdrop-blur-md"
                             >
-                                <FileSearch size={14} className="pl-0.5" /> {expanded ? "Recolher" : "Ler Íntegra"}
+                                <FileSearch size={14} className="pl-0.5" /> {expanded ? "Recolher Texto" : "Ler Íntegra"}
                             </button>
                         )}
                         
                         {item.externalLink && (
-                            isAudioAvailable ? (
-                                <button 
-                                    onClick={() => setShowPlayer(!showPlayer)} 
-                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-colors backdrop-blur-md ${showPlayer ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 group-hover:bg-red-50/50 dark:group-hover:bg-red-900/20 group-hover:text-red-600'}`}
-                                >
-                                    {showPlayer ? <X size={14} className="pl-0.5" /> : <PlayCircle size={14} className="pl-0.5" />}
-                                    {showPlayer ? "Fechar Áudio" : "Ouvir Discurso"}
-                                </button>
-                            ) : (
-                                <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-600 dark:text-gray-300 group-hover:bg-red-50/50 dark:group-hover:bg-red-900/20 group-hover:text-red-600 transition-colors backdrop-blur-md">
-                                    <ExternalLink size={14} className="pl-0.5" /> Ver Fonte
-                                </a>
-                            )
+                            <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors backdrop-blur-md ml-auto">
+                                <ExternalLink size={14} /> Fonte Oficial
+                            </a>
                         )}
                     </div>
                 </div>
@@ -465,7 +797,9 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     return null;
 };
 
+// ... (Rest of ProfileView component logic remains same) ...
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
+  // ... (Hooks and state management logic unchanged) ...
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -474,14 +808,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
   // --- SWIPE TO BACK LOGIC (REFINED) ---
   const touchStartRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number | null>(null); // New ref for Y axis
+  const touchStartYRef = useRef<number | null>(null); 
   const [translateX, setTranslateX] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-      // Inicia apenas se o toque for estritamente na borda esquerda (10% da tela ou 35px)
-      // Evita conflitos com scrolls internos que começam "quase" na borda
       const threshold = Math.min(window.innerWidth * 0.1, 35);
-      
       if (e.touches[0].clientX < threshold) {
           touchStartRef.current = e.touches[0].clientX;
           touchStartYRef.current = e.touches[0].clientY;
@@ -495,7 +826,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           const deltaX = currentX - touchStartRef.current;
           const deltaY = currentY - (touchStartYRef.current || 0);
 
-          // Axis Locking: Se o movimento vertical for maior que o horizontal, assume que é scroll e cancela o swipe
           if (Math.abs(deltaY) > Math.abs(deltaX)) {
               touchStartRef.current = null;
               touchStartYRef.current = null;
@@ -503,9 +833,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               return;
           }
 
-          // Permite apenas arrastar para a direita (voltar)
           if (deltaX > 0) {
-              // Previne navegação nativa do browser em alguns casos
               if (e.cancelable && deltaX > 10) e.preventDefault();
               setTranslateX(deltaX);
           }
@@ -514,7 +842,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
   const handleTouchEnd = () => {
       if (touchStartRef.current !== null) {
-          const threshold = window.innerWidth * 0.3; // 30% da tela para disparar
+          const threshold = window.innerWidth * 0.3; 
           if (translateX > threshold) {
               onBack();
           }
@@ -527,27 +855,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const { candidate: enrichedCandidate, isLoadingDetails, loadingStatus } = usePoliticianProfile(initialCandidate);
   const candidate = enrichedCandidate || initialCandidate;
 
-  // Lógica inteligente para definir o ano inicial
-  // Se o ano atual não tiver dados (ex: Janeiro), tenta o ano anterior.
   const [selectedYear, setSelectedYear] = useState<number | 'total'>('total');
 
   useEffect(() => {
       if (candidate.yearlyStats) {
           const y = new Date().getFullYear();
-          // Verifica se tem sessões no ano atual. Se não, fallback para ano anterior.
           if (candidate.yearlyStats[y]?.totalSessions > 0) {
               setSelectedYear(y);
           } else if (candidate.yearlyStats[y - 1]?.totalSessions > 0) {
               setSelectedYear(y - 1);
           } else {
-              // Se nem ano anterior tiver (início de mandato ou erro), mantém 'total' ou tenta o primeiro disponível
               const available = Object.keys(candidate.yearlyStats).map(Number).sort((a,b) => b-a);
               if (available.length > 0) setSelectedYear(available[0]);
           }
       }
   }, [candidate.yearlyStats]);
 
-  // --- CATEGORIZAÇÃO DE FRENTES PARLAMENTARES (DNA DE INTERESSES) ---
   const frontCategories = useMemo(() => {
       if (!candidate.fronts || candidate.fronts.length === 0) return [];
       
@@ -578,11 +901,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           .sort((a, b) => b[1].count - a[1].count)
           .map(([name, data]) => ({
               name,
-              percent: (data.count / total) * 100, // Use precise percent for drawing
+              percent: (data.count / total) * 100, 
               ...data
           }));
   }, [candidate.fronts]);
 
+  // Sorting Fronts: Leadership First
+  const sortedFronts = useMemo(() => {
+      if (!candidate.fronts) return [];
+      
+      return [...candidate.fronts].sort((a, b) => {
+          const roleA = a.role || 'Membro';
+          const roleB = b.role || 'Membro';
+          
+          if (roleA === 'Presidente') return -1;
+          if (roleB === 'Presidente') return 1;
+          if (roleA === 'Coordenador') return -1;
+          if (roleB === 'Coordenador') return 1;
+          
+          return 0;
+      });
+  }, [candidate.fronts]);
+
+  // ... (Rest of Effects) ...
   useEffect(() => {
       if (enrichedCandidate && enrichedCandidate !== initialCandidate && onUpdate) {
           onUpdate(enrichedCandidate);
@@ -694,7 +1035,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { percentage, startStr: formatDate(start), endStr: formatDate(end) };
   }, [candidate.mandate]);
 
-  // Donut Chart logic - Increased Size
+  // ... (DnaDonutChart logic) ...
   const DnaDonutChart = () => {
         const size = 220; // Increased size
         const strokeWidth = 35; // Increased stroke
@@ -755,6 +1096,54 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
         );
   };
 
+  const getStatusDisplay = () => {
+      // Default para Exercicio
+      let statusText = "Em Exercício";
+      let statusColor = "bg-green-500/20 text-white"; // Fallback bg
+      let dotColor = "bg-green-400";
+
+      if (candidate.situation) {
+          const sit = candidate.situation.toLowerCase();
+          
+          if (sit.includes('licença')) {
+              statusText = "Licenciado";
+              if (candidate.statusDescription) {
+                  statusText = candidate.statusDescription.length > 30 
+                      ? "Licença (" + candidate.statusDescription.substring(0, 25) + "...)" 
+                      : candidate.statusDescription;
+              }
+              statusColor = "bg-yellow-500/20 text-yellow-50";
+              dotColor = "bg-yellow-400";
+          } else if (sit.includes('suplência') || sit.includes('suplente')) {
+              statusText = "Suplência";
+              statusColor = "bg-orange-500/20 text-orange-50";
+              dotColor = "bg-orange-400";
+          } else if (sit.includes('exercício')) {
+              statusText = "Em Exercício";
+              statusColor = "bg-white/10 text-white";
+              dotColor = "bg-green-400";
+          } else {
+              statusText = candidate.situation;
+              statusColor = "bg-gray-500/20 text-gray-200";
+              dotColor = "bg-gray-400";
+          }
+      }
+
+      return { text: statusText, bg: statusColor, dot: dotColor };
+  };
+
+  const statusDisplay = getStatusDisplay();
+
+  // Helper mask for CNPJ/CPF (Parcial)
+  const maskDoc = (doc: string) => {
+      if (!doc) return "---";
+      if (doc.length > 11) { // CNPJ
+          return `${doc.substring(0, 2)}.***.***/${doc.substring(8, 12)}-**`;
+      }
+      // CPF
+      return `***.${doc.substring(3, 6)}.***-**`;
+  };
+
   return (
     <div 
         ref={containerRef}
@@ -767,7 +1156,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
             transition: translateX === 0 ? 'transform 0.3s ease-out' : 'none' 
         }}
     >
-      {/* FEEDBACK DE CARREGAMENTO GLOBAL (TOAST) - Mantido como backup */}
+      {/* ... (Render code remains similar until StatsCard and ActivityList) ... */}
+      
+      {/* ... Header e Feedback de Loading ... */}
       {isLoadingDetails && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
               <Loader2 size={18} className="animate-spin shrink-0"/>
@@ -804,8 +1195,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                           <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-xs font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.state}</span>
                       </div>
                       <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl truncate">{candidate.name}</h1>
-                      <p className="text-white/80 text-xs md:text-sm font-bold uppercase tracking-widest mt-1.5 flex items-center justify-center md:justify-start gap-2">
-                        {candidate.role} <span className="w-1 h-1 bg-white/60 rounded-full"></span> Em Exercício
+                      
+                      {/* STATUS DINÂMICO AQUI */}
+                      <p className="text-white/90 text-xs md:text-sm font-bold uppercase tracking-widest mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
+                        <span>{candidate.role}</span>
+                        {/* Status Chip */}
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/10 backdrop-blur-md shadow-sm ${statusDisplay.bg}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusDisplay.dot} animate-pulse`}></span>
+                            {statusDisplay.text}
+                        </span>
                       </p>
                   </div>
                   
@@ -902,7 +1300,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                   <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="outline-none">
                     {profileTab === 'activities' && (
                         <div>
-                            {/* Frentes Parlamentares - MOVED HERE */}
+                            {/* --- DNA DO DISCURSO (NOVO WIDGET) --- */}
+                            {(activityFilter === 'all' || activityFilter === 'speeches') && candidate.speeches && candidate.speeches.length > 0 && (
+                                <WordCloudWidget speeches={candidate.speeches} />
+                            )}
+
+                            {/* ... (Frentes Parlamentares, Trajetória Profissional, e Atividades) ... */}
                             <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
                                     <Flag size={20} className="text-blue-500"/> Frentes Parlamentares
@@ -911,10 +1314,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     <Skeleton className="h-20 w-full rounded-2xl" />
                                 ) : (candidate.fronts && candidate.fronts.length > 0 ? (
                                     <div className="flex flex-col lg:flex-row gap-10 items-start">
-                                        
                                         {/* Chart & Cards Section */}
                                         <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-[3rem] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
-                                            
                                             {/* Donut Chart Visual */}
                                             <div className="flex flex-col items-center justify-center">
                                                 <div className="flex items-center gap-2 mb-6">
@@ -952,14 +1353,26 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                             </div>
                                             
                                             <div className="flex flex-wrap gap-2 content-start max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                                                {candidate.fronts.map(f => {
+                                                {/* Use sortedFronts to prioritize Leaders */}
+                                                {sortedFronts.map(f => {
                                                     const style = getFrontCategoryStyle(f.title);
+                                                    const isLeader = f.role === 'Presidente';
+                                                    const isCoordinator = f.role === 'Coordenador';
+                                                    const isHighlight = isLeader || isCoordinator;
+
                                                     return (
                                                         <span 
                                                             key={f.id} 
-                                                            className={`px-4 py-2 text-[10px] font-bold rounded-xl border cursor-default transition-transform hover:scale-105 ${style.bg} ${style.text} ${style.border}`}
+                                                            className={`px-4 py-2 text-[10px] font-bold rounded-xl border cursor-default transition-transform hover:scale-105 flex items-center gap-1.5 ${
+                                                                isHighlight 
+                                                                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700/50 shadow-sm' 
+                                                                : `${style.bg} ${style.text} ${style.border}`
+                                                            }`}
                                                         >
+                                                            {isLeader && <Crown size={12} className="text-amber-600 dark:text-amber-400" />}
+                                                            {isCoordinator && <Star size={12} className="text-amber-600 dark:text-amber-400" />}
                                                             {f.title}
+                                                            {isHighlight && <span className="opacity-70 text-[8px] uppercase border-l border-amber-600/30 pl-1 ml-0.5">{f.role}</span>}
                                                         </span>
                                                     );
                                                 })}
@@ -973,7 +1386,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                 ))}
                             </div>
 
-                            {/* Trajetória Profissional - MOVED HERE */}
                             <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
                                     <Briefcase size={20} className="text-blue-500"/> Trajetória Profissional
@@ -1062,41 +1474,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     <div className="mt-6 p-3 bg-gray-50/50 dark:bg-white/5 rounded-xl text-[10px] text-gray-500 italic text-center backdrop-blur-sm">* Valor total das emendas de autoria do parlamentar listadas na API. A execução financeira depende do Poder Executivo.</div>
                                 </section>
                              )}
-
-                             {/* --- VIAGENS OFICIAIS --- */}
-                             {candidate.travels && candidate.travels.length > 0 && (
-                                 <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in">
-                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3">
-                                         <div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-600 dark:text-sky-400 backdrop-blur-sm">
-                                             <Plane size={20} />
-                                         </div>
-                                         <div>
-                                             <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Viagens Oficiais</h4>
-                                             <p className="text-[10px] text-gray-500 font-medium">Deslocamentos com Cota Parlamentar</p>
-                                         </div>
-                                     </div>
-
-                                     <div className="space-y-3">
-                                         {candidate.travels.map((trip, i) => (
-                                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-900 transition-colors group">
-                                                 <div className="flex items-center gap-4">
-                                                     <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0">
-                                                         <span className="text-[10px] font-black text-gray-400 uppercase">{new Date(trip.date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
-                                                         <span className="text-lg font-black text-gray-800 dark:text-white leading-none">{new Date(trip.date).getDate()}</span>
-                                                     </div>
-                                                     <div>
-                                                         <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide group-hover:text-sky-600 transition-colors">{trip.destiny}</p>
-                                                         <p className="text-[10px] text-gray-500 line-clamp-1">{trip.reason}</p>
-                                                     </div>
-                                                 </div>
-                                                 <div className="text-right">
-                                                     <p className="text-sm font-black text-sky-600 dark:text-sky-400">R$ {trip.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                                 </div>
-                                             </div>
-                                         ))}
-                                     </div>
-                                 </section>
-                             )}
                              
                              {/* Breakdown List */}
                              {isLoadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? (
@@ -1139,6 +1516,120 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                           </div>
                                       </section>
                                  )
+                             )}
+
+                             {/* --- CRONOLOGIA DE GASTOS (NOVO) --- */}
+                             {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && (
+                                <DailyExpensesChart expenses={candidate.detailedExpenses} />
+                             )}
+
+                             {/* --- AUDITORIA DE NOTAS FISCAIS --- */}
+                             {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && (
+                                <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-10 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
+                                    <div className="flex items-center justify-between mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
+                                        <div>
+                                            <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2">
+                                                <FileCheck size={14} className="text-green-600 dark:text-green-400"/> Auditoria de Notas Fiscais
+                                            </h4>
+                                            <p className="text-[9px] text-gray-400 mt-1 uppercase tracking-wide opacity-70">Últimos Pagamentos Realizados</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {candidate.detailedExpenses.slice(0, 20).map((expense, idx) => ( // Show only top 20 list, chart has full history
+                                            <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
+                                                <div className="flex items-start gap-4 mb-3 md:mb-0">
+                                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase">
+                                                            {expense.date.length > 7 ? new Date(expense.date).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'}).replace('.', '') : expense.date}
+                                                        </span>
+                                                        <FileText size={14} className="text-gray-300 mt-0.5"/>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                                            {expense.provider}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            {expense.cnpjCpf && (
+                                                                <span className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500">
+                                                                    {maskDoc(expense.cnpjCpf)}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[9px] font-medium text-gray-400 truncate max-w-[150px]">
+                                                                {expense.type}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between md:justify-end gap-4 pl-16 md:pl-0">
+                                                    <p className="text-sm font-black text-gray-900 dark:text-white">
+                                                        R$ {expense.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    {expense.urlDocumento ? (
+                                                        <a 
+                                                            href={expense.urlDocumento} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm"
+                                                        >
+                                                            Nota Fiscal <ExternalLink size={8} />
+                                                        </a>
+                                                    ) : (
+                                                        <span className="px-3 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-400 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-50 cursor-not-allowed">
+                                                            Sem Nota
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 text-center">
+                                        <a 
+                                            href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-blue-500 uppercase tracking-widest transition-colors"
+                                        >
+                                            Ver todas as despesas no portal da Câmara <ExternalLink size={10} />
+                                        </a>
+                                    </div>
+                                </section>
+                             )}
+
+                             {/* --- VIAGENS OFICIAIS --- */}
+                             {candidate.travels && candidate.travels.length > 0 && (
+                                 <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in">
+                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3">
+                                         <div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-600 dark:text-sky-400 backdrop-blur-sm">
+                                             <Plane size={20} />
+                                         </div>
+                                         <div>
+                                             <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Viagens Oficiais</h4>
+                                             <p className="text-[10px] text-gray-500 font-medium">Deslocamentos com Cota Parlamentar</p>
+                                         </div>
+                                     </div>
+
+                                     <div className="space-y-3">
+                                         {candidate.travels.map((trip, i) => (
+                                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-900 transition-colors group">
+                                                 <div className="flex items-center gap-4">
+                                                     <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0">
+                                                         <span className="text-[10px] font-black text-gray-400 uppercase">{new Date(trip.date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                                                         <span className="text-lg font-black text-gray-800 dark:text-white leading-none">{new Date(trip.date).getDate()}</span>
+                                                     </div>
+                                                     <div>
+                                                         <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide group-hover:text-sky-600 transition-colors">{trip.destiny}</p>
+                                                         <p className="text-[10px] text-gray-500 line-clamp-1">{trip.reason}</p>
+                                                     </div>
+                                                 </div>
+                                                 <div className="text-right">
+                                                     <p className="text-sm font-black text-sky-600 dark:text-sky-400">R$ {trip.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                 </div>
+                                             </div>
+                                         ))}
+                                     </div>
+                                 </section>
                              )}
                          </div>
                     )}

@@ -26,6 +26,17 @@ export interface ExpenseHistoryItem {
   label: string; // Ex: "Jan"
 }
 
+// NOVO: Item detalhado de despesa para auditoria
+export interface ExpenseItem {
+  id: number; // Id interno ou gerado
+  date: string;
+  provider: string; // Nome do fornecedor
+  cnpjCpf?: string; // Documento mascarado ou real
+  value: number;
+  type: string;
+  urlDocumento?: string; // Link para o PDF da Nota Fiscal
+}
+
 export interface PresenceStats {
   total: number;
   present: number;
@@ -59,6 +70,7 @@ export interface Stats {
   commissions: PresenceStats; // NOVO
   projects: number;
   spending: number;
+  partyFidelity?: number; // NOVO: Índice de fidelidade partidária (0-100)
 }
 
 export interface Bill {
@@ -70,7 +82,12 @@ export interface Bill {
   description: string;
   number?: number;
   year?: number;
-  externalLink?: string; 
+  externalLink?: string;
+  // NOVO: Campos Detalhados
+  urlInteiroTeor?: string;
+  authors?: string[];
+  tramitacaoProgress?: number; // 0 a 100
+  tramitacaoLabel?: string;
 }
 
 export interface LegislativeVote {
@@ -79,6 +96,9 @@ export interface LegislativeVote {
   description: string;
   vote: string; // Sim, Não, Obstrução, etc.
   approved?: boolean;
+  partyOrientation?: string; // NOVO: Orientação do partido
+  isRebel?: boolean; // NOVO: Se votou contra o partido
+  propositionId?: string; // NOVO: ID da proposição original
 }
 
 export interface Relatoria {
@@ -159,14 +179,18 @@ export interface Speech {
   summary: string;
   transcription?: string; // NOVO: Texto completo
   type: string;
+  phase?: string; // NOVO: Pequeno Expediente, Grande Expediente, Ordem do Dia
   keywords?: string[]; // NOVO
-  externalLink?: string; 
+  externalLink?: string;
+  urlVideo?: string; // NOVO: Link direto do vídeo MP4
+  urlAudio?: string; // NOVO: Link direto do áudio MP3
 }
 
 export interface Front {
   id: number;
   title: string;
-  externalLink?: string; 
+  externalLink?: string;
+  role?: string; // NOVO: Presidente, Coordenador ou Membro
 }
 
 export interface TimelineItem {
@@ -212,6 +236,12 @@ export interface Politician {
   email?: string;
   cabinet?: Cabinet;
   socials?: string[]; // NOVO: Redes Sociais da API
+  
+  // Status Detalhado (Licença, Exercício)
+  situation?: string; 
+  condition?: string; // Titular ou Suplente
+  statusDescription?: string; // Motivo da licença se houver
+
   mandate: Mandate;
   stats: Stats;
   yearlyStats?: Record<number, YearStats>; 
@@ -224,6 +254,7 @@ export interface Politician {
   donors?: Donor[]; 
   expensesBreakdown?: ExpenseCategory[];
   expensesHistory?: ExpenseHistoryItem[]; 
+  detailedExpenses?: ExpenseItem[]; // NOVO: Lista detalhada para auditoria
   amendments?: Amendment[]; // NOVO
   speeches?: Speech[];
   fronts?: Front[];
@@ -266,7 +297,7 @@ export type FeedCategory = 'education' | 'health' | 'economy' | 'security' | 'wo
 
 export interface FeedItem {
   id: number;
-  type: 'voto' | 'despesa' | 'educacao';
+  type: 'voto' | 'despesa' | 'educacao' | 'evento';
   title: string;
   date?: string;
   action?: string;
@@ -285,6 +316,13 @@ export interface FeedItem {
     angry: number;
     clown: number;
   };
+  // NOVO: Detalhamento de Proposição
+  fullTextUrl?: string;
+  authors?: string[];
+  tramitacaoProgress?: number;
+  tramitacaoLabel?: string;
+  // NOVO: Convidados de Audiência Pública
+  guests?: string[];
 }
 
 export interface Alert {
