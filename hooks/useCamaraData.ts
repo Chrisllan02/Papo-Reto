@@ -28,16 +28,22 @@ export const useInitialData = () => {
             try {
                 // 1. Core Data (Parallel)
                 const [deps, sens, feeds, parts] = await Promise.all([
-                    fetchDeputados(),
-                    fetchSenadores(),
+                    fetchDeputados().catch(() => []),
+                    fetchSenadores().catch(() => []),
                     fetchGlobalVotacoes().catch(() => []), 
-                    fetchPartidos()
+                    fetchPartidos().catch(() => [])
                 ]);
 
-                setPoliticians([...deps, ...sens]);
+                const mergedPoliticians = [...deps, ...sens].filter(Boolean);
+                if (mergedPoliticians.length > 0) {
+                    setPoliticians(mergedPoliticians);
+                } else {
+                    setPoliticians(POLITICIANS_DB);
+                }
                 
                 if (feeds && feeds.length > 0) setFeedItems(feeds);
-                setParties(parts);
+                if (parts && parts.length > 0) setParties(parts);
+                else setParties(getStaticParties());
 
                 // 2. AI Content (Non-blocking, but part of init flow logic)
                 generateEducationalContent().then(eduContent => {
