@@ -243,10 +243,14 @@ const VotesSummaryWidget = ({ votes }: { votes: Record<number, string> }) => {
 const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
     // ... (Existing implementation) ...
     const groupedData = useMemo(() => {
-        const groups: Record<string, { total: number, count: number, dateObj: Date }> = {};
-        expenses.forEach(item => {
-            if (!item.date) return;
-            let dateKey = item.date;
+        const parseCurrency = (raw: any) => {
+            if (typeof raw === 'number') return raw;
+            if (typeof raw !== 'string') return Number(raw);
+            const cleaned = raw.replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+            return Number(cleaned);
+        };
+        const normalizeDateKey = (raw: string) => {
+            let dateKey = raw;
             if (dateKey.includes('T')) {
                 dateKey = dateKey.split('T')[0];
             }
@@ -261,11 +265,17 @@ const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
                     dateKey = `${dashParts[0]}-${dashParts[1].padStart(2, '0')}-01`;
                 }
             }
+            return dateKey;
+        };
+        const groups: Record<string, { total: number, count: number, dateObj: Date }> = {};
+        expenses.forEach(item => {
+            if (!item.date) return;
+            let dateKey = normalizeDateKey(item.date);
             if (dateKey.length < 10) return;
             if (!groups[dateKey]) {
                 groups[dateKey] = { total: 0, count: 0, dateObj: new Date(dateKey + 'T12:00:00') }; 
             }
-            const value = Number(item.value);
+            const value = parseCurrency(item.value);
             if (!Number.isFinite(value)) return;
             groups[dateKey].total += value;
             groups[dateKey].count += 1;
