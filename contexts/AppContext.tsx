@@ -11,6 +11,7 @@ interface AppState {
   articles: EducationalArticle[];
   parties: Party[];
   isLoading: boolean;
+    error: string | null;
   
   // UI Preferences
   darkMode: boolean;
@@ -63,21 +64,37 @@ const AppContext = createContext<{ state: AppState; actions: AppActions } | null
 // --- Provider ---
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Use Custom Hook for Data Loading
-  const { politicians, feedItems, parties, articles, isLoading, setPoliticians } = useInitialData();
+    const { politicians, feedItems, parties, articles, isLoading, error, setPoliticians } = useInitialData();
 
   const [activeTab, setActiveTab] = useState('feed');
   
   // Initialize from LocalStorage
   const [darkMode, setDarkMode] = useState(() => {
-      try { return localStorage.getItem('paporeto_dark_mode') === 'true'; } catch { return false; }
+      try {
+          const saved = localStorage.getItem('paporeto_dark_mode');
+          if (saved !== null) return saved === 'true';
+          if (typeof window !== 'undefined' && window.matchMedia) {
+              return window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          return false;
+      } catch { return false; }
+  });
+  const [isThemeLocked, setIsThemeLocked] = useState(() => {
+      try { return localStorage.getItem('paporeto_dark_mode') !== null; } catch { return false; }
   });
   const [highContrast, setHighContrast] = useState(() => {
       try { return localStorage.getItem('paporeto_high_contrast') === 'true'; } catch { return false; }
   });
+  const clampFontSize = (value: number) => Math.min(1.5, Math.max(0.9, value));
   const [fontSizeLevel, setFontSizeLevel] = useState(() => {
       try { 
+          const hasUserSetting = localStorage.getItem('paporeto_font_size_set') === 'true';
+          if (!hasUserSetting) {
+              localStorage.removeItem('paporeto_font_size');
+          }
+          if (!hasUserSetting) return 1;
           const saved = localStorage.getItem('paporeto_font_size');
-          return saved ? parseFloat(saved) : 1; 
+          return saved ? clampFontSize(parseFloat(saved)) : 1; 
       } catch { return 1; }
   });
 
@@ -157,6 +174,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem('paporeto_dark_mode', darkMode.toString());
   }, [darkMode]);
 
+  // Sincroniza com o tema do sistema quando o usuário não travou preferência
+  useEffect(() => {
+      if (isThemeLocked) return;
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (event: MediaQueryListEvent) => setDarkMode(event.matches);
+      setDarkMode(media.matches);
+      if (media.addEventListener) {
+          media.addEventListener('change', handleChange);
+      } else {
+          media.addListener(handleChange);
+      }
+      return () => {
+          if (media.removeEventListener) {
+              media.removeEventListener('change', handleChange);
+          } else {
+              media.removeListener(handleChange);
+          }
+      };
+  }, [isThemeLocked]);
+
   useEffect(() => {
       if (highContrast) {
           document.documentElement.classList.add('high-contrast');
@@ -176,6 +214,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const toggleDarkMode = () => {
     // Se alto contraste estiver ligado, desliga ele primeiro
     if (highContrast) setHighContrast(false);
+        setIsThemeLocked(true);
     setDarkMode(prev => !prev);
   };
 
@@ -185,19 +224,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const increaseFontSize = () => {
       setFontSizeLevel(prev => {
-          if (prev >= 1.5) return 1.5;
-          if (prev >= 1.25) return 1.5;
-          if (prev >= 1.1) return 1.25;
-          return 1.1;
+          let next = prev;
+          if (prev >= 1.5) next = 1.5;
+          else if (prev >= 1.25) next = 1.5;
+          else if (prev >= 1.1) next = 1.25;
+          else if (prev >= 1) next = 1.1;
+          else next = 1;
+          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          return clampFontSize(next);
       });
   };
 
   const decreaseFontSize = () => {
       setFontSizeLevel(prev => {
-          if (prev <= 1) return 1;
-          if (prev <= 1.1) return 1;
-          if (prev <= 1.25) return 1.1;
-          return 1.25;
+          let next = prev;
+          if (prev <= 0.9) next = 0.9;
+          else if (prev <= 1) next = 0.9;
+          else if (prev <= 1.1) next = 1;
+          else if (prev <= 1.25) next = 1.1;
+          else next = 1.25;
+          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          return clampFontSize(next);
       });
   };
 
@@ -241,7 +288,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const value = {
     state: {
-        activeTab, politicians, feedItems, articles, parties, isLoading,
+        activeTab, politicians, feedItems, articles, parties, isLoading, error,
         darkMode, highContrast, fontSizeLevel,
         selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
         showDataModal, showOnboarding, readArticleIds, 

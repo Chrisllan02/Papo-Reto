@@ -52,7 +52,7 @@ export const SkeletonProfileHeader = () => (
 
 // Skeleton para os gráficos de barras (Presença) e Dashboard
 export const SkeletonStats = () => (
-    <div className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-sm w-full mb-8">
+    <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 w-full mb-8">
         <div className="flex justify-between items-center mb-8 border-b border-gray-100 dark:border-white/10 pb-4">
             <Skeleton className="h-6 w-48" />
             <div className="flex gap-2">

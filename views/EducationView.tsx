@@ -149,7 +149,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                             onClick={() => onSelectArticle(nextItem.id)}
                             className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
                         >
-                            <div className="bg-white/90 dark:bg-gray-900 rounded-[2.3rem] p-5 flex items-center justify-between">
+                            <div className="glass-panel rounded-[2.3rem] p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextItem.colorFrom.replace('from-', 'text-')}`}>
                                         {renderIcon(nextItem.icon, 20, "opacity-80")}

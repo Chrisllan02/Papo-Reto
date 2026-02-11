@@ -29,7 +29,7 @@ const MobileNav: React.FC = () => {
     <>
         {/* Expanded Overlay Menu */}
         <div 
-            className={`fixed inset-x-0 bottom-0 z-[60] bg-white/95 dark:bg-midnight/95 backdrop-blur-3xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_-20px_60px_rgba(0,0,0,0.9)] transition-transform duration-300 ease-out border-t border-white/20 dark:border-white/10 ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
+            className={`fixed inset-x-0 bottom-0 z-[60] glass-panel rounded-t-[2.5rem] transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
             style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}
         >
             <div className="p-6 space-y-6">
@@ -94,7 +94,7 @@ const MobileNav: React.FC = () => {
                         <div className="flex items-center gap-2">
                              <button 
                                 onClick={actions.decreaseFontSize} 
-                                disabled={fontSizeLevel <= 1}
+                                disabled={fontSizeLevel <= 0.9}
                                 className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-lg disabled:opacity-30 active:scale-95 transition-all"
                              >
                                  <Minus size={16} />
@@ -132,10 +132,10 @@ const MobileNav: React.FC = () => {
 
         {/* BOTTOM NAV BAR */}
         <div className="md:hidden fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none pb-safe">
-          <nav 
-            className="pointer-events-auto bg-white/80 dark:bg-midnight/90 backdrop-blur-xl flex items-center p-1.5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_50px_rgba(0,0,0,0.8)] border border-white/40 dark:border-white/10 relative w-full max-w-sm mx-auto transition-all duration-300"
-            aria-label="Navegação Móvel"
-          >
+                    <nav 
+                        className="pointer-events-auto glass-surface flex items-center p-1.5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_50px_rgba(0,0,0,0.8)] relative w-full max-w-sm mx-auto transition-all duration-300"
+                        aria-label="Navegação Móvel"
+                    >
             {/* Standard Tabs Loop */}
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id && !isMenuOpen;
@@ -147,7 +147,7 @@ const MobileNav: React.FC = () => {
                         className={`flex-1 relative z-10 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 ${
                             isActive 
                             ? 'text-blue-700 dark:text-white' 
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                            : 'text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-200'
                         }`}
                         aria-label={tab.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -170,7 +170,7 @@ const MobileNav: React.FC = () => {
                 className={`flex-1 relative z-10 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 ${
                     isMenuOpen 
                     ? 'text-nuit dark:text-white' 
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                    : 'text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
                 aria-label={isMenuOpen ? "Fechar Menu" : "Abrir Menu"}
                 aria-expanded={isMenuOpen}

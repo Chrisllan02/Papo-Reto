@@ -193,7 +193,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
             
             {/* Header / Mode Selector - Floating Style */}
             <div className="absolute top-0 left-0 right-0 z-20 p-2">
-                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/40 dark:border-white/10 p-2 rounded-[2rem] shadow-sm max-w-2xl mx-auto">
+                <div className="glass-panel p-2 rounded-[2rem] shadow-sm max-w-2xl mx-auto">
                     <div className="flex gap-1 overflow-x-auto scrollbar-hide justify-between sm:justify-center">
                         <ModeButton m="fast" icon={Zap} label="Rápido" color="yellow" />
                         <ModeButton m="standard" icon={Sparkles} label="Padrão" color="blue" />
@@ -211,7 +211,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                         <div className={`max-w-[85%] md:max-w-[70%] p-5 shadow-sm relative group transition-transform ${
                             msg.role === 'user' 
                             ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[1.5rem] rounded-tr-sm shadow-blue-500/20' 
-                            : 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-md text-gray-800 dark:text-gray-100 rounded-[1.5rem] rounded-tl-sm border border-white/40 dark:border-white/10'
+                            : 'glass-panel text-gray-800 dark:text-gray-100 rounded-[1.5rem] rounded-tl-sm'
                         }`}>
                             {msg.image && (
                                 <img src={msg.image} alt="Generated" className="w-full rounded-xl mb-3 border border-white/20 shadow-md" />
@@ -255,7 +255,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                 
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-4 py-3 rounded-[1.5rem] rounded-tl-sm shadow-sm flex items-center gap-3 border border-white/40 dark:border-white/10">
+                        <div className="glass-panel px-4 py-3 rounded-[1.5rem] rounded-tl-sm shadow-sm flex items-center gap-3">
                             <Loader2 size={16} className="animate-spin text-blue-500" />
                             <span className="text-xs font-bold text-gray-400 animate-pulse uppercase tracking-wider">
                                 {mode === 'thinking' ? 'Analisando dados complexos...' : 
@@ -270,7 +270,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
 
             {/* Input Area - Floating Modern Look */}
             <div className="p-4 pt-0">
-                <div className="max-w-3xl mx-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-[2rem] shadow-xl p-2 flex items-center gap-2 relative z-30">
+                <div className="max-w-3xl mx-auto glass-panel rounded-[2rem] shadow-xl p-2 flex items-center gap-2 relative z-30">
                     
                     <button 
                         onClick={() => setShowImageModal(true)}
@@ -316,7 +316,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
             {/* Image Settings Modal */}
             {showImageModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in">
-                    <div className="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative border border-white/20">
+                    <div className="glass-panel p-6 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative">
                         <button onClick={() => setShowImageModal(false)} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 dark:hover:text-white"><X size={20}/></button>
                         <h3 className="font-black text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                             <ImageIcon size={20} className="text-blue-500"/> Criar Imagem

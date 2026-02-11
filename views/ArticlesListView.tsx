@@ -82,7 +82,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
   };
 
   return (
-    <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32 animate-in fade-in duration-500">
+    <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-500">
         
         {/* Header */}
         <div className="pt-8 px-6 md:px-12 mb-6">
@@ -101,7 +101,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                 {onOpenNewsHistory && (
                     <button 
                         onClick={onOpenNewsHistory}
-                        className="group flex items-center gap-3 bg-white/60 dark:bg-gray-900/60 border border-white/60 dark:border-white/10 p-3 md:p-4 rounded-[2rem] shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-800 transition-all text-left backdrop-blur-md"
+                        className="group flex items-center gap-3 glass-panel p-3 md:p-4 rounded-[2rem] hover:shadow-xl transition-all text-left"
                     >
                         <div className="p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full group-hover:scale-110 transition-transform">
                             <History size={20} />
@@ -223,7 +223,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                         <div className="flex justify-center mt-10">
                             <button 
                                 onClick={handleLoadMore}
-                                className="flex items-center gap-2 px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-100 dark:border-blue-900/30"
+                                className="flex items-center gap-2 px-8 py-3 glass-surface rounded-full text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                             >
                                 <ChevronDown size={16} /> Carregar Mais Artigos
                             </button>

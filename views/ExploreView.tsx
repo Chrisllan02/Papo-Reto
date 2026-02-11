@@ -52,7 +52,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     return (
         <button 
             onClick={() => onSelect(group.name)}
-            className={`group relative rounded-[2rem] p-4 text-left shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10 focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none`}
+            className={`group relative glass-panel rounded-[2rem] p-4 text-left shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10 focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none`}
             aria-label={`Ver detalhes do partido ${group.name}, ideologia ${theme.label}`}
         >
             <div className="w-full relative z-10 flex flex-col h-full">
@@ -109,7 +109,7 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
             role="button"
             tabIndex={0}
             aria-label={`Ver perfil de ${pol.name}, ${pol.party} do ${pol.state}`}
-            className="glass shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[1.5rem] p-2 h-full border border-white/40 dark:border-white/5 cursor-pointer bg-white/40 dark:bg-white/5 min-h-[150px] focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:bg-white/60 dark:focus-visible:bg-white/10"
+            className="glass-surface shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[1.5rem] p-2 h-full cursor-pointer min-h-[150px] focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
         >
             {isFollowing && (
                 <div className="absolute top-2 left-2 z-20">
@@ -313,7 +313,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         <div className="w-full h-full bg-transparent flex flex-col">
             
             <div className="sticky top-0 z-30 pt-2 px-2 md:pt-4 md:px-6 pb-2">
-                <div className="w-full glass rounded-[2.5rem] p-4 shadow-xl border border-white/40 dark:border-white/10 bg-white/90 dark:bg-midnight/90 backdrop-blur-xl flex flex-col gap-4">
+                <div className="w-full glass-panel rounded-[2.5rem] p-4 flex flex-col gap-4">
                     
                     {/* Header Controls */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -425,13 +425,13 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             </div>
 
             {/* Content List */}
-            <div className="flex-1 p-3 md:p-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-hidden">
+            <div className="flex-1 p-3 md:p-8 pb-24 md:pb-16 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-visible">
                 <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
                     {viewMode === 'parties' && !selectedParty && (
                         <div 
                             ref={partiesListRef}
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 overflow-y-auto pb-32 custom-scrollbar pr-1"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
                         >
                             {partiesData.map((group) => (
                                 <PartyCard 
@@ -509,17 +509,17 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             {showStateSelector && (
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowStateSelector(false)}>
                     <div 
-                        className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in slide-in-from-bottom-10 duration-300 border border-white/20" 
+                        className="glass-panel w-full max-w-sm rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col max-h-[80vh] animate-in slide-in-from-bottom-10 duration-300" 
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center glass-surface">
                             <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                                 <MapPin size={16} className="text-blue-600"/> Filtrar por Estado
                             </span>
                             <button onClick={() => setShowStateSelector(false)} className="p-1.5 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"><X size={16}/></button>
                         </div>
                         
-                        <div className="p-4 overflow-y-auto grid grid-cols-4 gap-2 custom-scrollbar">
+                        <div className="p-4 grid grid-cols-4 gap-2">
                             <button
                                 onClick={() => { setSelectedUF(""); setShowStateSelector(false); }}
                                 className={`col-span-4 p-3 rounded-xl font-bold text-sm mb-2 transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${selectedUF === "" ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}

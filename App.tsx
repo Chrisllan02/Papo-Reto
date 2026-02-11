@@ -23,7 +23,7 @@ function App() {
   const { 
       activeTab, politicians, feedItems, articles, parties, isLoading,
       selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
-      showDataModal, showOnboarding, readArticleIds
+      showDataModal, showOnboarding, readArticleIds, error
   } = state;
 
   if (isLoading) return <LoadingScreen />;
@@ -203,8 +203,13 @@ function App() {
         `}</style>
         
         {showOnboarding && <OnboardingModal onFinish={() => actions.setShowOnboarding(false)} />}
+        {error && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
+                {error}
+            </div>
+        )}
 
-        <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 glass rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300 shadow-xl dark:shadow-none border border-white/20 dark:border-white/5">
+           <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 glass-surface rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300">
              <Sidebar />
         </aside>
 

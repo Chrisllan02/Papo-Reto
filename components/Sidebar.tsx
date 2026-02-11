@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import { ESTADOS_BRASIL } from '../constants';
@@ -8,6 +8,26 @@ const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
   const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
   const [showAccessMenu, setShowAccessMenu] = useState(false);
+  const accessMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+      if (!showAccessMenu) return;
+      const handleClickOutside = (event: MouseEvent) => {
+          if (!accessMenuRef.current) return;
+          if (!accessMenuRef.current.contains(event.target as Node)) {
+              setShowAccessMenu(false);
+          }
+      };
+      const handleEscape = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') setShowAccessMenu(false);
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+      return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+          document.removeEventListener('keydown', handleEscape);
+      };
+  }, [showAccessMenu]);
 
   const NavItem = ({ id, icon: Icon, label, colorClass = "bg-gradient-to-r from-nuit to-midnight" }: any) => (
       <button 
@@ -81,29 +101,29 @@ const Sidebar: React.FC = () => {
          </button>
 
          {showAccessMenu && (
-             <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/95 dark:bg-midnight/95 backdrop-blur-xl border border-white/40 dark:border-white/20 rounded-[1.5rem] shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.9)] p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in z-50">
+             <div ref={accessMenuRef} className="absolute bottom-full left-0 right-0 mb-3 glass-panel rounded-[1.5rem] p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-white/10">
                      <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Ajustes</span>
                  </div>
                  
                  {/* Seletor de Localização + GPS */}
                  <div className="flex items-center gap-2 w-full">
-                     <div className="flex-1 flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                     <div className="flex-1 min-w-0 flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
                          <div className="flex items-center gap-2">
                              <MapPin size={16} className="text-nuit dark:text-blue-400"/>
                              <span className="text-xs font-bold text-gray-800 dark:text-white">Estado</span>
                          </div>
                          <select 
                             value={userLocation}
-                            onChange={(e) => actions.updateUserLocation(e.target.value)}
-                            className="bg-transparent text-gray-700 dark:text-gray-200 text-xs font-bold outline-none border-none cursor-pointer text-right w-12"
+                            onChange={(e) => { actions.updateUserLocation(e.target.value); setShowAccessMenu(false); }}
+                            className="bg-transparent text-gray-700 dark:text-gray-200 text-xs font-bold outline-none border-none cursor-pointer text-right w-14 max-w-[4rem] truncate"
                          >
                             <option value="">BR</option>
                             {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                          </select>
                      </div>
                      <button 
-                        onClick={() => actions.detectLocation()}
+                                onClick={() => { actions.detectLocation(); setShowAccessMenu(false); }}
                         disabled={isLocating}
                         className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         title="Detectar localização atual"
@@ -121,7 +141,7 @@ const Sidebar: React.FC = () => {
                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 rounded-lg p-1">
                          <button 
                             onClick={actions.decreaseFontSize} 
-                            disabled={fontSizeLevel <= 1}
+                            disabled={fontSizeLevel <= 0.9}
                             className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-all"
                             aria-label="Diminuir Fonte"
                          >

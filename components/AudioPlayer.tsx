@@ -17,10 +17,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
     const [isLoading, setIsLoading] = useState(false);
     const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
     const isMountedRef = useRef(true);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const prefersSpeechRef = useRef(false);
 
     // Cleanup Effect: Para o áudio se o componente for desmontado (ex: fechar modal)
     useEffect(() => {
         isMountedRef.current = true;
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            const loadVoices = () => {
+                const voices = window.speechSynthesis.getVoices();
+                prefersSpeechRef.current = voices.some(v => v.lang?.toLowerCase().startsWith('pt'));
+            };
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
         return () => {
             isMountedRef.current = false;
             if (sourceNodeRef.current) {
@@ -31,6 +41,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                     // Ignora erro se o áudio já tiver parado
                 }
                 sourceNodeRef.current = null;
+            }
+            if (utteranceRef.current && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                utteranceRef.current = null;
             }
         };
     }, []);
@@ -43,12 +57,36 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 try { sourceNodeRef.current.stop(); } catch (e) {}
                 sourceNodeRef.current = null;
             }
+            if (utteranceRef.current && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                utteranceRef.current = null;
+            }
             setIsPlaying(false);
             return;
         }
 
         setIsLoading(true);
         try {
+            if (prefersSpeechRef.current && 'speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                const voice = voices.find(v => v.lang?.toLowerCase().startsWith('pt-br')) || voices.find(v => v.lang?.toLowerCase().startsWith('pt'));
+                if (voice) utterance.voice = voice;
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                utterance.onend = () => {
+                    if (isMountedRef.current) setIsPlaying(false);
+                };
+                utterance.onerror = () => {
+                    if (isMountedRef.current) setIsPlaying(false);
+                };
+                utteranceRef.current = utterance;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utterance);
+                setIsPlaying(true);
+                setIsLoading(false);
+                return;
+            }
             const audioData = await speakContent(text);
             
             // Verifica se o componente ainda está montado após o await

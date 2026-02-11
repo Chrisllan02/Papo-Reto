@@ -101,10 +101,10 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
   }, [feedItems, searchTerm, startDate, endDate, activeFilter, sortBy]);
 
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-32 animate-in slide-in-from-right duration-300">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-24 md:pb-12 animate-in slide-in-from-right duration-300">
         
         {/* HEADER FIXO */}
-        <div className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 p-4 shadow-sm">
+        <div className="sticky top-0 z-30 glass-surface p-4 shadow-sm">
              <div className="max-w-7xl mx-auto">
                  {/* Linha Superior: Voltar e Título */}
                  <div className="flex items-center gap-4 mb-4">

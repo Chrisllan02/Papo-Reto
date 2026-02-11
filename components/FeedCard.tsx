@@ -24,7 +24,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     return (
         <article 
             onClick={() => onClick(item)}
-            className="group relative bg-white/80 dark:bg-midnight/80 backdrop-blur-xl p-6 md:p-8 rounded-[2.5rem] border border-white/40 dark:border-white/5 shadow-sm hover:shadow-2xl hover:bg-white dark:hover:bg-midnight transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full justify-between"
+            className="group relative glass-surface p-6 md:p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full justify-between"
         >
             <div>
                 <div className="flex justify-between items-start mb-4 relative z-10">
@@ -32,7 +32,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                         <category.icon size={14} />
                         {category.label}
                     </div>
-                    <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-subtle flex items-center gap-1.5">
                         {item.date}
                     </span>
                 </div>
@@ -54,12 +54,12 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                 {isExpense && item.amount && (
                     <div className="mb-4">
                         <p className="text-3xl font-black text-midnight dark:text-white tracking-tighter">{item.amount}</p>
-                        <p className="text-xs text-gray-500 uppercase font-bold truncate tracking-wide">{item.provider}</p>
+                        <p className="text-xs text-subtle uppercase font-bold truncate tracking-wide">{item.provider}</p>
                     </div>
                 )}
 
                 {!isExpense && item.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed line-clamp-3 mb-6">
+                    <p className="text-sm text-muted font-medium leading-relaxed line-clamp-3 mb-6">
                         {item.description}
                     </p>
                 )}
@@ -71,7 +71,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                         <img src={politician.photo} className="w-10 h-10 rounded-full object-cover border border-white dark:border-gray-700 shadow-sm" alt="" loading="lazy" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-black text-midnight dark:text-white truncate">{politician.name}</p>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{politician.party} • {politician.state}</p>
+                            <p className="text-xs font-bold text-subtle uppercase tracking-wide">{politician.party} • {politician.state}</p>
                         </div>
                     </div>
                     {/* Audio Button on Card */}
@@ -83,9 +83,9 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/5 relative z-10 mt-auto">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center">
-                            <Landmark size={18} className="text-gray-400"/>
+                            <Landmark size={18} className="text-subtle"/>
                         </div>
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Congresso Nacional</span>
+                        <span className="text-xs font-bold text-subtle uppercase tracking-widest">Congresso Nacional</span>
                     </div>
                     {/* Audio Button on Card */}
                     <div onClick={(e) => e.stopPropagation()}>
@@ -96,7 +96,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
             
             {/* Hover Action Arrow (Hidden on Touch/Mobile usually, visible on desktop hover) */}
             <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 hidden md:block">
-                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 text-subtle flex items-center justify-center">
                     <ArrowRight size={14} />
                 </div>
             </div>

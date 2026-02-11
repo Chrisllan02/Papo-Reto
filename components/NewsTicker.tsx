@@ -22,10 +22,10 @@ const NewsTicker: React.FC = () => {
                 const fresh = await fetchDailyNews();
                 if (fresh && fresh.length > 0) {
                     // Verifica se houve mudança real para evitar re-render desnecessário
-                    const isDifferent = fresh[0].id !== news[0]?.id || fresh[0].time !== news[0]?.time;
-                    if (isDifferent) {
-                        setNews(fresh);
-                    }
+                    setNews((prev) => {
+                        const isDifferent = fresh[0].id !== prev[0]?.id || fresh[0].time !== prev[0]?.time;
+                        return isDifferent ? fresh : prev;
+                    });
                 }
             } catch (error) {
                 console.error("Silent news update failed", error);

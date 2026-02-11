@@ -112,7 +112,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
             aria-labelledby="modal-title"
         >
             <div 
-                className={`glass-card dark:bg-midnight backdrop-blur-3xl w-full max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl dark:shadow-[0_-20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col max-h-[95dvh] md:max-h-[85dvh] transition-transform duration-500 ease-out border border-white/20 dark:border-white/10 ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}
+                className={`glass-panel w-full max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] relative overflow-hidden flex flex-col max-h-[95dvh] md:max-h-[85dvh] transition-transform duration-500 ease-out ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}
                 style={{ transform: visible ? `translateY(${dragY}px)` : undefined }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -148,7 +148,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                         <span className={`text-xs font-black uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm ${isVote ? 'bg-nuit/10 text-nuit' : isExpense ? 'bg-orange-100/50 text-orange-700' : isEvent ? 'bg-purple-100/50 text-purple-700' : 'bg-spring/30 text-yellow-800'}`}>
                             {item.type}
                         </span>
-                        {item.date && <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {item.date}</span>}
+                        {item.date && <span className="text-xs font-bold text-subtle flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {item.date}</span>}
                     </div>
 
                     <h2 id="modal-title" className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight mb-8 tracking-tight">{item.title}</h2>
@@ -174,7 +174,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                                         {isVIP ? <Star size={14} fill="currentColor"/> : <Users size={14}/>}
                                                     </div>
                                                     <div>
-                                                        <p className={`text-sm font-bold leading-tight ${isVIP ? 'text-purple-900 dark:text-purple-200' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                        <p className={`text-sm font-bold leading-tight ${isVIP ? 'text-purple-900 dark:text-purple-200' : 'text-muted-strong'}`}>
                                                             {guest}
                                                         </p>
                                                     </div>
@@ -183,7 +183,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                         })}
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-gray-500 italic">
+                                    <p className="text-sm text-subtle italic">
                                         {loadingExtras ? "Buscando lista de convidados..." : "Lista de convidados não disponível na pauta digital."}
                                     </p>
                                 )}
@@ -197,7 +197,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                             {/* Barra de Progresso */}
                             <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-3xl border border-gray-100 dark:border-white/10">
                                 <div className="flex justify-between items-center mb-3">
-                                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                                    <h4 className="text-xs font-black uppercase text-subtle tracking-widest flex items-center gap-2">
                                         <GitCommit size={14}/> Tramitômetro
                                     </h4>
                                     {loadingExtras && <Loader2 size={12} className="animate-spin text-blue-500"/>}
@@ -221,7 +221,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex justify-between mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                                <div className="flex justify-between mt-2 text-[9px] font-bold text-subtle uppercase tracking-wide">
                                     <span>Início</span>
                                     <span>Sanção</span>
                                 </div>
@@ -230,7 +230,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                             {/* Autores & Inteiro Teor */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/10">
-                                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center gap-1.5">
+                                    <h4 className="text-[10px] font-black uppercase text-subtle tracking-widest mb-2 flex items-center gap-1.5">
                                         <Users size={12}/> Quem Assina
                                     </h4>
                                     {loadingExtras ? (
@@ -291,20 +291,20 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                         // Expense Box - WCAG Contrast Fix: Gray-50 solid
                         <div className="mb-8 p-6 bg-gray-50/90 dark:bg-white/5 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-white/10 flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Valor</p>
+                                <p className="text-xs font-bold text-subtle uppercase mb-1">Valor</p>
                                 <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">{item.amount}</p>
                             </div>
                             {item.provider && (
                                 <div className="text-right max-w-[50%]">
-                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Fornecedor</p>
-                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate">{item.provider}</p>
+                                    <p className="text-xs font-bold text-subtle uppercase mb-1">Fornecedor</p>
+                                    <p className="text-sm font-bold text-muted-strong truncate">{item.provider}</p>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    <div className="text-gray-700 dark:text-gray-300 font-medium leading-loose mb-8 text-sm md:text-base">
-                        <p className="mb-3 font-bold text-xs uppercase text-gray-400 tracking-wider">Texto Original:</p>
+                    <div className="text-muted-strong font-medium leading-loose mb-8 text-sm md:text-base">
+                        <p className="mb-3 font-bold text-xs uppercase text-subtle tracking-wider">Texto Original:</p>
                         <p>{item.content || item.description}</p>
                     </div>
 
@@ -317,11 +317,11 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                             >
                                 <img src={politician.photo} className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-md group-hover:scale-105 transition-transform" alt="" loading="lazy" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Responsável</p>
+                                    <p className="text-xs font-bold text-subtle uppercase mb-1">Responsável</p>
                                     <p className="text-base font-black text-midnight dark:text-white truncate">{politician.name}</p>
-                                    <p className="text-xs font-medium text-gray-500">{politician.party} - {politician.state}</p>
+                                    <p className="text-xs font-medium text-subtle">{politician.party} - {politician.state}</p>
                                 </div>
-                                <div className="p-3 bg-white/50 dark:bg-white/10 rounded-full text-gray-400 shrink-0 group-hover:text-nuit transition-colors">
+                                <div className="p-3 bg-white/50 dark:bg-white/10 rounded-full text-subtle shrink-0 group-hover:text-nuit transition-colors">
                                     <ArrowRight size={20} aria-hidden="true" />
                                 </div>
                             </button>
@@ -333,7 +333,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                     Fonte Oficial <ExternalLink size={16} aria-hidden="true" />
                                 </a>
                             )}
-                            <button aria-label="Compartilhar esta informação" className="px-6 py-4 rounded-2xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 font-bold active:scale-[0.98] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors bg-white/20 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center">
+                            <button aria-label="Compartilhar esta informação" className="px-6 py-4 rounded-2xl border border-gray-200 dark:border-white/10 text-muted-strong font-bold active:scale-[0.98] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors bg-white/20 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center">
                                 <Share2 size={22} aria-hidden="true" />
                             </button>
                         </div>

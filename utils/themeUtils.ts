@@ -4,7 +4,7 @@ export const getIdeologyTheme = (ideology: string) => {
     
     if (ideo === 'esquerda') {
         return {
-            bg: 'bg-rose-50/90 dark:bg-rose-900/10',
+            bg: 'bg-rose-50/90 dark:bg-rose-900/35',
             border: 'border-rose-200 dark:border-rose-900/30',
             iconBg: 'bg-[#C41E3A]', // Vermelho Cardeal
             text: 'text-rose-950 dark:text-rose-100', // Escurecido para contraste
@@ -21,7 +21,7 @@ export const getIdeologyTheme = (ideology: string) => {
     
     if (ideo === 'direita') {
         return {
-            bg: 'bg-indigo-50/90 dark:bg-indigo-900/10',
+            bg: 'bg-indigo-50/90 dark:bg-indigo-900/35',
             border: 'border-indigo-200 dark:border-indigo-900/30',
             iconBg: 'bg-[#2E3192]', // Azul Marinho Conservador
             text: 'text-indigo-950 dark:text-indigo-100', // Escurecido para contraste
@@ -38,7 +38,7 @@ export const getIdeologyTheme = (ideology: string) => {
     
     // Centro
     return {
-        bg: 'bg-amber-50/90 dark:bg-amber-900/10',
+        bg: 'bg-amber-50/90 dark:bg-amber-900/35',
         border: 'border-amber-200 dark:border-amber-900/30',
         iconBg: 'bg-[#D97706]', // Amber 600 (Mais escuro que o original para contraste do ícone)
         text: 'text-amber-950 dark:text-amber-100', // Muito escuro para leitura em fundo claro

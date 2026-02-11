@@ -45,7 +45,7 @@ export const Glossary: React.FC<GlossaryProps> = ({ term, children }) => {
                     onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                 >
                     <div 
-                        className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] max-w-xs w-full shadow-2xl relative border border-gray-100 dark:border-gray-700 animate-in zoom-in-95 duration-200" 
+                        className="glass-panel p-6 rounded-[2rem] max-w-xs w-full shadow-2xl relative animate-in zoom-in-95 duration-200" 
                         onClick={e => e.stopPropagation()}
                     >
                         <button 

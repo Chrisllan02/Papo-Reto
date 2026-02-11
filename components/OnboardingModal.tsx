@@ -96,12 +96,12 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
   if (!targetRect) {
       return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
-            <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center relative border border-white/10 overflow-hidden">
+            <div className="glass-panel w-full max-w-sm rounded-[2.5rem] p-8 text-center relative overflow-hidden">
                 
                 {/* Botão de Fechar no topo */}
                 <button 
                     onClick={handleSkip}
-                    className="absolute top-5 right-5 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-20"
+                    className="absolute top-5 right-5 p-2 text-subtle hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-20"
                     title="Fechar Tour"
                 >
                     <X size={20} />
@@ -115,11 +115,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
                     </div>
                 )}
                 <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">{step.title}</h2>
-                <p className="text-gray-500 dark:text-gray-300 font-medium mb-8 leading-relaxed">{step.desc}</p>
+                <p className="text-muted font-medium mb-8 leading-relaxed">{step.desc}</p>
                 
                 <div className="flex gap-3">
                     {currentStepIndex > 0 && (
-                        <button onClick={handlePrev} className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <button onClick={handlePrev} className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-muted hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                             <ChevronLeft size={20}/>
                         </button>
                     )}
@@ -135,7 +135,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
                 {currentStepIndex === 0 && (
                     <button 
                         onClick={handleSkip}
-                        className="mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors uppercase tracking-wider"
+                        className="mt-4 text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-white transition-colors uppercase tracking-wider"
                     >
                         Pular Introdução
                     </button>
@@ -197,30 +197,30 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
         <div className="absolute inset-0 z-10" onClick={(e) => e.stopPropagation()}></div>
 
         {/* Tooltip Card */}
-        <div style={tooltipStyle} className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] shadow-2xl border border-white/20 z-20 flex flex-col relative animate-in zoom-in-95 duration-300">
+        <div style={tooltipStyle} className="glass-panel p-6 rounded-[2rem] z-20 flex flex-col relative animate-in zoom-in-95 duration-300">
             {/* Arrow (Visual only, simplified) */}
             {isMobile && (
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-white/20"></div>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/90 dark:bg-gray-900 rotate-45 border-b border-r border-white/20"></div>
             )}
             {!isMobile && (
-                <div className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-4 bg-white dark:bg-gray-900 rotate-45 border-b border-l border-white/20"></div>
+                <div className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-4 bg-white/90 dark:bg-gray-900 rotate-45 border-b border-l border-white/20"></div>
             )}
 
             <div className="flex justify-between items-start mb-2">
                 <h3 className={`text-lg font-black ${step.color || 'text-gray-900 dark:text-white'}`}>{step.title}</h3>
-                <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                <span className="text-[10px] font-bold text-subtle bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                     {currentStepIndex + 1}/{STEPS.length}
                 </span>
             </div>
             
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            <p className="text-sm font-medium text-muted-strong mb-6 leading-relaxed">
                 {step.desc}
             </p>
 
             <div className="flex gap-3 justify-end">
                 <button 
                     onClick={handleSkip}
-                    className="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 px-3 py-2 transition-colors"
+                    className="text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-gray-200 px-3 py-2 transition-colors"
                 >
                     Pular
                 </button>
@@ -228,7 +228,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
                     {currentStepIndex > 0 && (
                         <button 
                             onClick={handlePrev}
-                            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-strong transition-colors"
                         >
                             <ChevronLeft size={18}/>
                         </button>

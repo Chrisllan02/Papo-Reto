@@ -102,10 +102,14 @@ const RemunerationWidget = ({ remuneration }: { remuneration: any }) => {
     if (!remuneration) return null;
     
     // Calcula porcentagens para a barra
-    const total = remuneration.gross + remuneration.housingAllowance;
-    const netPct = (remuneration.net / total) * 100;
-    const taxPct = (remuneration.tax / total) * 100;
-    const allowPct = (remuneration.housingAllowance / total) * 100;
+    const otherBenefits = remuneration.otherBenefits || 0;
+    const allowTotal = remuneration.housingAllowance + otherBenefits;
+    const total = remuneration.gross + allowTotal;
+    const safeTotal = total > 0 ? total : 1;
+    const netPct = (remuneration.net / safeTotal) * 100;
+    const taxPct = (remuneration.tax / safeTotal) * 100;
+    const allowPct = (allowTotal / safeTotal) * 100;
+    const referenceLabel = remuneration.month && remuneration.year ? `${String(remuneration.month).padStart(2, '0')}/${remuneration.year}` : null;
 
     return (
         <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/10 p-6 md:p-8 rounded-[2.5rem] border border-emerald-100 dark:border-emerald-900/30 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom-2">
@@ -116,6 +120,9 @@ const RemunerationWidget = ({ remuneration }: { remuneration: any }) => {
                 <div>
                     <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Salário e Benefícios</h3>
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wide mt-1">Remuneração Mensal Estimada</p>
+                    {referenceLabel && (
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Referência: {referenceLabel}</p>
+                    )}
                 </div>
             </div>
 
@@ -155,6 +162,12 @@ const RemunerationWidget = ({ remuneration }: { remuneration: any }) => {
                             <span className="text-xs font-bold text-blue-500">+ R$ {remuneration.housingAllowance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                     )}
+                    {otherBenefits > 0 && (
+                        <div className="flex justify-between items-center mt-2">
+                            <span className="text-xs font-bold text-gray-500">Outros Auxílios</span>
+                            <span className="text-xs font-bold text-blue-500">+ R$ {otherBenefits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    )}
                 </div>
             </div>
             <p className="text-[9px] text-gray-400 italic mt-4 text-center">
@@ -168,7 +181,7 @@ const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
     if (!agenda || agenda.length === 0) return null;
 
     return (
-        <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-8 border border-white/20 dark:border-white/10 shadow-sm animate-in fade-in mb-8">
+        <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 animate-in fade-in mb-8">
             <h3 className="font-black text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
                 <CalendarDays size={20} className="text-blue-500"/> Agenda Legislativa
             </h3>
@@ -179,7 +192,7 @@ const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
                         <div className="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-white dark:border-gray-800"></div>
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-1">
                             <span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-wide bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md self-start">
-                                {new Date(event.startTime).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })} • {new Date(event.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(event.startTime).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })} • {new Date(event.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}{event.endTime ? ` → ${new Date(event.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
                             </span>
                             {event.status && (
                                 <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${event.status.includes('Convocada') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'} self-start`}>
@@ -189,9 +202,36 @@ const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
                         </div>
                         <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{event.title}</h4>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{event.description}</p>
-                        <div className="flex items-center gap-1 mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            <MapPin size={10} /> {event.location}
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                            <span className="flex items-center gap-1"><MapPin size={10} /> {event.location}</span>
+                            {event.type && (
+                                <span className="flex items-center gap-1"><Tag size={10} /> {event.type}</span>
+                            )}
+                            {event.endTime && (
+                                <span className="flex items-center gap-1"><Clock size={10} /> Até {new Date(event.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            )}
                         </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const VotesSummaryWidget = ({ votes }: { votes: Record<number, string> }) => {
+    if (!votes || Object.keys(votes).length === 0) return null;
+    const entries = Object.entries(votes).sort((a, b) => Number(b[0]) - Number(a[0]));
+
+    return (
+        <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 animate-in fade-in mb-8">
+            <h3 className="font-black text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
+                <Vote size={20} className="text-blue-500"/> Mapa de Votos
+            </h3>
+            <div className="flex flex-wrap gap-2">
+                {entries.map(([key, value]) => (
+                    <div key={key} className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 px-3 py-2 rounded-xl border border-gray-100 dark:border-white/10">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{key}</span>
+                        <span className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{value}</span>
                     </div>
                 ))}
             </div>
@@ -210,6 +250,7 @@ const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
             if (dateKey.includes('/')) {
                 const parts = dateKey.split('/');
                 if (parts.length === 3) dateKey = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                if (parts.length === 2) dateKey = `${parts[1]}-${parts[0].padStart(2, '0')}-01`;
             }
             if (dateKey.length < 10) return;
             if (!groups[dateKey]) {
@@ -224,9 +265,10 @@ const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
 
     if (groupedData.length === 0) return null;
     const maxVal = Math.max(...groupedData.map(d => d[1].total));
+    if (!Number.isFinite(maxVal) || maxVal <= 0) return null;
 
     return (
-        <div className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 mb-6">
+        <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 mb-6">
             <div className="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
                 <div>
                     <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2">
@@ -252,8 +294,8 @@ const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
                                     <div className="absolute top-0 left-0 right-0 h-1/3 bg-white/20 rounded-t-full"></div>
                                 </div>
                                 <div className="flex flex-col items-center">
-                                    <span className={`text-[9px] font-bold ${isWeekend ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400'}`}>{data.dateObj.getDate()}</span>
-                                    <span className="text-[7px] uppercase font-black text-gray-300">{data.dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                                    <span className={`text-[9px] font-bold ${isWeekend ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400 dark:text-gray-300'}`}>{data.dateObj.getDate()}</span>
+                                    <span className="text-[7px] uppercase font-black text-gray-300 dark:text-gray-400">{data.dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
                                 </div>
                             </div>
                         );
@@ -284,7 +326,7 @@ const WordCloudWidget = ({ speeches }: { speeches: Speech[] }) => {
     const maxVal = Math.max(...words.map(w => w.value));
 
     return (
-        <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
+        <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 animate-in fade-in mb-8">
             <h3 className="font-black text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
                 <MessageSquare size={20} className="text-blue-500"/> DNA do Discurso
             </h3>
@@ -335,8 +377,28 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
         return "";
     };
 
+    const sexLabel = candidate.sex
+        ? (candidate.sex.toUpperCase() === 'F' ? 'Feminino' : candidate.sex.toUpperCase() === 'M' ? 'Masculino' : candidate.sex)
+        : 'N/A';
+    const birthplace = candidate.birthCity
+        ? `${candidate.birthCity}${candidate.birthState ? ` / ${candidate.birthState}` : ''}`
+        : (candidate.birthState || 'N/A');
+    const conditionLabel = candidate.condition || 'N/A';
+    const matchScore = Number.isFinite(candidate.matchScore) ? candidate.matchScore : null;
+    const cabinetLocation = [
+        candidate.cabinet?.room ? `Sala ${candidate.cabinet.room}` : null,
+        candidate.cabinet?.floor ? `${candidate.cabinet.floor}º andar` : null,
+        candidate.cabinet?.building || null
+    ].filter(Boolean) as string[];
+    const formatStaffStart = (value?: string) => {
+        if (!value) return null;
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return value;
+        return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+    };
+
     return (
-        <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col">
+        <div className="glass-panel rounded-[2.5rem] p-6 h-full flex flex-col">
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
                 <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
                     <Contact size={20} />
@@ -352,7 +414,7 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                 )}
 
                 {/* Info Pessoal - Nova Seção */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                         <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Calendar size={10} /> Idade</p>
                         <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
@@ -362,7 +424,11 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                     </div>
                     <div>
                         <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><MapPin size={10} /> Naturalidade</p>
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{candidate.birthCity || 'N/A'}</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{birthplace}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Users size={10} /> Sexo</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{sexLabel}</p>
                     </div>
                     <div>
                         <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><GraduationCap size={10} /> Escolaridade</p>
@@ -372,7 +438,36 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                         <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Briefcase size={10} /> Profissão</p>
                         <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate" title={candidate.profession}>{candidate.profession || 'Parlamentar'}</p>
                     </div>
+                    <div>
+                        <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><BadgeCheck size={10} /> Condição</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{conditionLabel}</p>
+                    </div>
+                    {candidate.civilName && (
+                        <div className="col-span-2 md:col-span-3">
+                            <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Contact size={10} /> Nome civil</p>
+                            <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{candidate.civilName}</p>
+                        </div>
+                    )}
                 </div>
+
+                {candidate.bio && (
+                    <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center gap-2"><ScrollText size={12}/> Biografia</p>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{candidate.bio}</p>
+                    </div>
+                )}
+
+                {matchScore !== null && (
+                    <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center gap-2"><Award size={12}/> Compatibilidade</p>
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400" style={{ width: `${Math.max(0, Math.min(100, matchScore))}%` }}></div>
+                            </div>
+                            <span className="text-xs font-black text-gray-800 dark:text-gray-200 tabular-nums">{Math.max(0, Math.min(100, matchScore))}%</span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="border-t border-gray-100 dark:border-white/5 pt-4">
                     <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3">Contatos Oficiais</p>
@@ -383,6 +478,12 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{candidate.email}</p>
                             </div>
                         )}
+                        {candidate.cabinet?.email && (
+                            <div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><Mail size={12} className="text-blue-500"/> E-mail do Gabinete</div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{candidate.cabinet.email}</p>
+                            </div>
+                        )}
                         {candidate.cabinet?.phone && (
                             <div>
                                 <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><Phone size={12} className="text-blue-500"/> Telefone</div>
@@ -391,6 +492,27 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                         )}
                     </div>
                 </div>
+
+                {(cabinetLocation.length > 0 || candidate.cabinet?.address) && (
+                    <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2"><Building2 size={12}/> Gabinete</p>
+                        {cabinetLocation.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {cabinetLocation.map((item) => (
+                                    <span key={item} className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-2 py-1 rounded text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5">
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {candidate.cabinet?.address && (
+                            <div className="flex items-start gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <MapPin size={12} className="text-blue-500 mt-0.5" />
+                                <span className="leading-relaxed">{candidate.cabinet.address}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Gabinete Expandido (Secretários) */}
                 {candidate.staff && candidate.staff.length > 0 && (
@@ -408,6 +530,12 @@ const BioCard = ({ candidate, isLoading }: { candidate: Politician, isLoading: b
                                         <div>
                                             <p className="text-[10px] font-bold text-gray-900 dark:text-white leading-none">{sec.name}</p>
                                             <p className="text-[8px] text-gray-500 uppercase">{sec.role}</p>
+                                            {(sec.group || sec.start) && (
+                                                <p className="text-[8px] text-gray-400 uppercase flex flex-wrap items-center gap-1">
+                                                    {sec.group && <span>{sec.group}</span>}
+                                                    {sec.start && <span className="flex items-center gap-1"><Calendar size={8} /> desde {formatStaffStart(sec.start)}</span>}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -450,7 +578,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
     const fidelity = displayStats.partyFidelity || 0;
 
     return (
-        <div className="bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm h-full flex flex-col relative overflow-hidden">
+        <div className="glass-panel rounded-[2.5rem] p-6 h-full flex flex-col relative overflow-hidden">
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
                 <div className="p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400">
                     <BarChart3 size={20} />
@@ -469,7 +597,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
                         <Skeleton className="h-4 w-2/3" />
                         <Skeleton className="h-12 w-full rounded-xl" />
                     </div>
-                    <div className="z-10 flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300 bg-white/80 dark:bg-black/60 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 dark:border-white/10 shadow-xl">
+                    <div className="z-10 flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300 glass-panel p-6 rounded-[2rem] shadow-xl">
                         <div className="relative">
                             <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
                             <div className="absolute inset-0 w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
@@ -517,7 +645,7 @@ const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears
                                             isActive 
                                             ? 'bg-blue-600 text-white shadow-xl scale-110 ring-4 ring-blue-100 dark:ring-blue-900/30' 
                                             : isPast 
-                                                ? 'bg-white dark:bg-gray-800 text-blue-600 border-2 border-blue-500 hover:border-blue-400'
+                                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-200 border-2 border-blue-500 dark:border-blue-300/60 hover:border-blue-400 dark:hover:border-blue-200'
                                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-2 border-gray-300 dark:border-gray-600'
                                         }`}
                                     >
@@ -592,7 +720,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
     
     if (type === 'bill') {
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2">
+            <article className="glass-panel p-6 rounded-[2.5rem] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-start">
                     <span className={`text-xs font-black uppercase px-3 py-1 rounded-full backdrop-blur-md ${getStatusColor(item.status)}`}>{item.status}</span>
                     <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
@@ -623,7 +751,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
         const isNao = item.vote.toLowerCase().includes('não') || item.vote.toLowerCase().includes('nao');
         const isRebel = item.isRebel;
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-4 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+            <article className="glass-panel p-6 rounded-[2.5rem] flex flex-col gap-4 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex items-start gap-4">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md ${isSim ? 'bg-green-100/50 text-green-600' : isNao ? 'bg-red-100/50 text-red-600' : 'bg-gray-100/50 text-gray-600'}`}>
                         <Vote size={28} strokeWidth={1.5} />
@@ -672,7 +800,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
 
     if (type === 'report') {
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+            <article className="glass-panel p-6 rounded-[2.5rem] flex flex-col gap-3 relative overflow-hidden hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-3xl pointer-events-none"></div>
                 <div className="flex justify-between items-start relative z-10">
                     <span className="bg-purple-100/50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 text-xs font-black uppercase px-3 py-1 rounded-full backdrop-blur-md">Relatoria</span>
@@ -693,7 +821,7 @@ const ActivityCard: React.FC<{ item: any }> = ({ item }) => {
         const isHighRelevance = phase.toLowerCase().includes('ordem do dia') || phase.toLowerCase().includes('grande expediente');
 
         return (
-            <article className="bg-white/95 dark:bg-midnight/90 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+            <article className="glass-panel p-6 rounded-[2.5rem] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-red-100/50 dark:bg-red-900/20 text-red-600 rounded-full backdrop-blur-md">
@@ -804,6 +932,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    const [showOtherFronts, setShowOtherFronts] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [translateX, setTranslateX] = useState(0);
   const touchStartRef = useRef<number | null>(null);
@@ -854,37 +983,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   };
 
   useEffect(() => {
-      if (candidate.yearlyStats) {
-          const y = new Date().getFullYear();
-          if (candidate.yearlyStats[y]?.totalSessions > 0) setSelectedYear(y);
-          else if (candidate.yearlyStats[y - 1]?.totalSessions > 0) setSelectedYear(y - 1);
-          else {
-              const available = Object.keys(candidate.yearlyStats).map(Number).sort((a,b) => b-a);
-              if (available.length > 0) setSelectedYear(available[0]);
-          }
-      }
-  }, [candidate.yearlyStats]);
+      // Mantém "Mandato Completo" como padrão ao abrir o perfil.
+      setSelectedYear('total');
+  }, [candidate.id]);
 
   const frontCategories = useMemo(() => {
       if (!candidate.fronts || candidate.fronts.length === 0) return [];
-      const categoryMap: Record<string, { count: number, color: string, bg: string, text: string, strokeColor: string, border: string }> = {
-          'Agropecuária': { count: 0, color: 'bg-green-500', bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', strokeColor: '#22c55e', border: 'border-green-200 dark:border-green-900/50' },
-          'Saúde': { count: 0, color: 'bg-red-500', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', strokeColor: '#ef4444', border: 'border-red-200 dark:border-red-900/50' },
-          'Economia': { count: 0, color: 'bg-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', strokeColor: '#3b82f6', border: 'border-blue-200 dark:border-blue-900/50' },
-          'Educação': { count: 0, color: 'bg-yellow-500', bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', strokeColor: '#eab308', border: 'border-yellow-200 dark:border-yellow-900/50' },
-          'Segurança': { count: 0, color: 'bg-gray-600', bg: 'bg-gray-200 dark:bg-gray-700/30', text: 'text-gray-700 dark:text-gray-300', strokeColor: '#4b5563', border: 'border-gray-300 dark:border-gray-600' },
-          'Meio Ambiente': { count: 0, color: 'bg-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', strokeColor: '#10b981', border: 'border-emerald-200 dark:border-emerald-900/50' },
-          'Direitos Humanos': { count: 0, color: 'bg-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', strokeColor: '#a855f7', border: 'border-purple-200 dark:border-purple-900/50' },
-          'Tecnologia': { count: 0, color: 'bg-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300', strokeColor: '#6366f1', border: 'border-indigo-200 dark:border-indigo-900/50' },
-          'Infraestrutura': { count: 0, color: 'bg-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', strokeColor: '#f97316', border: 'border-orange-200 dark:border-orange-900/50' },
-          'Outros': { count: 0, color: 'bg-slate-400', bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-600 dark:text-slate-400', strokeColor: '#94a3b8', border: 'border-slate-200 dark:border-slate-700' }
-      };
+      const categoryMap: Record<string, { count: number, bg: string, text: string, strokeColor: string, border: string }> = {};
       candidate.fronts?.forEach(f => {
           const style = getFrontCategoryStyle(f.title);
-          if (categoryMap[style.name]) categoryMap[style.name].count++;
+          if (!categoryMap[style.name]) {
+              categoryMap[style.name] = { count: 0, bg: style.bg, text: style.text, strokeColor: style.stroke, border: style.border };
+          }
+          categoryMap[style.name].count++;
       });
       const total = candidate.fronts?.length || 1;
-      return Object.entries(categoryMap).filter(([, data]) => data.count > 0).sort((a, b) => b[1].count - a[1].count).map(([name, data]) => ({ name, percent: (data.count / total) * 100, ...data }));
+      return Object.entries(categoryMap)
+          .filter(([, data]) => data.count > 0)
+          .sort((a, b) => b[1].count - a[1].count)
+          .map(([name, data]) => ({ name, percent: (data.count / total) * 100, ...data }));
   }, [candidate.fronts]);
 
   const sortedFronts = useMemo(() => {
@@ -1062,7 +1179,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   return (
     <div 
         ref={containerRef}
-        className="w-full h-full overflow-y-auto bg-transparent pb-32 scroll-smooth will-change-transform"
+        className="w-full h-full overflow-y-auto bg-transparent pb-24 md:pb-12 scroll-smooth will-change-transform"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1086,7 +1203,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               </div>
               <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
                   <div className="shrink-0 relative">
-                      <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800 border-[4px] border-white/10"><img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} /></div>
+                      <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800"><img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} /></div>
                   </div>
                   <div className="flex-1 text-center md:text-left text-white mb-2 min-w-0">
                       <div className="flex flex-wrap justify-center md:justify-start gap-1.5 md:gap-2 mb-2 md:mb-3">
@@ -1123,7 +1240,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       </div>
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-6 relative z-20 space-y-6 px-safe">
-          <div className="lg:hidden mb-6 bg-white/60 dark:bg-midnight/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/40 dark:border-white/10 shadow-sm">
+          <div className="lg:hidden mb-6 glass-panel rounded-[2.5rem] p-6">
                 <div className="flex justify-between items-center mb-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 flex items-center gap-1.5"><Clock size={12} className="text-orange-500" /> Contagem Regressiva</p>
                     <span className="text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-200 dark:border-orange-500/20">{mandateInfo.percentage}%</span>
@@ -1146,7 +1263,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </div>
 
           <div className="min-w-0">
-              <div className="sticky top-0 z-40 bg-white/70 dark:bg-midnight/90 backdrop-blur-3xl p-1.5 rounded-2xl md:rounded-full border border-white/50 dark:border-white/10 shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
+              <div className="sticky top-0 z-40 glass-surface p-1.5 rounded-2xl md:rounded-full shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
                  {(['activities', 'money'] as const).map(tab => (
                      <button key={tab} id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
                         {tab === 'money' ? 'Custos e Salário' : 'Atuação e Agenda'}
@@ -1154,16 +1271,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                  ))}
               </div>
               
-              <div className="space-y-6 md:space-y-10 pb-32">
+              <div className="space-y-6 md:space-y-10 pb-24 md:pb-12">
                   <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="outline-none">
                     {profileTab === 'activities' && (
                         <div>
                             {/* --- AGENDA (NOVO WIDGET) --- */}
                             {candidate.agenda && candidate.agenda.length > 0 && <AgendaWidget agenda={candidate.agenda} />}
 
+                            {candidate.votes && Object.keys(candidate.votes).length > 0 && <VotesSummaryWidget votes={candidate.votes} />}
+
                             {(activityFilter === 'all' || activityFilter === 'speeches') && candidate.speeches && candidate.speeches.length > 0 && <WordCloudWidget speeches={candidate.speeches} />}
 
-                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
+                            <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 animate-in fade-in mb-8">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Flag size={20} className="text-blue-500"/> Frentes Parlamentares</h3>
                                 {isLoadingDetails ? <Skeleton className="h-20 w-full rounded-2xl" /> : (candidate.fronts && candidate.fronts.length > 0 ? (
                                     <div className="flex flex-col lg:flex-row gap-10 items-start">
@@ -1176,7 +1295,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                 {frontCategories.slice(0, 4).map((cat) => (
                                                     <div key={cat.name} className={`p-4 rounded-2xl border ${cat.bg} ${cat.border} flex flex-col items-center justify-center min-w-[100px]`}><span className={`text-2xl font-black ${cat.text}`}>{cat.count}</span><span className={`text-[9px] font-bold uppercase tracking-wider opacity-70 ${cat.text}`}>{cat.name}</span></div>
                                                 ))}
-                                                {frontCategories.length > 4 && (<div className="col-span-2 p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10"><span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">+{candidate.fronts.length - frontCategories.slice(0,4).reduce((acc, c) => acc + c.count, 0)} Outras</span></div>)}
+                                                {frontCategories.length > 4 && (
+                                                    <button
+                                                        onClick={() => setShowOtherFronts(prev => !prev)}
+                                                        className="col-span-2 p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10 transition-colors"
+                                                    >
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                                            +{candidate.fronts.length - frontCategories.slice(0,4).reduce((acc, c) => acc + c.count, 0)} Outras
+                                                        </span>
+                                                        <span className="ml-2 text-[10px] font-black text-blue-600 dark:text-blue-300">
+                                                            {showOtherFronts ? 'Ocultar' : 'Ver'}
+                                                        </span>
+                                                    </button>
+                                                )}
+                                                {showOtherFronts && frontCategories.slice(4).length > 0 && (
+                                                    <div className="col-span-2 flex flex-wrap gap-2">
+                                                        {frontCategories.slice(4).map((cat) => (
+                                                            <span key={`other-${cat.name}`} className={`px-3 py-2 text-[9px] font-bold uppercase tracking-wider rounded-xl border ${cat.bg} ${cat.border} ${cat.text}`}>
+                                                                {cat.name} • {cat.count}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex-1 w-full">
@@ -1197,7 +1337,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                 ) : <div className="text-center py-6 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">Nenhuma frente parlamentar registrada.</div>)}
                             </div>
 
-                            <div className="bg-white/70 dark:bg-midnight/90 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-10 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in mb-8">
+                            <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 animate-in fade-in mb-8">
                                 <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Briefcase size={20} className="text-blue-500"/> Trajetória Profissional</h3>
                                 {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? <div className="space-y-4"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.occupations && candidate.occupations.length > 0 ? (
                                         <div className="space-y-4 relative">
@@ -1239,7 +1379,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              {candidate.remuneration && <RemunerationWidget remuneration={candidate.remuneration} />}
                              
                              {candidate.amendmentStats && candidate.amendmentStats.authorized > 0 && (
-                                <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in">
+                                <section className="glass-panel p-6 md:p-8 rounded-[3rem] relative overflow-hidden animate-in fade-in">
                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-xl text-purple-600 backdrop-blur-sm"><Wallet size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Emendas Individuais</h4><p className="text-[10px] text-gray-500 font-medium">Orçamento da União (Proposto)</p></div></div>
                                     <div className="space-y-6"><div><div className="flex justify-between items-end mb-2"><span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Valor Apresentado</span><span className="text-lg font-black text-purple-600 dark:text-purple-400">R$ {candidate.amendmentStats.authorized.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div className="w-full h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full"><div className="h-full bg-purple-500 rounded-full w-full"></div></div></div></div>
                                     <div className="mt-6 p-3 bg-gray-50/50 dark:bg-white/5 rounded-xl text-[10px] text-gray-500 italic text-center backdrop-blur-sm">* Valor total das emendas de autoria do parlamentar listadas na API. A execução financeira depende do Poder Executivo.</div>
@@ -1247,7 +1387,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              )}
                              
                              {isLoadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? <div className="space-y-2"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 && (
-                                      <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-12 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4">
+                                      <section className="glass-panel p-6 md:p-12 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
                                           <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 mb-8 tracking-[0.4em] border-b border-gray-50 dark:border-white/5 pb-3">Detalhamento dos Gastos</h4>
                                           <div className="space-y-4 md:space-y-6">
                                               {candidate.expensesBreakdown.map((exp, i) => (
@@ -1263,7 +1403,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && <DailyExpensesChart expenses={candidate.detailedExpenses} />}
 
                              {/* --- ASSETS / PATRIMÔNIO (PLACEHOLDER) --- */}
-                             <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-10 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4">
+                             <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
                                 <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3">
                                     <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 dark:text-yellow-400"><BadgeCheck size={20} /></div>
                                     <div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Patrimônio Declarado</h4><p className="text-[10px] text-gray-500 font-medium">Bens informados ao TSE</p></div>
@@ -1288,7 +1428,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              </section>
 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && (
-                                <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-10 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
+                                <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
                                     <div className="flex items-center justify-between mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
                                         <div>
                                             <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2"><FileCheck size={14} className="text-green-600 dark:text-green-400"/> Auditoria de Notas Fiscais</h4>
@@ -1314,7 +1454,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              )}
 
                              {candidate.travels && candidate.travels.length > 0 && (
-                                 <section className="bg-white/60 dark:bg-midnight/90 backdrop-blur-2xl p-6 md:p-8 rounded-[3rem] border border-white/30 dark:border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in fade-in">
+                                 <section className="glass-panel p-6 md:p-8 rounded-[3rem] relative overflow-hidden animate-in fade-in">
                                      <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-600 dark:text-sky-400 backdrop-blur-sm"><Plane size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Viagens Oficiais</h4><p className="text-[10px] text-gray-500 font-medium">Deslocamentos com Cota Parlamentar</p></div></div>
                                      <div className="space-y-3">
                                          {candidate.travels.map((trip, i) => (

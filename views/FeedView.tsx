@@ -27,7 +27,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
     }, []);
 
     return (
-        <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-32 animate-in fade-in duration-500">
+        <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-500">
             {selectedFeedItem && (
                 <FeedDetailModal 
                     item={selectedFeedItem} 

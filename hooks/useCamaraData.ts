@@ -8,7 +8,8 @@ import {
     fetchPartidos, 
     enrichPoliticianFast, 
     enrichPoliticianData,
-    getStaticParties
+    getStaticParties,
+    TTL_DYNAMIC
 } from '../services/camaraApi';
 import { generateEducationalContent } from '../services/ai';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
@@ -110,6 +111,19 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             // Check if we already have detailed data (expenses, votes history)
             // This prevents re-fetching if user navigates back and forth quickly
             const hasFullData = initialCandidate.expensesBreakdown && initialCandidate.expensesBreakdown.length > 0;
+
+            const cacheKey = `paporeto_cache_v7_complete_pol_full_v2_${initialCandidate.id}`;
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < TTL_DYNAMIC) {
+                        setCandidate(data);
+                        setIsLoadingDetails(false);
+                        return;
+                    }
+                }
+            } catch {}
             
             if (hasFullData || !initialCandidate.hasApiIntegration) {
                 setIsLoadingDetails(false);

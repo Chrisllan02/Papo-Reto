@@ -72,12 +72,12 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
         return 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
     };
 
-    if (isLoading) return <div className="h-64 w-full glass rounded-[2.5rem] animate-pulse mb-8"></div>;
+    if (isLoading) return <div className="h-64 w-full glass-surface rounded-[2.5rem] animate-pulse mb-8"></div>;
     if (statePoliticians.length === 0) return null;
 
     return (
         <section className="mb-16 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
-            <div className="absolute inset-0 glass-card rounded-[3rem] -mx-4 md:mx-0 z-0 border border-white/20 dark:border-white/5 shadow-sm"></div>
+            <div className="absolute inset-0 glass-panel rounded-[3rem] -mx-4 md:mx-0 z-0"></div>
 
             <div className="relative z-10 p-6 md:p-8">
                 <div className="mb-6 flex items-center justify-between">
@@ -89,14 +89,14 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                             <h2 className="text-xl font-black text-midnight dark:text-white leading-none mb-1">
                                 {selectedState}
                             </h2>
-                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">
                                 {isLocal ? 'Sua Bancada' : 'Giro pelos Estados'}
                             </span>
                         </div>
                     </div>
                     <button 
                         onClick={() => onGoToExplore(selectedState)}
-                        className="px-5 py-2.5 bg-white/60 dark:bg-midnight/80 backdrop-blur-xl rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm border border-white/30 dark:border-white/10 active:scale-95 transition-all hover:bg-white/80 dark:hover:bg-gray-800/80"
+                        className="px-5 py-2.5 glass-surface rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm active:scale-95 transition-all"
                     >
                         Ver Todos
                     </button>
@@ -108,7 +108,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     <button 
                         onClick={() => scroll('left')}
                         aria-label="Rolar para esquerda"
-                        className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/80 dark:bg-midnight/80 shadow-lg border border-white/20 dark:border-white/10 hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white backdrop-blur-md opacity-0 group-hover/scroll:opacity-100 duration-300"
+                        className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 duration-300"
                     >
                         <ChevronLeft size={24} />
                     </button>
@@ -166,7 +166,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     <button 
                         onClick={() => scroll('right')}
                         aria-label="Rolar para direita"
-                        className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/80 dark:bg-midnight/80 shadow-lg border border-white/20 dark:border-white/10 hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white backdrop-blur-md opacity-0 group-hover/scroll:opacity-100 duration-300"
+                        className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 duration-300"
                     >
                         <ChevronRight size={24} />
                     </button>

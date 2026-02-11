@@ -8,7 +8,7 @@ let aiClient: GoogleGenAI | null = null;
 const getAi = () => {
     if (aiClient) return aiClient;
     
-    const key = process.env.API_KEY;
+    const key = import.meta.env?.VITE_API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : undefined);
     if (!key || key.trim() === "") {
         console.warn("Aviso: API_KEY do Google Gemini não encontrada. Funcionalidades de IA usarão fallback.");
         return null;

@@ -38,10 +38,45 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
     }
 };
 
-export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000) => {
+const getGithubCacheEndpoint = () => {
+    try {
+        return import.meta.env?.VITE_GITHUB_CACHE_ENDPOINT || '/api/github-cache';
+    } catch {
+        return '/api/github-cache';
+    }
+};
+
+const fetchCachedPolitician = async (id: number): Promise<Partial<Politician> | null> => {
+    const endpoint = getGithubCacheEndpoint();
+    try {
+        const res = await fetch(`${endpoint}?type=politician&id=${id}`);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch {
+        return null;
+    }
+};
+
+const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
+    const endpoint = getGithubCacheEndpoint();
+    try {
+        await fetch(`${endpoint}?type=politician&id=${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    } catch {
+        // Silently ignore cache write errors
+    }
+};
+
+export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000): Promise<any> => {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
         const res = await fetch(url, { 
-            headers: { 'Accept': 'application/json' } 
+            headers: { 'Accept': 'application/json' },
+            signal: controller?.signal
         });
         if (!res.ok) throw new Error(`API Error ${res.status}`);
         return json ? await res.json() : res;
@@ -49,9 +84,11 @@ export const fetchAPI = async (url: string, retries = 3, json = true, delay = 10
         if (retries > 0) {
             // Exponential backoff
             await new Promise(resolve => setTimeout(resolve, delay));
-            return fetchAPI(url, retries - 1, json, delay * 2);
+            return fetchAPI(url, retries - 1, json, delay * 2, timeoutMs);
         }
         throw error;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 };
 
@@ -115,6 +152,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             photo: d.urlFoto,
             // Correção de Gênero: Verifica se o campo sexo existe na listagem inicial, senão padroniza para neutro até enriquecimento
             role: d.sexo === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+            sex: d.sexo,
             email: d.email,
             stats: {
                 attendancePct: 0,
@@ -136,8 +174,66 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
 };
 
 export const fetchSenadores = async (): Promise<Politician[]> => {
-    // Mock rápido pois a API do Senado é XML/diferente.
-    return []; 
+    const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
+
+    const parseXmlText = (xmlText: string): Politician[] => {
+        try {
+            if (typeof DOMParser === 'undefined') return [];
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlText, 'text/xml');
+            if (xml.getElementsByTagName('parsererror').length > 0) return [];
+
+            const parlamentares = Array.from(xml.getElementsByTagName('Parlamentar'));
+            return parlamentares.map((parlamentar) => {
+                const getText = (tag: string) => {
+                    const el = parlamentar.getElementsByTagName(tag)[0];
+                    return el?.textContent?.trim() || '';
+                };
+
+                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
+                const name = getText('NomeParlamentar') || getText('NomeCompletoParlamentar');
+                const party = getText('SiglaPartidoParlamentar');
+                const state = getText('SiglaUfParlamentar');
+                const photo = getText('UrlFotoParlamentar');
+
+                return {
+                    id,
+                    name: formatText(name),
+                    party,
+                    partyShort: party,
+                    state,
+                    photo,
+                    role: 'Senador',
+                    matchScore: 0,
+                    bio: '',
+                    stats: {
+                        attendancePct: 0,
+                        totalSessions: 0,
+                        presentSessions: 0,
+                        absentSessions: 0,
+                        plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+                        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+                        projects: 0,
+                        spending: 0,
+                        partyFidelity: 0
+                    },
+                    mandate: { start: '2023-02-01', end: '2031-01-31' },
+                    hasApiIntegration: false,
+                    votes: {}
+                } as Politician;
+            }).filter(p => p.name && p.party && p.state);
+        } catch {
+            return [];
+        }
+    };
+
+    const result = await fetchWithCache('senadores_list', async () => {
+        const res = await fetchAPI(SENADO_URL, 2, false, 1000, 15000);
+        const xmlText = await (res as Response).text();
+        return parseXmlText(xmlText);
+    }, TTL_STATIC);
+
+    return result || [];
 };
 
 export const fetchPartidos = async (): Promise<Party[]> => {
@@ -164,27 +260,35 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
     const cacheKey = `pol_fast_${pol.id}`;
     return (await fetchWithCache(cacheKey, async () => {
         try {
+            const cached = await fetchCachedPolitician(pol.id);
+            if (cached && (cached.civilName || cached.birthDate || cached.cabinet || cached.socials)) {
+                return { ...pol, ...cached } as Politician;
+            }
+
             const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`);
             const d = data.dados;
             
             // Lógica Robusta de Gênero (Incluindo Trans)
             let finalRole = pol.role;
+            let finalSex = d.sexo || pol.sex;
             if (d.sexo === 'F') {
                 finalRole = 'Deputada Federal';
+                finalSex = 'F';
             }
             // Override de Segurança para Identidade de Gênero (Erika Hilton, Duda Salabert) caso a API falhe/demore
             if ([220560, 220608].includes(pol.id)) {
                 finalRole = 'Deputada Federal';
+                finalSex = 'F';
             }
 
-            return {
+            const enriched = {
                 ...pol,
                 role: finalRole,
+                sex: finalSex,
                 civilName: formatText(d.nomeCivil),
                 birthDate: d.dataNascimento, // YYYY-MM-DD
                 birthCity: d.municipioNascimento,
                 birthState: d.ufNascimento,
-                sex: d.sexo,
                 profession: 'Parlamentar', // Placeholder, API não retorna direto aqui, enriquecido depois
                 cabinet: {
                     room: d.ultimoStatus?.gabinete?.sala,
@@ -198,7 +302,30 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 situation: d.ultimoStatus?.situacao, // "Em Exercício", "Licença"
                 condition: d.ultimoStatus?.condicaoEleitoral, // "Titular", "Suplente"
                 statusDescription: d.ultimoStatus?.descricaoStatus // Motivo da licença
-            };
+            } as Politician;
+
+            saveCachedPolitician(pol.id, {
+                id: enriched.id,
+                name: enriched.name,
+                party: enriched.party,
+                partyShort: enriched.partyShort,
+                state: enriched.state,
+                photo: enriched.photo,
+                role: enriched.role,
+                sex: enriched.sex,
+                civilName: enriched.civilName,
+                birthDate: enriched.birthDate,
+                birthCity: enriched.birthCity,
+                birthState: enriched.birthState,
+                email: enriched.email,
+                cabinet: enriched.cabinet,
+                socials: enriched.socials,
+                situation: enriched.situation,
+                condition: enriched.condition,
+                statusDescription: enriched.statusDescription
+            });
+
+            return enriched;
         } catch (e) {
             return pol;
         }
