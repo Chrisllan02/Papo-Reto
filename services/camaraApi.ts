@@ -61,6 +61,20 @@ export const fetchCachedPoliticianProfile = async (id: number): Promise<Partial<
     return fetchCachedPolitician(id);
 };
 
+export const hasProfileCacheData = (cached?: Partial<Politician> | null) => {
+    if (!cached) return false;
+    const hasArrays =
+        (cached.detailedExpenses && cached.detailedExpenses.length > 0) ||
+        (cached.expensesBreakdown && cached.expensesBreakdown.length > 0) ||
+        (cached.votingHistory && cached.votingHistory.length > 0) ||
+        (cached.fronts && cached.fronts.length > 0) ||
+        (cached.speeches && cached.speeches.length > 0) ||
+        (cached.agenda && cached.agenda.length > 0) ||
+        (cached.occupations && cached.occupations.length > 0);
+    const hasStats = Boolean(cached.stats && (cached.stats.spending > 0 || cached.stats.projects > 0));
+    return hasArrays || hasStats;
+};
+
 const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
     const endpoint = getGithubCacheEndpoint();
     try {
@@ -350,7 +364,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
 
     try {
         const cachedGithub = await fetchCachedPolitician(pol.id);
-        if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+        if (hasProfileCacheData(cachedGithub)) {
             return { ...pol, ...cachedGithub } as Politician;
         }
     } catch {
@@ -635,7 +649,7 @@ export const prefetchPoliticianProfile = async (pol: Politician) => {
         }
 
         const cachedGithub = await fetchCachedPolitician(pol.id);
-        if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+        if (hasProfileCacheData(cachedGithub)) {
             return;
         }
 

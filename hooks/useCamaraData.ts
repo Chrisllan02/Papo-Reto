@@ -10,7 +10,8 @@ import {
     enrichPoliticianData,
     getStaticParties,
     TTL_DYNAMIC,
-    fetchCachedPoliticianProfile
+    fetchCachedPoliticianProfile,
+    hasProfileCacheData
 } from '../services/camaraApi';
 import { generateEducationalContent } from '../services/ai';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
@@ -137,7 +138,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
 
             try {
                 const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
-                if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+                if (hasProfileCacheData(cachedGithub)) {
                     setCandidate(prev => prev ? { ...prev, ...cachedGithub } : (cachedGithub as Politician));
                     setIsLoadingDetails(false);
                     return;
