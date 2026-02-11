@@ -9,7 +9,8 @@ import {
     enrichPoliticianFast, 
     enrichPoliticianData,
     getStaticParties,
-    TTL_DYNAMIC
+    TTL_DYNAMIC,
+    fetchCachedPoliticianProfile
 } from '../services/camaraApi';
 import { generateEducationalContent } from '../services/ai';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
@@ -116,7 +117,10 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
         const loadDeepData = async () => {
             // Check if we already have detailed data (expenses, votes history)
             // This prevents re-fetching if user navigates back and forth quickly
-            const hasFullData = initialCandidate.expensesBreakdown && initialCandidate.expensesBreakdown.length > 0;
+            const hasFullData = (initialCandidate.expensesBreakdown && initialCandidate.expensesBreakdown.length > 0)
+                || (initialCandidate.detailedExpenses && initialCandidate.detailedExpenses.length > 0)
+                || (initialCandidate.votingHistory && initialCandidate.votingHistory.length > 0)
+                || (initialCandidate.fronts && initialCandidate.fronts.length > 0);
 
             const cacheKey = `paporeto_cache_v7_complete_pol_full_v2_${initialCandidate.id}`;
             try {
@@ -128,6 +132,15 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                         setIsLoadingDetails(false);
                         return;
                     }
+                }
+            } catch {}
+
+            try {
+                const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
+                if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+                    setCandidate(prev => prev ? { ...prev, ...cachedGithub } : (cachedGithub as Politician));
+                    setIsLoadingDetails(false);
+                    return;
                 }
             } catch {}
             

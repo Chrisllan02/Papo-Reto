@@ -57,6 +57,10 @@ const fetchCachedPolitician = async (id: number): Promise<Partial<Politician> | 
     }
 };
 
+export const fetchCachedPoliticianProfile = async (id: number): Promise<Partial<Politician> | null> => {
+    return fetchCachedPolitician(id);
+};
+
 const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
     const endpoint = getGithubCacheEndpoint();
     try {
