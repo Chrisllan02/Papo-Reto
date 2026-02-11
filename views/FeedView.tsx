@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Activity, Coffee } from 'lucide-react';
 import { FeedItem, Politician, EducationalArticle } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
