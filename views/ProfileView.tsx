@@ -247,16 +247,27 @@ const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) => {
         expenses.forEach(item => {
             if (!item.date) return;
             let dateKey = item.date;
+            if (dateKey.includes('T')) {
+                dateKey = dateKey.split('T')[0];
+            }
             if (dateKey.includes('/')) {
                 const parts = dateKey.split('/');
                 if (parts.length === 3) dateKey = `${parts[2]}-${parts[1]}-${parts[0]}`;
                 if (parts.length === 2) dateKey = `${parts[1]}-${parts[0].padStart(2, '0')}-01`;
             }
+            if (dateKey.includes('-')) {
+                const dashParts = dateKey.split('-');
+                if (dashParts.length === 2) {
+                    dateKey = `${dashParts[0]}-${dashParts[1].padStart(2, '0')}-01`;
+                }
+            }
             if (dateKey.length < 10) return;
             if (!groups[dateKey]) {
                 groups[dateKey] = { total: 0, count: 0, dateObj: new Date(dateKey + 'T12:00:00') }; 
             }
-            groups[dateKey].total += item.value;
+            const value = Number(item.value);
+            if (!Number.isFinite(value)) return;
+            groups[dateKey].total += value;
             groups[dateKey].count += 1;
         });
         const sorted = Object.entries(groups).sort((a, b) => a[1].dateObj.getTime() - b[1].dateObj.getTime()).slice(-30);

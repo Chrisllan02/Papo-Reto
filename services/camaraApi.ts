@@ -343,6 +343,15 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
     }
 
     try {
+        const cachedGithub = await fetchCachedPolitician(pol.id);
+        if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+            return { ...pol, ...cachedGithub } as Politician;
+        }
+    } catch {
+        // ignore github cache read errors
+    }
+
+    try {
         if (onProgress) onProgress("Buscando dados completos...");
         
         // Helper Safe Fetch: Garante que uma falha não quebre todo o perfil
@@ -375,22 +384,28 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         
         if (expensesData && expensesData.dados) {
             expensesData.dados.forEach((e: any) => {
-                const val = e.valorLiquido;
+                const val = Number(e.valorLiquido ?? e.valorDocumento ?? 0);
+                if (!Number.isFinite(val)) return;
                 totalSpending += val;
-                const type = e.tipoDespesa;
+                const type = e.tipoDespesa || 'Outros';
                 typeMap[type] = (typeMap[type] || 0) + val;
             });
 
             // Mapeia despesas para auditoria
-            detailedExpenses = expensesData.dados.map((e: any, idx: number) => ({
-                id: idx,
-                date: e.dataDocumento || e.mes + '/' + e.ano, // dataDocumento é YYYY-MM-DD
-                provider: e.nomeFornecedor,
-                cnpjCpf: e.cnpjCpfFornecedor,
-                value: e.valorLiquido,
-                type: e.tipoDespesa,
-                urlDocumento: e.urlDocumento
-            }));
+            detailedExpenses = expensesData.dados.map((e: any, idx: number) => {
+                const month = e.mes ? String(e.mes).padStart(2, '0') : '';
+                const year = e.ano ? String(e.ano) : '';
+                const fallbackDate = month && year ? `${month}/${year}` : undefined;
+                return {
+                    id: idx,
+                    date: e.dataDocumento || fallbackDate,
+                    provider: e.nomeFornecedor,
+                    cnpjCpf: e.cnpjCpfFornecedor,
+                    value: Number(e.valorLiquido ?? e.valorDocumento ?? 0),
+                    type: e.tipoDespesa,
+                    urlDocumento: e.urlDocumento
+                };
+            }).filter((item: any) => Number.isFinite(item.value));
         }
 
         Object.entries(typeMap).forEach(([type, value]) => {
@@ -573,6 +588,23 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             assets: assets,
             suplentes: suplentes
         };
+
+        saveCachedPolitician(pol.id, {
+            id: pol.id,
+            stats: updatedStats,
+            expensesBreakdown: expenses.slice(0, 6),
+            detailedExpenses: detailedExpenses.slice(0, 200),
+            yearlyStats,
+            votingHistory: votingHistory.slice(0, 50),
+            fronts: fronts.slice(0, 50),
+            occupations: occupations.slice(0, 50),
+            speeches: speeches.slice(0, 25),
+            agenda: agenda.slice(0, 10),
+            remuneration,
+            staff: staff.slice(0, 10),
+            assets: assets.slice(0, 10),
+            suplentes: suplentes.slice(0, 5)
+        });
 
         localStorage.setItem(`${CACHE_PREFIX}${cacheKey}`, JSON.stringify({ data: result, timestamp: Date.now() }));
         return result;
