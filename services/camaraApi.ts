@@ -74,6 +74,8 @@ const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
     }
 };
 
+const prefetchInFlight = new Set<number>();
+
 export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000): Promise<any> => {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -616,6 +618,33 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
     } catch (e) {
         console.error("Enrich error", e);
         return pol;
+    }
+};
+
+export const prefetchPoliticianProfile = async (pol: Politician) => {
+    if (!pol?.id || prefetchInFlight.has(pol.id)) return;
+    if (pol.hasApiIntegration === false) return;
+    prefetchInFlight.add(pol.id);
+
+    try {
+        const cacheKey = `pol_full_v2_${pol.id}`;
+        const cached = localStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
+        if (cached) {
+            const { timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < TTL_DYNAMIC) return;
+        }
+
+        const cachedGithub = await fetchCachedPolitician(pol.id);
+        if (cachedGithub && (cachedGithub.detailedExpenses || cachedGithub.expensesBreakdown || cachedGithub.votingHistory || cachedGithub.fronts)) {
+            return;
+        }
+
+        const fast = await enrichPoliticianFast(pol);
+        await enrichPoliticianData(fast);
+    } catch {
+        // ignore prefetch errors
+    } finally {
+        prefetchInFlight.delete(pol.id);
     }
 };
 

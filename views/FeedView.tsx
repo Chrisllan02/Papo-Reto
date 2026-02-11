@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Activity, Coffee } from 'lucide-react';
 import { FeedItem, Politician, EducationalArticle } from '../types';
+import { prefetchPoliticianProfile } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
 import FeedDetailModal from '../components/FeedDetailModal';
 import StateSpotlightWidget from '../components/StateSpotlightWidget';
@@ -25,6 +26,21 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, o
         if (h >= 12 && h < 18) return 'Boa tarde';
         return 'Boa noite';
     }, []);
+
+    const spotlightCandidates = useMemo(() => politicians.slice(0, 6), [politicians]);
+
+    useEffect(() => {
+        if (spotlightCandidates.length === 0) return;
+        if (typeof (window as any)?.requestIdleCallback === 'function') {
+            (window as any).requestIdleCallback(() => {
+                spotlightCandidates.forEach((pol) => prefetchPoliticianProfile(pol));
+            });
+        } else {
+            setTimeout(() => {
+                spotlightCandidates.forEach((pol) => prefetchPoliticianProfile(pol));
+            }, 0);
+        }
+    }, [spotlightCandidates]);
 
     return (
         <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-500">

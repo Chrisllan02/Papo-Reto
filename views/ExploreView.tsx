@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayoutEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart, Filter, User } from 'lucide-react';
 import { Politician, Party } from '../types';
-import { formatPartyName, getIdeology } from '../services/camaraApi';
+import { formatPartyName, getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
 import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
 import * as ReactWindow from 'react-window';
@@ -102,10 +102,20 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
         }
     };
 
+    const handlePrefetch = () => {
+        if (typeof (window as any)?.requestIdleCallback === 'function') {
+            (window as any).requestIdleCallback(() => prefetchPoliticianProfile(pol));
+        } else {
+            setTimeout(() => prefetchPoliticianProfile(pol), 0);
+        }
+    };
+
     return (
         <div 
             onClick={() => onSelect(pol)} 
             onKeyDown={handleKeyDown}
+            onMouseEnter={handlePrefetch}
+            onFocus={handlePrefetch}
             role="button"
             tabIndex={0}
             aria-label={`Ver perfil de ${pol.name}, ${pol.party} do ${pol.state}`}

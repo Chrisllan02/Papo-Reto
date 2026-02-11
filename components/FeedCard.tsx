@@ -1,6 +1,7 @@
 import React from 'react';
 import { Landmark, ArrowRight, Sparkles } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
+import { prefetchPoliticianProfile } from '../services/camaraApi';
 import AudioPlayer from './AudioPlayer';
 import { getCategoryIcon, formatCardTitle, getDidacticContext } from '../utils/legislativeTranslator';
 
@@ -21,9 +22,21 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     // Show snippet only if meaningful text exists and isn't just repetition
     const showSnippet = didactic.text && didactic.text.length > 10 && !didactic.text.startsWith(item.title.substring(0,20));
 
+    const handlePrefetch = () => {
+        if (politician) {
+            if (typeof (window as any)?.requestIdleCallback === 'function') {
+                (window as any).requestIdleCallback(() => prefetchPoliticianProfile(politician));
+            } else {
+                setTimeout(() => prefetchPoliticianProfile(politician), 0);
+            }
+        }
+    };
+
     return (
         <article 
             onClick={() => onClick(item)}
+            onMouseEnter={handlePrefetch}
+            onFocus={handlePrefetch}
             className="group relative glass-surface p-6 md:p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full justify-between"
         >
             <div>
