@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
-import { formatPartyName, getIdeology } from '../services/camaraApi';
+import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
 import { getIdeologyTheme } from '../utils/themeUtils';
 
 interface PartiesDashboardViewProps {
@@ -50,7 +50,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
 
     const stats = useMemo(() => {
         const total = Math.max(politicians.length, 1);
-        const women = politicians.filter(p => p.sex === 'F');
+        const women = politicians.filter(p => normalizeSex(p.sex) === 'F');
         const womenCount = women.length;
         const percentage = ((womenCount / total) * 100).toFixed(1);
 
@@ -61,7 +61,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
         politicians.forEach(p => {
             const pName = p.party || 'S/P';
             allParties.add(pName);
-            if (p.sex === 'F') {
+            if (normalizeSex(p.sex) === 'F') {
                 partyCounts[pName] = (partyCounts[pName] || 0) + 1;
             }
         });
@@ -805,7 +805,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
         const g = groups[partyName];
         g.members.push(pol);
         g.totalMembers += 1;
-        if (pol.sex === 'F') g.femaleCount += 1;
+        if (normalizeSex(pol.sex) === 'F') g.femaleCount += 1;
         g.totalSpending += pol.stats.spending || 0;
         const ideology = getIdeology(partyName);
         ideologyGroups[ideology] += 1;

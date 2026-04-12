@@ -117,6 +117,14 @@ export const formatText = (text: string) => {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
+export const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
+    if (!value) return undefined;
+    const cleaned = value.trim().toUpperCase();
+    if (cleaned.startsWith('F')) return 'F';
+    if (cleaned.startsWith('M')) return 'M';
+    return undefined;
+};
+
 // --- HELPERS ---
 
 export const getIdeology = (partySigla: string): 'Esquerda' | 'Centro' | 'Direita' => {
@@ -171,8 +179,8 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             state: d.siglaUf,
             photo: d.urlFoto,
             // Correção de Gênero: Verifica se o campo sexo existe na listagem inicial, senão padroniza para neutro até enriquecimento
-            role: d.sexo === 'F' ? 'Deputada Federal' : 'Deputado Federal',
-            sex: d.sexo,
+            role: normalizeSex(d.sexo) === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+            sex: normalizeSex(d.sexo),
             email: d.email,
             stats: {
                 attendancePct: 0,
@@ -215,6 +223,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 const party = getText('SiglaPartidoParlamentar');
                 const state = getText('SiglaUfParlamentar');
                 const photo = getText('UrlFotoParlamentar');
+                const sex = normalizeSex(getText('SexoParlamentar'));
 
                 return {
                     id,
@@ -223,7 +232,8 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                     partyShort: party,
                     state,
                     photo,
-                    role: 'Senador',
+                    role: sex === 'F' ? 'Senadora' : 'Senador',
+                    sex,
                     matchScore: 0,
                     bio: '',
                     stats: {

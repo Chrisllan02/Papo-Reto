@@ -1,13 +1,16 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
 import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { 
+    BASE_URL_CAMARA,
     fetchDeputados, 
     fetchSenadores, 
     fetchGlobalVotacoes, 
     fetchPartidos, 
     enrichPoliticianFast, 
     enrichPoliticianData,
+    fetchAPI,
+    normalizeSex,
     getStaticParties,
     TTL_DYNAMIC,
     fetchCachedPoliticianProfile,
@@ -15,6 +18,82 @@ import {
 } from '../services/camaraApi';
 import { generateEducationalContent } from '../services/ai';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
+
+type SexCode = 'F' | 'M';
+const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
+
+const readSexCache = (): Record<string, SexCode> => {
+    try {
+        const raw = localStorage.getItem(SEX_CACHE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+const writeSexCache = (cache: Record<string, SexCode>) => {
+    try {
+        localStorage.setItem(SEX_CACHE_KEY, JSON.stringify(cache));
+    } catch {
+        // Ignore storage quota issues.
+    }
+};
+
+const hydrateMissingSexMetadata = async (
+    politicians: Politician[],
+    setPoliticians: Dispatch<SetStateAction<Politician[]>>
+) => {
+    const cache = readSexCache();
+    const missing = politicians.filter(pol => !normalizeSex(pol.sex) && pol.hasApiIntegration !== false);
+
+    if (missing.length === 0) return;
+
+    const applyUpdates = (updates: Array<{ id: number; sex: SexCode }>) => {
+        if (updates.length === 0) return;
+
+        setPoliticians(prev => prev.map(pol => {
+            const found = updates.find(update => update.id === pol.id);
+            if (!found) return pol;
+            return {
+                ...pol,
+                sex: found.sex,
+                role: found.sex === 'F' ? 'Deputada Federal' : pol.role?.toLowerCase().includes('senad') ? 'Senador' : 'Deputado Federal'
+            };
+        }));
+    };
+
+    const batchSize = 8;
+    for (let i = 0; i < missing.length; i += batchSize) {
+        const batch = missing.slice(i, i + batchSize);
+        const updates: Array<{ id: number; sex: SexCode }> = [];
+
+        await Promise.all(batch.map(async (pol) => {
+            const cachedSex = cache[String(pol.id)];
+            if (cachedSex === 'F' || cachedSex === 'M') {
+                updates.push({ id: pol.id, sex: cachedSex });
+                return;
+            }
+
+            try {
+                const response = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`, 2, true, 750, 12000);
+                const sex = normalizeSex(response?.dados?.sexo);
+                if (sex) {
+                    cache[String(pol.id)] = sex;
+                    updates.push({ id: pol.id, sex });
+                }
+            } catch {
+                // Skip transient API errors; chart will still use known cache entries.
+            }
+        }));
+
+        applyUpdates(updates);
+        if (updates.length > 0) {
+            writeSexCache(cache);
+        }
+    }
+};
 
 // --- Hook para Carga Inicial do App (Big Bang Load) ---
 export const useInitialData = () => {
@@ -39,6 +118,7 @@ export const useInitialData = () => {
                 const mergedPoliticians = [...deps, ...sens].filter(Boolean);
                 if (mergedPoliticians.length > 0) {
                     setPoliticians(mergedPoliticians);
+                    hydrateMissingSexMetadata(mergedPoliticians, setPoliticians);
                 } else {
                     setPoliticians(POLITICIANS_DB);
                 }
