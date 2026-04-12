@@ -1,20 +1,21 @@
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
-import FeedView from './views/FeedView';
-import ExploreView from './views/ExploreView';
-import ProfileView from './views/ProfileView';
-import PartiesDashboardView from './views/PartiesDashboardView';
-import FullFeedView from './views/FullFeedView';
-import EducationView from './views/EducationView';
-import ArticlesListView from './views/ArticlesListView';
-import NewsHistoryView from './views/NewsHistoryView';
-import ChatView from './views/ChatView';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
 import { useAppContext } from './contexts/AppContext';
+
+const FeedView = lazy(() => import('./views/FeedView'));
+const ExploreView = lazy(() => import('./views/ExploreView'));
+const ProfileView = lazy(() => import('./views/ProfileView'));
+const PartiesDashboardView = lazy(() => import('./views/PartiesDashboardView'));
+const FullFeedView = lazy(() => import('./views/FullFeedView'));
+const EducationView = lazy(() => import('./views/EducationView'));
+const ArticlesListView = lazy(() => import('./views/ArticlesListView'));
+const NewsHistoryView = lazy(() => import('./views/NewsHistoryView'));
+const ChatView = lazy(() => import('./views/ChatView'));
 
 function App() {
   const { state, actions } = useAppContext();
@@ -215,7 +216,9 @@ function App() {
 
         <main id="main-content" className="flex-1 h-full relative overflow-hidden outline-none">
              {showDataModal && <DataTransparencyModal onClose={() => actions.setShowDataModal(false)} />}
-             {content}
+             <Suspense fallback={<LoadingScreen />}>
+               {content}
+             </Suspense>
         </main>
 
         <MobileNav />

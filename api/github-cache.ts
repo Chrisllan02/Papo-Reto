@@ -10,6 +10,8 @@ type VercelResponse = ServerResponse & {
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 
+const isSafeNumericId = (value?: string | null) => Boolean(value && /^\d+$/.test(value));
+
 const jsonResponse = (res: VercelResponse, status: number, data: any) => {
   res.status?.(status);
   res.setHeader('Content-Type', 'application/json');
@@ -21,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const type = getQueryValue(req.query?.type);
   const id = getQueryValue(req.query?.id);
 
-  if (type !== 'politician' || !id) {
+  if (type !== 'politician' || !isSafeNumericId(id)) {
     return jsonResponse(res, 400, { error: 'Invalid parameters.' });
   }
 
@@ -43,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const response = await fetch(apiUrl, { headers });
       if (response.status === 404) {
-        return jsonResponse(res, 204, { ok: true });
+        return jsonResponse(res, 404, { ok: false, found: false });
       }
       if (!response.ok) {
         return jsonResponse(res, response.status, { error: 'GitHub read error.' });
@@ -74,6 +76,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {
         body = {};
       }
+    }
+
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return jsonResponse(res, 400, { error: 'Invalid payload.' });
+    }
+
+    if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 250_000) {
+      return jsonResponse(res, 413, { error: 'Payload too large.' });
     }
 
     const payload = {

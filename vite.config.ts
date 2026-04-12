@@ -3,12 +3,13 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, (process as any).cwd(), '');
+  const cwd = process.cwd();
+  const env = loadEnv(mode, cwd, '');
   return {
     plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve((process as any).cwd(), './'),
+        '@': path.resolve(cwd, './'),
       },
     },
     define: {
@@ -20,6 +21,16 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom'],
+            charts: ['react-window', 'react-virtualized-auto-sizer'],
+            visuals: ['lucide-react', 'html2canvas'],
+            ai: ['@google/genai']
+          }
+        }
+      }
     },
   };
 });
