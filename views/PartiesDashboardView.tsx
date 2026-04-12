@@ -77,7 +77,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
     }, [politicians]);
 
     // Configuração do SVG Donut
-    const radius = 48;
+    const radius = 42;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (parseFloat(stats.percentage) / 100) * circumference;
 
@@ -93,15 +93,15 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
             {/* Left: Chart & Main Stat */}
             <div className="flex flex-col items-center justify-center shrink-0 relative">
                 <div className="relative w-52 h-52 md:w-60 md:h-60 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90 drop-shadow-xl" viewBox="0 0 100 100">
+                    <svg className="w-full h-full overflow-visible transform -rotate-90 drop-shadow-xl" viewBox="0 0 100 100">
                         {/* Track */}
-                        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="10" className="text-gray-200 dark:text-gray-700/50" />
+                        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200 dark:text-gray-700/50" />
                         {/* Progress */}
                         <circle 
                             cx="50" cy="50" r={radius} 
                             fill="none" 
                             stroke="currentColor" 
-                            strokeWidth="10" 
+                            strokeWidth="8" 
                             strokeDasharray={circumference}
                             strokeDashoffset={offset}
                             strokeLinecap="round"

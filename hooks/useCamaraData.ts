@@ -21,6 +21,8 @@ import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v2';
+const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
 
 const readSexCache = (): Record<string, SexCode> => {
     try {
@@ -36,6 +38,37 @@ const readSexCache = (): Record<string, SexCode> => {
 const writeSexCache = (cache: Record<string, SexCode>) => {
     try {
         localStorage.setItem(SEX_CACHE_KEY, JSON.stringify(cache));
+    } catch {
+        // Ignore storage quota issues.
+    }
+};
+
+const readBootstrapCache = () => {
+    try {
+        const raw = localStorage.getItem(BOOTSTRAP_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (Date.now() - Number(parsed.timestamp || 0) > BOOTSTRAP_CACHE_TTL) return null;
+        return parsed.data as {
+            politicians?: Politician[];
+            feedItems?: FeedItem[];
+            parties?: Party[];
+            articles?: EducationalArticle[];
+        };
+    } catch {
+        return null;
+    }
+};
+
+const writeBootstrapCache = (data: {
+    politicians: Politician[];
+    feedItems: FeedItem[];
+    parties: Party[];
+    articles: EducationalArticle[];
+}) => {
+    try {
+        localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
     } catch {
         // Ignore storage quota issues.
     }
@@ -97,14 +130,27 @@ const hydrateMissingSexMetadata = async (
 
 // --- Hook para Carga Inicial do App (Big Bang Load) ---
 export const useInitialData = () => {
-    const [politicians, setPoliticians] = useState<Politician[]>(POLITICIANS_DB);
-    const [feedItems, setFeedItems] = useState<FeedItem[]>(FEED_ITEMS);
-    const [parties, setParties] = useState<Party[]>(getStaticParties());
-    const [articles, setArticles] = useState<EducationalArticle[]>(EDUCATION_CAROUSEL as EducationalArticle[]); 
-    const [isLoading, setIsLoading] = useState(true);
+    const bootstrapCache = readBootstrapCache();
+    const [politicians, setPoliticians] = useState<Politician[]>(bootstrapCache?.politicians || POLITICIANS_DB);
+    const [feedItems, setFeedItems] = useState<FeedItem[]>(bootstrapCache?.feedItems || FEED_ITEMS);
+    const [parties, setParties] = useState<Party[]>(bootstrapCache?.parties || getStaticParties());
+    const [articles, setArticles] = useState<EducationalArticle[]>(bootstrapCache?.articles || (EDUCATION_CAROUSEL as EducationalArticle[])); 
+    const [isLoading, setIsLoading] = useState(!bootstrapCache);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        const cached = readBootstrapCache();
+        const hasFreshBootstrap = Boolean(cached);
+
+        if (hasFreshBootstrap) {
+            setPoliticians(cached!.politicians || POLITICIANS_DB);
+            setFeedItems(cached!.feedItems || FEED_ITEMS);
+            setParties(cached!.parties || getStaticParties());
+            setArticles(cached!.articles || (EDUCATION_CAROUSEL as EducationalArticle[]));
+            setIsLoading(false);
+            return;
+        }
+
         const loadAll = async () => {
             try {
                 // 1. Core Data (Parallel)
@@ -160,6 +206,12 @@ export const useInitialData = () => {
                             ...mapArticleStyle(index, item.topic)
                         }));
                         setArticles(newArticles);
+                        writeBootstrapCache({
+                            politicians: mergedPoliticians.length > 0 ? mergedPoliticians : POLITICIANS_DB,
+                            feedItems: feeds && feeds.length > 0 ? feeds : FEED_ITEMS,
+                            parties: parts && parts.length > 0 ? parts : getStaticParties(),
+                            articles: newArticles
+                        });
                     }
                 });
 
