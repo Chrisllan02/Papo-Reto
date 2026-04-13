@@ -151,6 +151,8 @@ export const useInitialData = () => {
             return;
         }
 
+        let cancelled = false;
+
         const loadAll = async () => {
             try {
                 // 1. Core Data (Parallel)
@@ -163,18 +165,40 @@ export const useInitialData = () => {
 
                 const mergedPoliticians = [...deps, ...sens].filter(Boolean);
                 if (mergedPoliticians.length > 0) {
-                    setPoliticians(mergedPoliticians);
-                    hydrateMissingSexMetadata(mergedPoliticians, setPoliticians);
+                    const nextPoliticians = mergedPoliticians;
+                    const nextFeedItems = feeds && feeds.length > 0 ? feeds : FEED_ITEMS;
+                    const nextParties = parts && parts.length > 0 ? parts : getStaticParties();
+                    const nextArticles = EDUCATION_CAROUSEL as EducationalArticle[];
+
+                    if (cancelled) return;
+                    setPoliticians(nextPoliticians);
+                    hydrateMissingSexMetadata(nextPoliticians, setPoliticians);
+                    setFeedItems(nextFeedItems);
+                    setParties(nextParties);
+                    setArticles(nextArticles);
+                    writeBootstrapCache({
+                        politicians: nextPoliticians,
+                        feedItems: nextFeedItems,
+                        parties: nextParties,
+                        articles: nextArticles
+                    });
                 } else {
+                    if (cancelled) return;
                     setPoliticians(POLITICIANS_DB);
+                    setFeedItems(feeds && feeds.length > 0 ? feeds : FEED_ITEMS);
+                    setParties(parts && parts.length > 0 ? parts : getStaticParties());
+                    setArticles(EDUCATION_CAROUSEL as EducationalArticle[]);
+                    writeBootstrapCache({
+                        politicians: POLITICIANS_DB,
+                        feedItems: feeds && feeds.length > 0 ? feeds : FEED_ITEMS,
+                        parties: parts && parts.length > 0 ? parts : getStaticParties(),
+                        articles: EDUCATION_CAROUSEL as EducationalArticle[]
+                    });
                 }
-                
-                if (feeds && feeds.length > 0) setFeedItems(feeds);
-                if (parts && parts.length > 0) setParties(parts);
-                else setParties(getStaticParties());
 
                 // 2. AI Content (Non-blocking, but part of init flow logic)
                 generateEducationalContent().then(eduContent => {
+                    if (cancelled) return;
                     if (eduContent && eduContent.length > 0) {
                         const mapArticleStyle = (index: number, topic: string) => {
                             const styles = [
@@ -205,6 +229,7 @@ export const useInitialData = () => {
                             impact: item.impact,           
                             ...mapArticleStyle(index, item.topic)
                         }));
+                        if (cancelled) return;
                         setArticles(newArticles);
                         writeBootstrapCache({
                             politicians: mergedPoliticians.length > 0 ? mergedPoliticians : POLITICIANS_DB,
@@ -216,15 +241,22 @@ export const useInitialData = () => {
                 });
 
             } catch (err) {
+                if (cancelled) return;
                 console.error("Critical Data Load Error:", err);
                 setError("Falha ao carregar dados do Congresso.");
             } finally {
                 // Minimum splash screen time for UX smoothness
-                setTimeout(() => setIsLoading(false), 2000);
+                setTimeout(() => {
+                    if (!cancelled) setIsLoading(false);
+                }, 1200);
             }
         };
 
         loadAll();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return { politicians, feedItems, parties, articles, isLoading, error, setPoliticians };

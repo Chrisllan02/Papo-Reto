@@ -27,6 +27,9 @@ const getAi = () => {
 const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
 const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
+const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
+const EDUCATION_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
+let educationalContentInFlight: Promise<GeneratedArticle[]> | null = null;
 
 const getCache = (key: string, ttl: number) => {
     try {
@@ -53,6 +56,22 @@ const setCache = (key: string, data: any) => {
             console.error("Critical storage error", err);
         }
     }
+};
+
+const getCachedEducationalContent = (): GeneratedArticle[] | null => {
+    try {
+        const item = localStorage.getItem(EDUCATION_CACHE_KEY);
+        if (!item) return null;
+        const { data, timestamp } = JSON.parse(item);
+        if (Date.now() - timestamp > EDUCATION_CACHE_TTL) return null;
+        return Array.isArray(data) ? data : null;
+    } catch {
+        return null;
+    }
+};
+
+const setCachedEducationalContent = (data: GeneratedArticle[]) => {
+    setCache(EDUCATION_CACHE_KEY, data);
 };
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -517,6 +536,11 @@ const checkQuotaError = (error: any): boolean => {
 };
 
 export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
+    const cached = getCachedEducationalContent();
+    if (cached && cached.length > 0) return cached;
+
+    if (educationalContentInFlight) return educationalContentInFlight;
+
     const ai = getAi();
     const staticContent: GeneratedArticle[] = [
         {
@@ -541,28 +565,57 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
             impact: "Garante que seus direitos fundamentais não sejam violados."
         }
     ];
-    if (!ai) return staticContent;
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Atue como um Professor de Direito Constitucional. Gere 3 artigos educativos curtos e diretos sobre política brasileira. Regras: Máximo 60 palavras, linguagem simples, JSON.`,
-            config: {
-                responseMimeType: "application/json",
-                maxOutputTokens: 4000, 
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: { title: { type: Type.STRING }, text: { type: Type.STRING }, topic: { type: Type.STRING }, legislation: { type: Type.STRING }, impact: { type: Type.STRING } },
-                        required: ["title", "text", "topic"]
+
+    educationalContentInFlight = (async () => {
+        if (!ai) {
+            setCachedEducationalContent(staticContent);
+            return staticContent;
+        }
+
+        try {
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `Atue como um Professor de Direito Constitucional. Gere 3 artigos educativos curtos e diretos sobre política brasileira. Regras: Máximo 60 palavras, linguagem simples, JSON.`,
+                config: {
+                    responseMimeType: "application/json",
+                    maxOutputTokens: 4000, 
+                    responseSchema: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: { title: { type: Type.STRING }, text: { type: Type.STRING }, topic: { type: Type.STRING }, legislation: { type: Type.STRING }, impact: { type: Type.STRING } },
+                            required: ["title", "text", "topic"]
+                        }
                     }
                 }
+            });
+            let jsonStr = response.text?.trim();
+            if (!jsonStr) {
+                setCachedEducationalContent(staticContent);
+                return staticContent;
             }
-        });
-        let jsonStr = response.text?.trim();
-        if (!jsonStr) return staticContent;
-        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-        else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
-        try { return JSON.parse(jsonStr) as GeneratedArticle[]; } catch (e) { return staticContent; }
-    } catch (error: any) { return staticContent; }
+            if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+            else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+            try {
+                const parsed = JSON.parse(jsonStr) as GeneratedArticle[];
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setCachedEducationalContent(parsed);
+                    return parsed;
+                }
+            } catch {
+                // fall through to static content
+            }
+            setCachedEducationalContent(staticContent);
+            return staticContent;
+        } catch (error: any) {
+            setCachedEducationalContent(staticContent);
+            return staticContent;
+        }
+    })();
+
+    try {
+        return await educationalContentInFlight;
+    } finally {
+        educationalContentInFlight = null;
+    }
 };

@@ -8,6 +8,7 @@ export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const CACHE_PREFIX = 'paporeto_cache_v7_complete_'; 
 export const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
 const TTL_STATIC = 1000 * 60 * 60 * 24; // 24 horas
+const inFlightCacheRequests = new Map<string, Promise<any>>();
 
 // --- CACHE UTILS ---
 export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T | null> => {
@@ -24,6 +25,12 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
         console.warn('Cache read error', e);
     }
 
+    const existingRequest = inFlightCacheRequests.get(cacheKey);
+    if (existingRequest) {
+        return existingRequest as Promise<T | null>;
+    }
+
+    const request = (async () => {
     try {
         const data = await fetcher();
         try {
@@ -35,7 +42,13 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
     } catch (e) {
         console.error(`Fetch error for ${key}`, e);
         return null;
+    } finally {
+        inFlightCacheRequests.delete(cacheKey);
     }
+    })();
+
+    inFlightCacheRequests.set(cacheKey, request);
+    return request;
 };
 
 const getGithubCacheEndpoint = () => {
