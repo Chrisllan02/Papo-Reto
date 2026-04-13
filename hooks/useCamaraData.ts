@@ -282,9 +282,13 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
     const [loadingStatus, setLoadingStatus] = useState<string>("Carregando...");
 
     useEffect(() => {
+        let cancelled = false;
+
         if (!initialCandidate) {
             setCandidate(null);
-            return;
+            return () => {
+                cancelled = true;
+            };
         }
 
         // Reset to initial state when ID changes
@@ -306,6 +310,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                 if (cached) {
                     const { data, timestamp } = JSON.parse(cached);
                     if (Date.now() - timestamp < TTL_DYNAMIC) {
+                        if (cancelled) return;
                         setCandidate(data);
                         setIsLoadingDetails(false);
                         return;
@@ -316,6 +321,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             try {
                 const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
                 if (hasProfileCacheData(cachedGithub)) {
+                    if (cancelled) return;
                     setCandidate(prev => prev ? { ...prev, ...cachedGithub } : (cachedGithub as Politician));
                     setIsLoadingDetails(false);
                     return;
@@ -323,30 +329,38 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             } catch {}
             
             if (hasFullData || !initialCandidate.hasApiIntegration) {
+                if (cancelled) return;
                 setIsLoadingDetails(false);
                 return;
             }
 
+            if (cancelled) return;
             setIsLoadingDetails(true);
             setLoadingStatus("Identificando parlamentar...");
             
             try {
                 // Step 1: Fast Enrich (Identity, Contact, Bio) - returns fast
                 const fastData = await enrichPoliticianFast(initialCandidate);
+                if (cancelled) return;
                 setCandidate(prev => prev ? { ...prev, ...fastData } : fastData);
 
                 // Step 2: Deep Enrich (Votes, Expenses, History) - takes time
                 // Pass callback to update status text
                 const fullData = await enrichPoliticianData(fastData, (msg) => setLoadingStatus(msg));
+                if (cancelled) return;
                 setCandidate(fullData);
             } catch (e) {
                 console.error(`Error enriching profile for ${initialCandidate.name}`, e);
             } finally {
+                if (cancelled) return;
                 setIsLoadingDetails(false);
             }
         };
 
         loadDeepData();
+        return () => {
+            cancelled = true;
+        };
     }, [initialCandidate?.id]); // Only re-run if the ID changes
 
     return { candidate, isLoadingDetails, loadingStatus };

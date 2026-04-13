@@ -11,12 +11,11 @@ interface FeedViewProps {
   politicians: Politician[];
   feedItems: FeedItem[];
   onSelectCandidate: (pol: Politician) => void;
-  onEducationClick: (id: number) => void;
   onSeeMore: () => void;
   onGoToExplore: (state: string) => void;
 }
 
-const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCandidate, onEducationClick, onSeeMore, onGoToExplore }) => {
+const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCandidate, onSeeMore, onGoToExplore }) => {
     const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItem | null>(null);
 
     const greeting = useMemo(() => {

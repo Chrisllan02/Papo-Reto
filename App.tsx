@@ -61,7 +61,7 @@ function App() {
   } else {
       switch (activeTab) {
           case 'feed':
-              content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onEducationClick={actions.markArticleAsRead} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
               break;
           case 'explore':
               content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} />;
@@ -76,7 +76,7 @@ function App() {
               content = <ChatView onBack={() => actions.setActiveTab('feed')} />;
               break;
           default:
-              content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onEducationClick={actions.markArticleAsRead} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
+              content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
       }
   }
 

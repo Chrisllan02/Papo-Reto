@@ -12,6 +12,36 @@ const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? valu
 
 const isSafeNumericId = (value?: string | null) => Boolean(value && /^\d+$/.test(value));
 
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const WINDOW_MS = 5 * 60 * 1000;
+const READ_LIMIT = 60;
+const WRITE_LIMIT = 12;
+
+const getClientBucket = (req: VercelRequest) => {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers?.['x-real-ip'] || 'unknown';
+  return String(ip).split(',')[0].trim() || 'unknown';
+};
+
+const isRateLimited = (bucket: string, method: string) => {
+  const key = `${bucket}:${method}`;
+  const now = Date.now();
+  const limit = method === 'PUT' ? WRITE_LIMIT : READ_LIMIT;
+  const current = rateLimitStore.get(key);
+
+  if (!current || current.resetAt <= now) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+
+  if (current.count >= limit) {
+    return true;
+  }
+
+  current.count += 1;
+  return false;
+};
+
 const jsonResponse = (res: VercelResponse, status: number, data: any) => {
   res.status?.(status);
   res.setHeader('Content-Type', 'application/json');
@@ -22,6 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = (req.method || 'GET').toUpperCase();
   const type = getQueryValue(req.query?.type);
   const id = getQueryValue(req.query?.id);
+  const bucket = getClientBucket(req);
+
+  if (isRateLimited(bucket, method)) {
+    return jsonResponse(res, 429, { error: 'Too many requests.' });
+  }
 
   if (type !== 'politician' || !isSafeNumericId(id)) {
     return jsonResponse(res, 400, { error: 'Invalid parameters.' });
