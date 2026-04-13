@@ -94,6 +94,8 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
 };
 
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => {
+    const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Handler para teclado (Acessibilidade)
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -103,10 +105,20 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
     };
 
     const handlePrefetch = () => {
-        if (typeof (window as any)?.requestIdleCallback === 'function') {
-            (window as any).requestIdleCallback(() => prefetchPoliticianProfile(pol));
-        } else {
-            setTimeout(() => prefetchPoliticianProfile(pol), 0);
+        if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+        prefetchTimerRef.current = setTimeout(() => {
+            if (typeof (window as any)?.requestIdleCallback === 'function') {
+                (window as any).requestIdleCallback(() => prefetchPoliticianProfile(pol));
+            } else {
+                prefetchPoliticianProfile(pol);
+            }
+        }, 250);
+    };
+
+    const cancelPrefetch = () => {
+        if (prefetchTimerRef.current) {
+            clearTimeout(prefetchTimerRef.current);
+            prefetchTimerRef.current = null;
         }
     };
 
@@ -115,7 +127,9 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
             onClick={() => onSelect(pol)} 
             onKeyDown={handleKeyDown}
             onMouseEnter={handlePrefetch}
+            onMouseLeave={cancelPrefetch}
             onFocus={handlePrefetch}
+            onBlur={cancelPrefetch}
             role="button"
             tabIndex={0}
             aria-label={`Ver perfil de ${pol.name}, ${pol.party} do ${pol.state}`}

@@ -89,6 +89,26 @@ const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
 };
 
 const prefetchInFlight = new Set<number>();
+const PREFETCH_MARK_KEY = 'paporeto_prefetched_profiles_v1';
+
+const readPrefetchMarks = (): Record<string, number> => {
+    try {
+        const raw = localStorage.getItem(PREFETCH_MARK_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+const writePrefetchMarks = (marks: Record<string, number>) => {
+    try {
+        localStorage.setItem(PREFETCH_MARK_KEY, JSON.stringify(marks));
+    } catch {
+        // Ignore storage quota issues.
+    }
+};
 
 export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000): Promise<any> => {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -648,6 +668,11 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
 export const prefetchPoliticianProfile = async (pol: Politician) => {
     if (!pol?.id || prefetchInFlight.has(pol.id)) return;
     if (pol.hasApiIntegration === false) return;
+
+    const marks = readPrefetchMarks();
+    const lastPrefetch = marks[String(pol.id)] || 0;
+    if (Date.now() - lastPrefetch < TTL_STATIC) return;
+
     prefetchInFlight.add(pol.id);
 
     try {
@@ -655,16 +680,24 @@ export const prefetchPoliticianProfile = async (pol: Politician) => {
         const cached = localStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
         if (cached) {
             const { timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < TTL_DYNAMIC) return;
+            if (Date.now() - timestamp < TTL_DYNAMIC) {
+                marks[String(pol.id)] = Date.now();
+                writePrefetchMarks(marks);
+                return;
+            }
         }
 
         const cachedGithub = await fetchCachedPolitician(pol.id);
         if (hasProfileCacheData(cachedGithub)) {
+            marks[String(pol.id)] = Date.now();
+            writePrefetchMarks(marks);
             return;
         }
 
         const fast = await enrichPoliticianFast(pol);
         await enrichPoliticianData(fast);
+        marks[String(pol.id)] = Date.now();
+        writePrefetchMarks(marks);
     } catch {
         // ignore prefetch errors
     } finally {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Landmark, ArrowRight, Sparkles } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
@@ -21,14 +21,25 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     const didactic = getDidacticContext(item.title, item.description, item.type);
     // Show snippet only if meaningful text exists and isn't just repetition
     const showSnippet = didactic.text && didactic.text.length > 10 && !didactic.text.startsWith(item.title.substring(0,20));
+    const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handlePrefetch = () => {
         if (politician) {
-            if (typeof (window as any)?.requestIdleCallback === 'function') {
-                (window as any).requestIdleCallback(() => prefetchPoliticianProfile(politician));
-            } else {
-                setTimeout(() => prefetchPoliticianProfile(politician), 0);
-            }
+            if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+            prefetchTimerRef.current = setTimeout(() => {
+                if (typeof (window as any)?.requestIdleCallback === 'function') {
+                    (window as any).requestIdleCallback(() => prefetchPoliticianProfile(politician));
+                } else {
+                    prefetchPoliticianProfile(politician);
+                }
+            }, 250);
+        }
+    };
+
+    const cancelPrefetch = () => {
+        if (prefetchTimerRef.current) {
+            clearTimeout(prefetchTimerRef.current);
+            prefetchTimerRef.current = null;
         }
     };
 
@@ -36,7 +47,9 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
         <article 
             onClick={() => onClick(item)}
             onMouseEnter={handlePrefetch}
+            onMouseLeave={cancelPrefetch}
             onFocus={handlePrefetch}
+            onBlur={cancelPrefetch}
             className="group relative glass-surface p-6 md:p-8 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full justify-between"
         >
             <div>
