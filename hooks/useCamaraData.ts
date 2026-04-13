@@ -16,7 +16,6 @@ import {
     fetchCachedPoliticianProfile,
     hasProfileCacheData
 } from '../services/camaraApi';
-import { generateEducationalContent } from '../services/ai';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
 
 type SexCode = 'F' | 'M';
@@ -137,6 +136,10 @@ export const useInitialData = () => {
     const [articles, setArticles] = useState<EducationalArticle[]>(bootstrapCache?.articles || (EDUCATION_CAROUSEL as EducationalArticle[])); 
     const [isLoading, setIsLoading] = useState(!bootstrapCache);
     const [error, setError] = useState<string | null>(null);
+    const [isEducationalContentLoading, setIsEducationalContentLoading] = useState(false);
+    const [educationalContentLoaded, setEducationalContentLoaded] = useState(
+        Boolean(bootstrapCache?.articles?.some(article => article.id >= 100))
+    );
 
     useEffect(() => {
         const cached = readBootstrapCache();
@@ -196,50 +199,6 @@ export const useInitialData = () => {
                     });
                 }
 
-                // 2. AI Content (Non-blocking, but part of init flow logic)
-                generateEducationalContent().then(eduContent => {
-                    if (cancelled) return;
-                    if (eduContent && eduContent.length > 0) {
-                        const mapArticleStyle = (index: number, topic: string) => {
-                            const styles = [
-                                { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb', activeColor: 'bg-spring/20 text-picture' },
-                                { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote', activeColor: 'bg-nuit/10 text-nuit' },
-                                { colorFrom: 'from-lime-700', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-lime-900/20 text-lime-900 border border-lime-700' }, // FIXED: Darker Contrast
-                                { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb', activeColor: 'bg-praxeti text-midnight' },
-                                { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote', activeColor: 'bg-blue-50 text-nuit' },
-                                { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-green-50 text-picture' }
-                            ];
-                            let base = styles[index % styles.length];
-                            let icon = base.icon;
-                            const t = topic ? topic.toLowerCase() : '';
-                            if (t.includes('orçamento') || t.includes('dinheiro') || t.includes('fundo') || t.includes('gasto')) icon = 'Banknote';
-                            if (t.includes('lei') || t.includes('pec') || t.includes('pl') || t.includes('constituição')) {
-                                icon = 'ScrollText';
-                                base = { colorFrom: 'from-amber-700', colorTo: 'to-orange-900', icon: 'ScrollText', activeColor: 'bg-amber-100 text-amber-900' }; // FIXED: Darker Contrast
-                            }
-                            return { ...base, icon };
-                        };
-
-                        const newArticles = eduContent.map((item, index) => ({
-                            id: index + 100,
-                            title: item.title,
-                            text: item.text,
-                            topic: item.topic, 
-                            legislation: item.legislation, 
-                            impact: item.impact,           
-                            ...mapArticleStyle(index, item.topic)
-                        }));
-                        if (cancelled) return;
-                        setArticles(newArticles);
-                        writeBootstrapCache({
-                            politicians: mergedPoliticians.length > 0 ? mergedPoliticians : POLITICIANS_DB,
-                            feedItems: feeds && feeds.length > 0 ? feeds : FEED_ITEMS,
-                            parties: parts && parts.length > 0 ? parts : getStaticParties(),
-                            articles: newArticles
-                        });
-                    }
-                });
-
             } catch (err) {
                 if (cancelled) return;
                 console.error("Critical Data Load Error:", err);
@@ -259,7 +218,61 @@ export const useInitialData = () => {
         };
     }, []);
 
-    return { politicians, feedItems, parties, articles, isLoading, error, setPoliticians };
+    const loadEducationalContent = useCallback(async () => {
+        if (educationalContentLoaded || isEducationalContentLoading) return;
+        setIsEducationalContentLoading(true);
+
+        try {
+            const { generateEducationalContent } = await import('../services/ai');
+            const eduContent = await generateEducationalContent();
+            if (!eduContent || eduContent.length === 0) return;
+
+            const mapArticleStyle = (index: number, topic: string) => {
+                const styles = [
+                    { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb', activeColor: 'bg-spring/20 text-picture' },
+                    { colorFrom: 'from-nuit', colorTo: 'to-midnight', icon: 'Banknote', activeColor: 'bg-nuit/10 text-nuit' },
+                    { colorFrom: 'from-lime-700', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-lime-900/20 text-lime-900 border border-lime-700' },
+                    { colorFrom: 'from-midnight', colorTo: 'to-black', icon: 'Lightbulb', activeColor: 'bg-praxeti text-midnight' },
+                    { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'Banknote', activeColor: 'bg-blue-50 text-nuit' },
+                    { colorFrom: 'from-picture', colorTo: 'to-green-900', icon: 'ScrollText', activeColor: 'bg-green-50 text-picture' }
+                ];
+                let base = styles[index % styles.length];
+                let icon = base.icon;
+                const t = topic ? topic.toLowerCase() : '';
+                if (t.includes('orçamento') || t.includes('dinheiro') || t.includes('fundo') || t.includes('gasto')) icon = 'Banknote';
+                if (t.includes('lei') || t.includes('pec') || t.includes('pl') || t.includes('constituição')) {
+                    icon = 'ScrollText';
+                    base = { colorFrom: 'from-amber-700', colorTo: 'to-orange-900', icon: 'ScrollText', activeColor: 'bg-amber-100 text-amber-900' };
+                }
+                return { ...base, icon };
+            };
+
+            const newArticles = eduContent.map((item, index) => ({
+                id: index + 100,
+                title: item.title,
+                text: item.text,
+                topic: item.topic,
+                legislation: item.legislation,
+                impact: item.impact,
+                ...mapArticleStyle(index, item.topic)
+            }));
+
+            setArticles(newArticles);
+            setEducationalContentLoaded(true);
+            writeBootstrapCache({
+                politicians,
+                feedItems,
+                parties,
+                articles: newArticles
+            });
+        } catch (error) {
+            console.warn('Educational content load failed', error);
+        } finally {
+            setIsEducationalContentLoading(false);
+        }
+    }, [educationalContentLoaded, feedItems, isEducationalContentLoading, parties, politicians]);
+
+    return { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent, isEducationalContentLoading };
 };
 
 // --- Hook para Perfil Detalhado (Progressive Enrichment) ---

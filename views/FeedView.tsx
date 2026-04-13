@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Activity, Coffee } from 'lucide-react';
-import { FeedItem, Politician, EducationalArticle } from '../types';
+import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
 import FeedDetailModal from '../components/FeedDetailModal';
@@ -10,14 +10,13 @@ import FeedCard from '../components/FeedCard';
 interface FeedViewProps {
   politicians: Politician[];
   feedItems: FeedItem[];
-  articles: EducationalArticle[];
   onSelectCandidate: (pol: Politician) => void;
   onEducationClick: (id: number) => void;
   onSeeMore: () => void;
   onGoToExplore: (state: string) => void;
 }
 
-const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, articles, onSelectCandidate, onEducationClick, onSeeMore, onGoToExplore }) => {
+const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCandidate, onEducationClick, onSeeMore, onGoToExplore }) => {
     const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItem | null>(null);
 
     const greeting = useMemo(() => {

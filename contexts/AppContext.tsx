@@ -64,7 +64,7 @@ const AppContext = createContext<{ state: AppState; actions: AppActions } | null
 // --- Provider ---
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Use Custom Hook for Data Loading
-    const { politicians, feedItems, parties, articles, isLoading, error, setPoliticians } = useInitialData();
+    const { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent } = useInitialData();
 
   const [activeTab, setActiveTab] = useState('feed');
   
@@ -153,8 +153,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const savedLoc = localStorage.getItem('paporeto_user_location');
       if (savedLoc) {
           setUserLocation(savedLoc);
-      } else {
-          detectLocation();
       }
   }, []);
 
@@ -285,6 +283,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setExplorePreselectedState(state);
       setActiveTab('explore');
   };
+
+  useEffect(() => {
+      if (activeTab === 'articles') {
+          void loadEducationalContent();
+      }
+  }, [activeTab, loadEducationalContent]);
 
   const value = {
     state: {
