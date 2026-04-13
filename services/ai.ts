@@ -1,27 +1,5 @@
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsArticle } from '../types';
-
-// --- CONFIGURAÇÃO SEGURA DO CLIENTE AI ---
-let aiClient: GoogleGenAI | null = null;
-
-const getAi = () => {
-    if (aiClient) return aiClient;
-    
-    const key = import.meta.env?.VITE_API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : undefined);
-    if (!key || key.trim() === "") {
-        console.warn("Aviso: API_KEY do Google Gemini não encontrada. Funcionalidades de IA usarão fallback.");
-        return null;
-    }
-    
-    try {
-        aiClient = new GoogleGenAI({ apiKey: key });
-        return aiClient;
-    } catch (e) {
-        console.error("Erro ao inicializar GoogleGenAI:", e);
-        return null;
-    }
-};
 
 // Cache Utils
 const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
@@ -72,6 +50,21 @@ const getCachedEducationalContent = (): GeneratedArticle[] | null => {
 
 const setCachedEducationalContent = (data: GeneratedArticle[]) => {
     setCache(EDUCATION_CACHE_KEY, data);
+};
+
+const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): Promise<T | null> => {
+    try {
+        const response = await fetch('/api/ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, ...payload })
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        return (json?.data ?? null) as T | null;
+    } catch {
+        return null;
+    }
 };
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -321,27 +314,9 @@ export function getEmergencyNews(): NewsArticle[] {
 
 // --- GERAÇÃO DE IMAGEM DE NOTÍCIA (GOOGLE GEMINI) ---
 export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    const ai = getAi();
-    if (!ai) return null;
     try {
-        const prompt = `Create a high-quality abstract 3D isometric editorial illustration for a news article titled: "${headline}".
-        Style: Minimalist, Corporate Memphis 3D, Political symbolism.
-        Mandatory Constraints: NO TEXT, NO HUMAN FACES, NO REALISTIC PEOPLE, NO CROWDS.
-        Colors: Professional palette inspired by Brazil (Deep Green, Navy Blue, Golden Yellow, White, Grey).
-        Composition: Clean background, single central subject (e.g. 3D gavel, document, stylized building, chart, abstract shapes).`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [{ text: prompt }] },
-            config: { imageConfig: { aspectRatio: "16:9" } }
-        });
-        
-        if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-            }
-        }
-        return null;
+        const data = await callAiApi<{ imageDataUrl: string | null }>('generateNewsImage', { headline });
+        return data?.imageDataUrl || null;
     } catch (e) {
         return null;
     }
@@ -433,18 +408,9 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
 };
 
 export const speakContent = async (text: string): Promise<Uint8Array | null> => {
-    const ai = getAi();
-    if (!ai) return null;
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text: `Diga de forma clara e profissional: ${text}` }] }],
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
-            },
-        });
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        const data = await callAiApi<{ audioBase64: string | null }>('speakContent', { text });
+        const base64Audio = data?.audioBase64;
         if (base64Audio) {
             const binaryString = atob(base64Audio);
             const bytes = new Uint8Array(binaryString.length);
@@ -461,39 +427,17 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
 
 // ... Resto das funções auxiliares (getSearchContext, chatWithGemini, etc.) mantidas intactas ...
 export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
-    const ai = getAi();
-    if (!ai) return null;
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Pesquise sobre: "${query}"...`,
-            config: { tools: [{ googleSearch: {} }] }
-        });
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const sources = groundingChunks.map((c: any) => ({ web: c.web ? { uri: c.web.uri, title: c.web.title } : undefined })).filter((s: any) => s.web);
-        return { text: response.text || "Sem resumo.", sources: sources };
+        const data = await callAiApi<AIResponse>('getSearchContext', { query });
+        return data || null;
     } catch (error) { return null; }
 };
 
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
-    const ai = getAi();
-    if (!ai) return { text: "⚠️ Sistema offline. Verifique a API Key." };
     try {
-        let model = 'gemini-3-pro-preview'; 
-        let tools: any[] = [];
-        let config: any = {};
-        switch (mode) {
-            case 'fast': model = 'gemini-flash-lite-latest'; break;
-            case 'search': model = 'gemini-3-flash-preview'; tools = [{ googleSearch: {} }]; break;
-            case 'location': model = 'gemini-flash-latest'; tools = [{ googleMaps: {} }]; break;
-            case 'thinking': model = 'gemini-3-pro-preview'; config = { thinkingConfig: { thinkingBudget: 32768 } }; break;
-        }
-        const contents = [...history, { role: 'user', parts: [{ text: message }] }];
-        const response = await ai.models.generateContent({ model, contents, config: { ...config, tools: tools.length > 0 ? tools : undefined } });
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const searchSources = groundingChunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
-        const mapSources = groundingChunks.filter((c: any) => c.maps).map((c: any) => ({ uri: c.maps.uri, title: c.maps.title, source: c.maps.placeAnswerSources?.[0]?.reviewSnippets?.[0]?.snippet || "Localização" }));
-        return { text: response.text || "Sem resposta.", searchSources, mapSources };
+        const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
+        if (data) return data;
+        return { text: "⚠️ Sistema offline. Verifique a conexão." };
     } catch (error: any) {
         if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido." };
         return { text: "Erro ao processar mensagem." };
@@ -501,29 +445,16 @@ export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' 
 };
 
 export const generateCampaignImage = async (prompt: string, aspectRatio: string): Promise<string | null> => {
-    const ai = getAi();
-    if (!ai) return null;
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', contents: { parts: [{ text: prompt }] },
-            config: { imageConfig: { aspectRatio: aspectRatio as any } }
-        });
-        if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
-        }
-        return null;
+        const data = await callAiApi<{ imageDataUrl: string | null }>('generateCampaignImage', { prompt, aspectRatio });
+        return data?.imageDataUrl || null;
     } catch (error) { return null; }
 };
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
-    const ai = getAi();
-    if (!ai) return "";
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [{ inlineData: { mimeType, data: base64Audio } }, { text: "Transcreva o áudio." }] }
-        });
-        return response.text || "";
+        const data = await callAiApi<{ text: string }>('transcribeAudio', { base64Audio, mimeType });
+        return data?.text || "";
     } catch (error) { return ""; }
 };
 
@@ -541,7 +472,6 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
 
     if (educationalContentInFlight) return educationalContentInFlight;
 
-    const ai = getAi();
     const staticContent: GeneratedArticle[] = [
         {
             title: "O Orçamento Público",
@@ -567,47 +497,15 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
     ];
 
     educationalContentInFlight = (async () => {
-        if (!ai) {
-            setCachedEducationalContent(staticContent);
-            return staticContent;
-        }
-
         try {
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `Atue como um Professor de Direito Constitucional. Gere 3 artigos educativos curtos e diretos sobre política brasileira. Regras: Máximo 60 palavras, linguagem simples, JSON.`,
-                config: {
-                    responseMimeType: "application/json",
-                    maxOutputTokens: 4000, 
-                    responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: { title: { type: Type.STRING }, text: { type: Type.STRING }, topic: { type: Type.STRING }, legislation: { type: Type.STRING }, impact: { type: Type.STRING } },
-                            required: ["title", "text", "topic"]
-                        }
-                    }
-                }
-            });
-            let jsonStr = response.text?.trim();
-            if (!jsonStr) {
-                setCachedEducationalContent(staticContent);
-                return staticContent;
-            }
-            if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-            else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
-            try {
-                const parsed = JSON.parse(jsonStr) as GeneratedArticle[];
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    setCachedEducationalContent(parsed);
-                    return parsed;
-                }
-            } catch {
-                // fall through to static content
+            const data = await callAiApi<GeneratedArticle[]>('generateEducationalContent');
+            if (Array.isArray(data) && data.length > 0) {
+                setCachedEducationalContent(data);
+                return data;
             }
             setCachedEducationalContent(staticContent);
             return staticContent;
-        } catch (error: any) {
+        } catch {
             setCachedEducationalContent(staticContent);
             return staticContent;
         }

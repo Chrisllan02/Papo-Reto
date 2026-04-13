@@ -51,16 +51,16 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
     return request;
 };
 
-const getGithubCacheEndpoint = () => {
+const getProfileCacheEndpoint = () => {
     try {
-        return import.meta.env?.VITE_GITHUB_CACHE_ENDPOINT || '/api/github-cache';
+        return import.meta.env?.VITE_PROFILE_CACHE_ENDPOINT || '/api/profile-cache';
     } catch {
-        return '/api/github-cache';
+        return '/api/profile-cache';
     }
 };
 
 const fetchCachedPolitician = async (id: number): Promise<Partial<Politician> | null> => {
-    const endpoint = getGithubCacheEndpoint();
+    const endpoint = getProfileCacheEndpoint();
     try {
         const res = await fetch(`${endpoint}?type=politician&id=${id}`);
         if (!res.ok) return null;
@@ -89,7 +89,7 @@ export const hasProfileCacheData = (cached?: Partial<Politician> | null) => {
 };
 
 const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
-    const endpoint = getGithubCacheEndpoint();
+    const endpoint = getProfileCacheEndpoint();
     try {
         await fetch(`${endpoint}?type=politician&id=${id}`, {
             method: 'PUT',
