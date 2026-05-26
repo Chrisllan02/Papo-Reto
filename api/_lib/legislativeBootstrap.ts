@@ -2,6 +2,7 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
+const UPSTREAM_TIMEOUT_MS = 6000;
 
 const PARTY_FALLBACK: Record<string, { nome: string; ideology: 'Esquerda' | 'Centro' | 'Direita' }> = {
   PT: { nome: 'Partido dos Trabalhadores', ideology: 'Esquerda' },
@@ -46,34 +47,42 @@ const formatText = (text: string) => {
 };
 
 const fetchJson = async <T>(url: string): Promise<T | null> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
       },
-      signal: AbortSignal.timeout(15_000),
+      signal: controller.signal,
     });
     if (!res.ok) return null;
     return await res.json() as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
 const fetchText = async (url: string): Promise<string | null> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'text/xml, application/xml;q=0.9, */*;q=0.8',
         'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
       },
-      signal: AbortSignal.timeout(15_000),
+      signal: controller.signal,
     });
     if (!res.ok) return null;
     return await res.text();
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
