@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { buildLegislativeBootstrap, type LegislativeBootstrap } from '../domain/legislative/bootstrap';
+import { buildLegislativeBootstrap, type LegislativeBootstrap } from './_lib/legislativeBootstrap';
 import { readServerCache, writeServerCache } from './_lib/serverCache';
 
 type VercelRequest = IncomingMessage & {

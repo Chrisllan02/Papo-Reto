@@ -17,7 +17,14 @@ import {
     hasProfileCacheData
 } from '../services/camaraApi';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
-import type { LegislativeBootstrap } from '../domain/legislative/bootstrap';
+
+type LegislativeBootstrap = {
+    politicians: Politician[];
+    feedItems: FeedItem[];
+    parties: Party[];
+    articles?: EducationalArticle[];
+    generatedAt?: string;
+};
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
@@ -185,15 +192,20 @@ export const useInitialData = () => {
                 const serverBootstrap = await fetchServerBootstrap();
                 if (serverBootstrap && serverBootstrap.politicians.length > 0) {
                     if (cancelled) return;
+                    const nextFeedItems = serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS;
+                    const nextParties = serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties();
+                    const nextArticles = serverBootstrap.articles && serverBootstrap.articles.length > 0
+                        ? serverBootstrap.articles
+                        : (EDUCATION_CAROUSEL as EducationalArticle[]);
                     setPoliticians(serverBootstrap.politicians);
-                    setFeedItems(serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS);
-                    setParties(serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties());
-                    setArticles(serverBootstrap.articles?.length > 0 ? serverBootstrap.articles : (EDUCATION_CAROUSEL as EducationalArticle[]));
+                    setFeedItems(nextFeedItems);
+                    setParties(nextParties);
+                    setArticles(nextArticles);
                     writeBootstrapCache({
                         politicians: serverBootstrap.politicians,
-                        feedItems: serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS,
-                        parties: serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties(),
-                        articles: serverBootstrap.articles?.length > 0 ? serverBootstrap.articles : (EDUCATION_CAROUSEL as EducationalArticle[])
+                        feedItems: nextFeedItems,
+                        parties: nextParties,
+                        articles: nextArticles
                     });
                     setIsLoading(false);
                     hydrateMissingSexMetadata(serverBootstrap.politicians, setPoliticians);
