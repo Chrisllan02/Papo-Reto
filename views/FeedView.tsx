@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Activity, Coffee } from 'lucide-react';
+import { Activity, Database, Landmark, Newspaper } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
 import FeedDetailModal from '../components/FeedDetailModal';
 import StateSpotlightWidget from '../components/StateSpotlightWidget';
 import FeedCard from '../components/FeedCard';
+import DataState from '../components/DataState';
 
 interface FeedViewProps {
   politicians: Politician[];
@@ -26,6 +27,8 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
     }, []);
 
     const spotlightCandidates = useMemo(() => politicians.slice(0, 6), [politicians]);
+    const deputiesCount = useMemo(() => politicians.filter(pol => pol.hasApiIntegration !== false).length, [politicians]);
+    const senatorsCount = Math.max(0, politicians.length - deputiesCount);
 
     useEffect(() => {
         if (spotlightCandidates.length === 0) return;
@@ -67,6 +70,36 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     </div>
                 </header>
 
+                <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8" aria-label="Resumo dos dados carregados">
+                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-200 flex items-center justify-center">
+                            <Landmark size={18} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Parlamentares</p>
+                            <p className="text-lg font-black text-midnight dark:text-white">{politicians.length}</p>
+                        </div>
+                    </div>
+                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-200 flex items-center justify-center">
+                            <Newspaper size={18} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Atividades</p>
+                            <p className="text-lg font-black text-midnight dark:text-white">{feedItems.length}</p>
+                        </div>
+                    </div>
+                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 flex items-center justify-center">
+                            <Database size={18} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Fontes</p>
+                            <p className="text-lg font-black text-midnight dark:text-white">{deputiesCount > 0 ? 'Câmara' : 'Cache'}{senatorsCount > 0 ? ' + Senado' : ''}</p>
+                        </div>
+                    </div>
+                </section>
+
                 {/* News Ticker */}
                 <NewsTicker />
 
@@ -88,16 +121,12 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     </div>
 
                     {feedItems.length === 0 ? (
-                        // Empty State Amigável
-                        <div className="flex flex-col items-center justify-center py-16 px-4 text-center opacity-60">
-                            <div className="bg-white/50 dark:bg-white/10 p-6 rounded-full mb-4 animate-pulse">
-                                <Coffee size={48} className="text-gray-400 dark:text-gray-500" />
-                            </div>
-                            <h3 className="text-lg font-black text-gray-600 dark:text-gray-300 mb-2">Tudo calmo em Brasília...</h3>
-                            <p className="text-sm text-gray-500 max-w-xs leading-relaxed">
-                                Nenhuma atividade recente registrada nas últimas horas. Aproveite a pausa!
-                            </p>
-                        </div>
+                        <DataState
+                            title="Sem atividades recentes"
+                            description="Nao encontramos movimentacoes novas para exibir agora. Voce ainda pode explorar parlamentares, partidos e conteudos educativos."
+                            actionLabel="Explorar politicos"
+                            onAction={() => onGoToExplore('')}
+                        />
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                             {feedItems.slice(0, 6).map((item) => (

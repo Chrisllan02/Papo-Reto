@@ -102,6 +102,19 @@ const LoadingScreen: React.FC = () => {
             transition: color 0.3s ease; 
         }
 
+        .loading-subtitle {
+            margin-top: -3rem;
+            max-width: 22rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        .dark .loading-subtitle {
+            color: #cbd5e1;
+        }
+
         /* Dark mode support */
         .dark .loading-text-wrapper {
              color: #EDF5FA; 
@@ -240,6 +253,9 @@ const LoadingScreen: React.FC = () => {
             <span className="text-ghost">CARREGANDO...</span>
             <span className="text-visible">CARREGANDO...</span>
         </div>
+        <p className="loading-subtitle">
+            Sincronizando dados legislativos, cache e fontes oficiais.
+        </p>
       </div>
     </div>
   );

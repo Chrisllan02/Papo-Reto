@@ -1,6 +1,7 @@
 // Reference to vite/client removed to avoid type resolution errors
 
 interface ImportMetaEnv {
+  readonly VITE_BOOTSTRAP_ENDPOINT?: string;
   readonly VITE_PROFILE_CACHE_ENDPOINT?: string;
   readonly VITE_LEGISLATIVE_API_PROXY?: string;
 }

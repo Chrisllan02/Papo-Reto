@@ -34,6 +34,12 @@ GOOGLE_API_KEY=...
 # Opcional: cache persistente de perfis no Vercel Blob
 BLOB_READ_WRITE_TOKEN=...
 
+# Opcional: protege endpoints manuais de cron quando chamados fora do Vercel Cron
+CRON_SECRET=...
+
+# Opcional: sobrescreve o endpoint de bootstrap no cliente
+VITE_BOOTSTRAP_ENDPOINT=/api/bootstrap
+
 # Opcional: sobrescreve o endpoint proxy legislativo no cliente
 VITE_LEGISLATIVE_API_PROXY=/api/camara
 
@@ -49,6 +55,8 @@ VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 - `services/camaraApi.ts` integra dados legislativos e usa o proxy serverless quando aplicavel.
 - `services/ai.ts` conversa com `/api/ai` e mantem fallbacks/cache no navegador.
 - `api/camara.ts` proxy restrito para hosts legislativos permitidos.
+- `api/bootstrap.ts` entrega dados iniciais com cache server-side.
+- `api/cron/refresh-legislative-data.ts` aquece o cache compartilhado.
 - `api/ai.ts` endpoint serverless para Gemini.
 - `api/profile-cache.ts` cache de perfis com Vercel Blob e fallback em memoria.
 - `api/health.ts` diagnostico simples das integracoes configuradas.
@@ -56,9 +64,20 @@ VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 ## Endpoints Serverless
 
 - `GET /api/health`: status basico da aplicacao e disponibilidade de integracoes, sem expor segredos.
+- `GET /api/bootstrap`: bootstrap de parlamentares, feed, partidos e artigos, com cache server-side.
 - `GET /api/camara?url=...`: proxy restrito para `dadosabertos.camara.leg.br` e `legis.senado.leg.br`.
+- `GET /api/cron/refresh-legislative-data`: atualiza o cache server-side. Se `CRON_SECRET` existir, chamadas manuais precisam de `Authorization: Bearer <secret>`.
 - `POST /api/ai`: acoes de IA usadas pelo chat, imagens, voz, transcricao e conteudo educativo.
 - `GET|PUT /api/profile-cache?type=politician&id=...`: cache de perfis politicos.
+
+## Cron Jobs
+
+O `vercel.json` agenda o aquecimento de dados legislativos:
+
+- Segunda a sexta, a cada 30 minutos entre 10h e 23h UTC.
+- Sabado e domingo, uma vez ao dia.
+
+Esses jobs chamam `/api/cron/refresh-legislative-data`, que atualiza o bootstrap compartilhado. Quando `BLOB_READ_WRITE_TOKEN` esta configurado, o cache persiste no Vercel Blob; caso contrario, funciona como cache de memoria por instancia.
 
 ## Qualidade
 
@@ -75,6 +94,8 @@ Os testes atuais cobrem:
 - proxy legislativo
 - endpoint de health
 - validacao basica do handler `/api/camara`
+- bootstrap server-side
+- componente reutilizavel de estado de dados
 
 ## Deploy
 

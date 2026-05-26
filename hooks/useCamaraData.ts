@@ -17,6 +17,7 @@ import {
     hasProfileCacheData
 } from '../services/camaraApi';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
+import type { LegislativeBootstrap } from '../domain/legislative/bootstrap';
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
@@ -70,6 +71,29 @@ const writeBootstrapCache = (data: {
         localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
     } catch {
         // Ignore storage quota issues.
+    }
+};
+
+const isLocalHost = () => {
+    if (typeof window === 'undefined') return false;
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+};
+
+const fetchServerBootstrap = async (): Promise<LegislativeBootstrap | null> => {
+    if (isLocalHost() && !import.meta.env?.VITE_BOOTSTRAP_ENDPOINT) return null;
+    const endpoint = import.meta.env?.VITE_BOOTSTRAP_ENDPOINT || '/api/bootstrap';
+
+    try {
+        const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+        if (!response.ok) return null;
+        const json = await response.json();
+        const data = json?.data as LegislativeBootstrap | undefined;
+        if (!data || !Array.isArray(data.politicians) || !Array.isArray(data.feedItems) || !Array.isArray(data.parties)) {
+            return null;
+        }
+        return data;
+    } catch {
+        return null;
     }
 };
 
@@ -158,6 +182,24 @@ export const useInitialData = () => {
 
         const loadAll = async () => {
             try {
+                const serverBootstrap = await fetchServerBootstrap();
+                if (serverBootstrap && serverBootstrap.politicians.length > 0) {
+                    if (cancelled) return;
+                    setPoliticians(serverBootstrap.politicians);
+                    setFeedItems(serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS);
+                    setParties(serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties());
+                    setArticles(serverBootstrap.articles?.length > 0 ? serverBootstrap.articles : (EDUCATION_CAROUSEL as EducationalArticle[]));
+                    writeBootstrapCache({
+                        politicians: serverBootstrap.politicians,
+                        feedItems: serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS,
+                        parties: serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties(),
+                        articles: serverBootstrap.articles?.length > 0 ? serverBootstrap.articles : (EDUCATION_CAROUSEL as EducationalArticle[])
+                    });
+                    setIsLoading(false);
+                    hydrateMissingSexMetadata(serverBootstrap.politicians, setPoliticians);
+                    return;
+                }
+
                 // 1. Core Data (Parallel)
                 const [deps, sens, feeds, parts] = await Promise.all([
                     fetchDeputados().catch(() => []),

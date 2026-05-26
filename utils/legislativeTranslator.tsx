@@ -2,6 +2,7 @@ import React from 'react';
 import { GraduationCap, HeartPulse, Banknote, Shield, Briefcase, Leaf, Gavel, Activity } from 'lucide-react';
 import { Glossary, DICTIONARY } from '../components/Glossary';
 import { FeedCategory } from '../types';
+import { detectLegislativeCategory } from '../domain/legislative/classification';
 
 // Dicionário Constitucional
 export const CONSTITUTION_TOPICS: Record<string, { art: string, text: string }> = {
@@ -41,30 +42,7 @@ export const LEGISLATIVE_TYPES: Record<string, string> = {
  * Deve ser usado na camada de dados (fetch/API) e não na renderização.
  */
 export const detectCategory = (text: string): FeedCategory => {
-    const t = text.toLowerCase();
-    
-    if (t.includes('educação') || t.includes('escola') || t.includes('ensino') || t.includes('fundeb')) 
-        return 'education';
-    
-    if (t.includes('saúde') || t.includes('sus') || t.includes('médico') || t.includes('hospital') || t.includes('vacina')) 
-        return 'health';
-    
-    if (t.includes('economia') || t.includes('tribut') || t.includes('imposto') || t.includes('dinheiro') || t.includes('orçamento') || t.includes('fiscal')) 
-        return 'economy';
-    
-    if (t.includes('segurança') || t.includes('polícia') || t.includes('crime') || t.includes('pena') || t.includes('armas')) 
-        return 'security';
-    
-    if (t.includes('trabalho') || t.includes('emprego') || t.includes('salário') || t.includes('clt')) 
-        return 'work';
-    
-    if (t.includes('ambiente') || t.includes('floresta') || t.includes('animais') || t.includes('clima') || t.includes('água')) 
-        return 'environment';
-    
-    if (t.includes('justiça') || t.includes('lei') || t.includes('direito') || t.includes('código') || t.includes('constituição')) 
-        return 'justice';
-
-    return 'activity';
+    return detectLegislativeCategory(text);
 };
 
 /**
