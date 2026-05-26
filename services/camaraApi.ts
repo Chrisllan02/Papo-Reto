@@ -2,7 +2,7 @@
 import { Politician, FeedItem, Party, ExpenseCategory, YearStats, Speech, ExpenseItem, LegislativeVote, LegislativeEvent, Remuneration } from '../types';
 import { PARTY_METADATA } from '../constants';
 import { detectCategory } from '../utils/legislativeTranslator';
-import { getLegislativeApiUrl } from '../utils/legislativeApiProxy';
+import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 // FORCE CACHE INVALIDATION TO GET NEW SPEECH DATA
@@ -54,7 +54,10 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
 
 const getProfileCacheEndpoint = () => {
     try {
-        return import.meta.env?.VITE_PROFILE_CACHE_ENDPOINT || '/api/profile-cache';
+        const configured = import.meta.env?.VITE_PROFILE_CACHE_ENDPOINT;
+        if (configured) return configured;
+        const origin = getConfiguredApiOrigin();
+        return origin ? `${origin}/api/profile-cache` : '/api/profile-cache';
     } catch {
         return '/api/profile-cache';
     }

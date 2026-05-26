@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_BOOTSTRAP_ENDPOINT?: string;
   readonly VITE_PROFILE_CACHE_ENDPOINT?: string;
   readonly VITE_LEGISLATIVE_API_PROXY?: string;
+  readonly VITE_PUBLIC_API_ORIGIN?: string;
 }
 
 interface ImportMeta {

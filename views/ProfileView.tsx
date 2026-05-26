@@ -290,6 +290,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { percentage, startStr: formatDate(start), endStr: formatDate(end) };
   }, [candidate.mandate]);
 
+  const profileSummary = useMemo(() => {
+      const activitiesCount = (candidate.bills?.length || 0) + (candidate.votingHistory?.length || 0) + (candidate.reportedBills?.length || 0) + (candidate.speeches?.length || 0);
+      const attendance = Math.round(displayStats.attendancePct || displayStats.plenary?.percentage || 0);
+      const frontsCount = candidate.fronts?.length || 0;
+      const spending = displayStats.spending || 0;
+      return { activitiesCount, attendance, frontsCount, spending };
+  }, [candidate, displayStats]);
+
+  const QuickMetric = ({ icon: Icon, label, value, hint, tone }: { icon: any; label: string; value: string; hint: string; tone: string }) => (
+      <div className="glass-surface rounded-2xl p-4 md:p-5 border border-white/60 dark:border-white/10 min-w-0">
+          <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
+                  <Icon size={18} />
+              </div>
+              <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
+                  <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
+                  <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
+              </div>
+          </div>
+      </div>
+  );
+
   const DnaDonutChart = () => {
         const size = 220; 
         const strokeWidth = 35; 
@@ -389,7 +412,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                           <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-xs font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.party}</span>
                           <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-xs font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.state}</span>
                       </div>
-                      <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl truncate">{candidate.name}</h1>
+                      <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl break-words">{candidate.name}</h1>
                       <p className="text-white/90 text-xs md:text-sm font-bold uppercase tracking-widest mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
                         <span>{candidate.role}</span>
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/10 backdrop-blur-md shadow-sm ${statusDisplay.bg}`}>
@@ -435,6 +458,37 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                 <div className="relative w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-2"><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div></div>
                 <div className="flex justify-between text-[9px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest"><span>Início: {mandateInfo.startStr}</span><span>Fim: {mandateInfo.endStr}</span></div>
           </div>
+
+          <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4" aria-label="Resumo do parlamentar">
+              <QuickMetric
+                  icon={CheckCircle2}
+                  label="Presença"
+                  value={`${profileSummary.attendance}%`}
+                  hint={profileSummary.attendance > 0 ? 'Base oficial do mandato' : 'Aguardando dados detalhados'}
+                  tone="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+              />
+              <QuickMetric
+                  icon={ScrollText}
+                  label="Atividades"
+                  value={profileSummary.activitiesCount.toLocaleString('pt-BR')}
+                  hint="Propostas, votos, relatorias e discursos"
+                  tone="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              />
+              <QuickMetric
+                  icon={Flag}
+                  label="Frentes"
+                  value={profileSummary.frontsCount.toLocaleString('pt-BR')}
+                  hint="Temas de atuação parlamentar"
+                  tone="bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+              />
+              <QuickMetric
+                  icon={Wallet}
+                  label="Custos"
+                  value={profileSummary.spending > 0 ? profileSummary.spending.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : 'Sem dados'}
+                  hint={selectedYear === 'total' ? 'Total disponível' : `Recorte de ${selectedYear}`}
+                  tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+              />
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
               <BioCard candidate={candidate} isLoading={isLoadingDetails} />

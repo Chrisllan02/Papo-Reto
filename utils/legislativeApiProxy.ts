@@ -3,6 +3,22 @@ const PROXYABLE_LEGISLATIVE_HOSTS = new Set([
   'legis.senado.leg.br',
 ]);
 
+export const getConfiguredApiOrigin = (): string => {
+  const explicitOrigin = import.meta.env?.VITE_PUBLIC_API_ORIGIN;
+  if (explicitOrigin) return explicitOrigin.replace(/\/$/, '');
+
+  const bootstrapEndpoint = import.meta.env?.VITE_BOOTSTRAP_ENDPOINT;
+  if (bootstrapEndpoint) {
+    try {
+      return new URL(bootstrapEndpoint).origin;
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+};
+
 export const getLegislativeApiUrl = (url: string): string => {
   try {
     const parsed = new URL(url);
@@ -11,14 +27,15 @@ export const getLegislativeApiUrl = (url: string): string => {
     }
 
     const configuredEndpoint = import.meta.env?.VITE_LEGISLATIVE_API_PROXY;
-    if (!configuredEndpoint && typeof window !== 'undefined') {
+    const configuredOrigin = getConfiguredApiOrigin();
+    if (!configuredEndpoint && !configuredOrigin && typeof window !== 'undefined') {
       const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
       if (localHosts.has(window.location.hostname)) {
         return url;
       }
     }
 
-    const endpoint = configuredEndpoint || '/api/camara';
+    const endpoint = configuredEndpoint || `${configuredOrigin}/api/camara`;
     return `${endpoint}?url=${encodeURIComponent(parsed.toString())}`;
   } catch {
     return url;

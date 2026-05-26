@@ -1,6 +1,6 @@
 
 import { NewsArticle } from '../types';
-import { getLegislativeApiUrl } from '../utils/legislativeApiProxy';
+import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 // Cache Utils
 const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
@@ -55,7 +55,8 @@ const setCachedEducationalContent = (data: GeneratedArticle[]) => {
 
 const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): Promise<T | null> => {
     try {
-        const response = await fetch('/api/ai', {
+        const apiOrigin = getConfiguredApiOrigin();
+        const response = await fetch(`${apiOrigin}/api/ai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, ...payload })
