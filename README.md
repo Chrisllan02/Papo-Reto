@@ -74,10 +74,11 @@ VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 
 O `vercel.json` agenda o aquecimento de dados legislativos:
 
-- Segunda a sexta, a cada 30 minutos entre 10h e 23h UTC.
-- Sabado e domingo, uma vez ao dia.
+- Uma vez por dia, as 11h UTC.
 
 Esses jobs chamam `/api/cron/refresh-legislative-data`, que atualiza o bootstrap compartilhado. Quando `BLOB_READ_WRITE_TOKEN` esta configurado, o cache persiste no Vercel Blob; caso contrario, funciona como cache de memoria por instancia.
+
+O plano Hobby da Vercel aceita apenas crons diarios. Para atualizar a cada 15 ou 30 minutos em horario comercial, e necessario mudar para plano Pro e ajustar a expressao em `vercel.json`.
 
 ## Qualidade
 
