@@ -150,7 +150,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'generateEducationalContent') {
       return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
     }
-    return jsonResponse(res, 503, { error: 'AI key unavailable.' });
+    if (action === 'generateNewsImage' || action === 'generateCampaignImage') {
+      return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
+    }
+    if (action === 'speakContent') {
+      return jsonResponse(res, 200, { ok: true, data: { audioBase64: null } });
+    }
+    if (action === 'transcribeAudio') {
+      return jsonResponse(res, 200, { ok: true, data: { text: '' } });
+    }
+    if (action === 'getSearchContext' || action === 'chatWithGemini') {
+      return jsonResponse(res, 200, {
+        ok: true,
+        data: {
+          text: 'A integração de IA não está configurada neste ambiente. Os dados legislativos e fontes oficiais continuam disponíveis.',
+          searchSources: [],
+          mapSources: [],
+        },
+      });
+    }
+    return jsonResponse(res, 200, { ok: true, data: null });
   }
 
   try {
