@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { refreshLegislativeBootstrap } from '../bootstrap';
+import { refreshLegislativeBootstrap } from '../bootstrap.ts';
 
 type VercelRequest = IncomingMessage & { method?: string; headers: IncomingMessage['headers'] };
 

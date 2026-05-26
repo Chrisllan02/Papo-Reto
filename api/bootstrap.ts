@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { buildLegislativeBootstrap, type LegislativeBootstrap } from './_lib/legislativeBootstrap';
-import { readServerCache, writeServerCache } from './_lib/serverCache';
+import { buildLegislativeBootstrap, type LegislativeBootstrap } from './_lib/legislativeBootstrap.ts';
+import { readServerCache, writeServerCache } from './_lib/serverCache.ts';
 
 type VercelRequest = IncomingMessage & {
   query?: Record<string, string | string[]>;
