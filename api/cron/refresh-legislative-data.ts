@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { refreshLegislativeBootstrap } from '../bootstrap.ts';
 
 type VercelRequest = IncomingMessage & { method?: string; headers: IncomingMessage['headers'] };
 
@@ -21,6 +20,12 @@ const isAuthorized = (req: VercelRequest) => {
   return req.headers.authorization === `Bearer ${secret}`;
 };
 
+const getBaseUrl = (req: VercelRequest) => {
+  const host = req.headers.host || 'papo-reto-beige.vercel.app';
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return `${Array.isArray(proto) ? proto[0] : proto}://${host}`;
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = (req.method || 'GET').toUpperCase();
   if (method !== 'GET') {
@@ -33,17 +38,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const startedAt = Date.now();
-    const { data, cache } = await refreshLegislativeBootstrap();
+    const response = await fetch(`${getBaseUrl(req)}/api/bootstrap?refresh=1`, {
+      headers: { Accept: 'application/json' },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      return jsonResponse(res, 502, { ok: false, error: payload?.error || 'Refresh failed.' });
+    }
+
     return jsonResponse(res, 200, {
       ok: true,
-      persisted: cache.persisted,
       durationMs: Date.now() - startedAt,
+      source: payload.source,
       counts: {
-        politicians: data.politicians.length,
-        feedItems: data.feedItems.length,
-        parties: data.parties.length,
+        politicians: payload.data?.politicians?.length || 0,
+        feedItems: payload.data?.feedItems?.length || 0,
+        parties: payload.data?.parties?.length || 0,
       },
-      generatedAt: data.generatedAt,
+      generatedAt: payload.data?.generatedAt,
     });
   } catch (error: any) {
     return jsonResponse(res, 502, { ok: false, error: error?.message || 'Refresh failed.' });
