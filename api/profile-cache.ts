@@ -16,7 +16,17 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 5 * 60 * 1000;
 const READ_LIMIT = 60;
 const WRITE_LIMIT = 12;
+const MAX_BODY_BYTES = 300_000;
 const MEMORY_CACHE = new Map<string, string>();
+
+class RequestError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
 
 const getClientBucket = (req: VercelRequest) => {
   const forwarded = req.headers?.['x-forwarded-for'];
@@ -59,10 +69,29 @@ const normalizePayload = (body: any) => {
 
 const readBody = async (req: VercelRequest) => {
   if (req.body) return req.body;
+
+  const contentLength = Number(req.headers?.['content-length'] || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    throw new RequestError(413, 'Payload too large.');
+  }
+
   const chunks: Uint8Array[] = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let totalBytes = 0;
+  for await (const chunk of req) {
+    totalBytes += chunk.length;
+    if (totalBytes > MAX_BODY_BYTES) {
+      throw new RequestError(413, 'Payload too large.');
+    }
+    chunks.push(chunk);
+  }
   const raw = Buffer.concat(chunks).toString('utf8');
-  return raw ? JSON.parse(raw) : {};
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new RequestError(400, 'Invalid JSON body.');
+  }
 };
 
 const pathForId = (id: string) => `politicians/${id}.json`;
@@ -124,13 +153,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (method === 'PUT') {
-    let body = await readBody(req);
+    let body: any;
+    try {
+      body = await readBody(req);
+    } catch (error: any) {
+      return jsonResponse(res, error?.statusCode || 400, { error: error?.message || 'Invalid request.' });
+    }
     const payload = normalizePayload(body);
     if (!payload) {
       return jsonResponse(res, 400, { error: 'Invalid payload.' });
     }
 
-    if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > 250_000) {
+    if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > MAX_BODY_BYTES) {
       return jsonResponse(res, 413, { error: 'Payload too large.' });
     }
 

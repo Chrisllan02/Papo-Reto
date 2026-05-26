@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_PROFILE_CACHE_ENDPOINT?: string;
+  readonly VITE_LEGISLATIVE_API_PROXY?: string;
 }
 
 interface ImportMeta {

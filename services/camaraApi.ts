@@ -2,6 +2,7 @@
 import { Politician, FeedItem, Party, ExpenseCategory, YearStats, Speech, ExpenseItem, LegislativeVote, LegislativeEvent, Remuneration } from '../types';
 import { PARTY_METADATA } from '../constants';
 import { detectCategory } from '../utils/legislativeTranslator';
+import { getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 // FORCE CACHE INVALIDATION TO GET NEW SPEECH DATA
@@ -127,14 +128,20 @@ export const fetchAPI = async (url: string, retries = 3, json = true, delay = 10
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-        const res = await fetch(url, { 
+        const res = await fetch(getLegislativeApiUrl(url), {
             headers: { 'Accept': 'application/json' },
             signal: controller?.signal
         });
-        if (!res.ok) throw new Error(`API Error ${res.status}`);
+        if (!res.ok) {
+            const error = new Error(`API Error ${res.status}`) as Error & { status?: number; retryable?: boolean };
+            error.status = res.status;
+            error.retryable = res.status >= 500 || res.status === 429;
+            throw error;
+        }
         return json ? await res.json() : res;
-    } catch (error) {
-        if (retries > 0) {
+    } catch (error: any) {
+        const retryable = error?.retryable !== false;
+        if (retries > 0 && retryable) {
             // Exponential backoff
             await new Promise(resolve => setTimeout(resolve, delay));
             return fetchAPI(url, retries - 1, json, delay * 2, timeoutMs);

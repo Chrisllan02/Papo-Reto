@@ -26,6 +26,29 @@ type ApiAction =
   | 'generateCampaignImage'
   | 'transcribeAudio';
 
+class RequestError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const SUPPORTED_ACTIONS: ApiAction[] = [
+  'generateEducationalContent',
+  'generateNewsImage',
+  'speakContent',
+  'getSearchContext',
+  'chatWithGemini',
+  'generateCampaignImage',
+  'transcribeAudio'
+];
+
+const isApiAction = (value: unknown): value is ApiAction =>
+  typeof value === 'string' && SUPPORTED_ACTIONS.includes(value as ApiAction);
+
 const getApiKey = () => process.env.API_KEY || process.env.GOOGLE_API_KEY || '';
 
 let aiClient: GoogleGenAI | null = null;
@@ -46,10 +69,37 @@ const jsonResponse = (res: VercelResponse, status: number, data: any) => {
 
 const readBody = async (req: VercelRequest) => {
   if (req.body && typeof req.body === 'object') return req.body;
+
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      throw new RequestError(400, 'Invalid JSON body.');
+    }
+  }
+
+  const contentLength = Number(req.headers?.['content-length'] || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    throw new RequestError(413, 'Payload too large.');
+  }
+
   const chunks: Uint8Array[] = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let totalBytes = 0;
+  for await (const chunk of req) {
+    totalBytes += chunk.length;
+    if (totalBytes > MAX_BODY_BYTES) {
+      throw new RequestError(413, 'Payload too large.');
+    }
+    chunks.push(chunk);
+  }
   const raw = Buffer.concat(chunks).toString('utf8');
-  return raw ? JSON.parse(raw) : {};
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new RequestError(400, 'Invalid JSON body.');
+  }
 };
 
 const staticEducationalContent: EducationalArticle[] = [
@@ -82,13 +132,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
   }
 
-  const body = await readBody(req);
-  const action = body?.action as ApiAction | undefined;
-  const ai = getAi();
-
-  if (!action) {
-    return jsonResponse(res, 400, { error: 'Missing action.' });
+  let body: Record<string, any>;
+  try {
+    body = await readBody(req);
+  } catch (error: any) {
+    return jsonResponse(res, error?.statusCode || 400, { error: error?.message || 'Invalid request.' });
   }
+
+  if (!isApiAction(body?.action)) {
+    return jsonResponse(res, 400, { error: body?.action ? 'Unsupported action.' : 'Missing action.' });
+  }
+
+  const action = body.action;
+  const ai = getAi();
 
   if (!ai) {
     if (action === 'generateEducationalContent') {

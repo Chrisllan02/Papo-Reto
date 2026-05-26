@@ -1,5 +1,6 @@
 
 import { NewsArticle } from '../types';
+import { getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 // Cache Utils
 const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
@@ -336,9 +337,9 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
         const dateStr = dateLimit.toISOString().split('T')[0];
 
         const [votacoesRes, eventosRes, proposicoesRes] = await Promise.allSettled([
-            fetch(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStr}&itens=5`, fetchConfig),
-            fetch(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=5`, fetchConfig),
-            fetch(`https://dadosabertos.camara.leg.br/api/v2/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`, fetchConfig)
+            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStr}&itens=5`), fetchConfig),
+            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=5`), fetchConfig),
+            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`), fetchConfig)
         ]);
 
         let combinedData: NewsArticle[] = [];
