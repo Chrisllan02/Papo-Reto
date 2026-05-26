@@ -428,7 +428,10 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         const safeFetch = async (url: string) => {
             try {
                 return await fetchAPI(url);
-            } catch (e) {
+            } catch (e: any) {
+                if ([400, 404, 405].includes(Number(e?.status))) {
+                    return null;
+                }
                 console.warn(`Erro no endpoint secundário ${url}`, e);
                 return null; // Retorna null para não rejeitar o Promise.all
             }

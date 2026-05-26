@@ -342,7 +342,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`), fetchConfig)
         ]);
 
-        let combinedData: NewsArticle[] = [];
+        const combinedData: NewsArticle[] = [];
 
         const createNewsObject = (item: any, type: 'voto' | 'evento' | 'proposicao', rawDateStr: string): NewsArticle => {
             const dateObj = new Date(rawDateStr);

@@ -29,7 +29,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
 
   const filteredItems = useMemo(() => {
     // 1. Filtragem
-    let items = feedItems.filter(item => {
+    const items = feedItems.filter(item => {
         // Filtro de Tipo
         if (activeFilter !== 'todos' && item.type !== activeFilter) return false;
 

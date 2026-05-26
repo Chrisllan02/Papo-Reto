@@ -133,7 +133,7 @@ export const getDidacticContext = (title: string, description: string | undefine
         return { text: desc || "Gasto operacional do gabinete.", const: null };
     }
 
-    let text = description || title || "";
+    const text = description || title || "";
     let didacticText = "";
     let constitutionRef = null;
 

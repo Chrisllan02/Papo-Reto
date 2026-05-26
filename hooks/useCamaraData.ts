@@ -352,8 +352,9 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             } catch (e) {
                 console.error(`Error enriching profile for ${initialCandidate.name}`, e);
             } finally {
-                if (cancelled) return;
-                setIsLoadingDetails(false);
+                if (!cancelled) {
+                    setIsLoadingDetails(false);
+                }
             }
         };
 
