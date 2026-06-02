@@ -68,7 +68,7 @@ flowchart TB
   PROXY --> CAMARA
   PROXY --> SENADO
   CACHE --> BLOB["Vercel Blob opcional"]
-  AI --> GEMINI["Google Gemini opcional"]
+  AI --> PROVIDER["Provedor de IA opcional"]
 ```
 
 ## Decisões técnicas
@@ -91,7 +91,7 @@ flowchart TB
 | Ícones | Lucide React |
 | API/BFF | Vercel Serverless Functions |
 | Cache persistente opcional | Vercel Blob |
-| IA opcional | Google Gemini via `@google/genai` |
+| IA opcional | Integração generativa configurável |
 | Qualidade | Vitest, Testing Library, ESLint e TypeScript |
 
 ## Estrutura do projeto
@@ -191,11 +191,6 @@ Quando `VITE_BOOTSTRAP_ENDPOINT` aponta para produção, o frontend também usa 
 Crie `.env.local` quando precisar ativar IA, cache persistente ou endpoints específicos.
 
 ```bash
-# IA opcional
-API_KEY=...
-# ou
-GOOGLE_API_KEY=...
-
 # Cache persistente opcional no Vercel Blob
 BLOB_READ_WRITE_TOKEN=...
 

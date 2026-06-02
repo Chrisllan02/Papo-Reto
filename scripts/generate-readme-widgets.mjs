@@ -163,7 +163,7 @@ const main = async () => {
     rows: [
       { label: 'Aplicação', value: health?.ok ? 'online' : 'verificar', status: { color: health?.ok ? '#16a34a' : '#ef4444' }, hint: '/api/health' },
       { label: 'Proxy legislativo', value: normalizeStatus(integrations.legislativeProxy).label, status: normalizeStatus(integrations.legislativeProxy), hint: 'Câmara e Senado via BFF' },
-      { label: 'IA', value: integrations.ai ? 'configurada' : 'fallback', status: normalizeStatus(integrations.ai), hint: 'Gemini opcional' },
+      { label: 'IA', value: integrations.ai ? 'configurada' : 'fallback', status: normalizeStatus(integrations.ai), hint: 'Provedor opcional' },
     ],
   });
 

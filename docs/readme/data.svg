@@ -18,7 +18,7 @@
   <circle cx="323" cy="42" r="42" fill="#16a34a" opacity="0.14" />
   <circle cx="352" cy="20" r="22" fill="#22c55e" opacity="0.12" />
   <text x="24" y="38" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="900" fill="#ffffff">Dados legislativos</text>
-  <text x="24" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Fonte: cache</text>
+  <text x="24" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Fonte: refresh:memory</text>
   
       <g transform="translate(24 92)">
         <circle cx="7" cy="7" r="5" fill="#16a34a" opacity="0.95" />
@@ -41,5 +41,5 @@
         <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Metadados e composição</text>
       </g>
     
-  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 02/06/2026, 19:28</text>
+  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 02/06/2026, 19:29</text>
 </svg>

@@ -38,8 +38,8 @@
         <circle cx="7" cy="7" r="5" fill="#f59e0b" opacity="0.95" />
         <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">IA</text>
         <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">fallback</text>
-        <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Gemini opcional</text>
+        <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Provedor opcional</text>
       </g>
     
-  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 02/06/2026, 19:28</text>
+  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 02/06/2026, 19:29</text>
 </svg>
