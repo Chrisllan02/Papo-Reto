@@ -157,7 +157,7 @@ const main = async () => {
   const devDependencies = Object.keys(pkg.devDependencies || {});
 
   await writeSvg('status.svg', {
-    title: 'Status de Produção',
+    title: 'Status de produção',
     subtitle: APP_URL.replace(/^https?:\/\//, ''),
     accent: '#2563eb',
     rows: [
@@ -168,7 +168,7 @@ const main = async () => {
   });
 
   await writeSvg('data.svg', {
-    title: 'Dados Legislativos',
+    title: 'Dados legislativos',
     subtitle: data.politicians?.length ? `Fonte: ${bootstrap.source || 'bootstrap'}` : 'Fonte: dados oficiais',
     accent: '#16a34a',
     rows: [
@@ -179,7 +179,7 @@ const main = async () => {
   });
 
   await writeSvg('quality.svg', {
-    title: 'Qualidade Técnica',
+    title: 'Qualidade técnica',
     subtitle: 'Baseline automatizada do projeto',
     accent: '#7c3aed',
     rows: [

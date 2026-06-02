@@ -14,7 +14,7 @@ Transparência política brasileira em linguagem direta.
   <img src="docs/readme/quality.svg" alt="Resumo dinâmico de qualidade técnica" width="32%" />
 </p>
 
-## Acesso Rápido
+## Acesso rápido
 
 | Ambiente | Link |
 | --- | --- |
@@ -22,7 +22,7 @@ Transparência política brasileira em linguagem direta.
 | Healthcheck | [`/api/health`](https://papo-reto-beige.vercel.app/api/health) |
 | Bootstrap legislativo | [`/api/bootstrap`](https://papo-reto-beige.vercel.app/api/bootstrap) |
 
-## O Que É
+## O que é
 
 O PapoReto é uma aplicação web para acompanhar política brasileira com menos juridiquês técnico e mais contexto. Ela combina dados oficiais da Câmara dos Deputados e do Senado Federal com uma camada de tradução visual, filtros por tema, perfis parlamentares, feed legislativo, guia cidadão e recursos opcionais de IA.
 
@@ -34,7 +34,7 @@ O objetivo é responder perguntas simples:
 - Quanto custa um mandato?
 - Como transformar dados oficiais em algo que qualquer pessoa entende?
 
-## Principais Recursos
+## Principais recursos
 
 | Área | O que entrega |
 | --- | --- |
@@ -46,7 +46,7 @@ O objetivo é responder perguntas simples:
 | Acessibilidade | Tema escuro, alto contraste, controle de fonte, navegação mobile e onboarding. |
 | Serverless BFF | Proxy seguro, bootstrap cacheado, healthcheck e cron de aquecimento. |
 
-## Experiência Do Produto
+## Experiência do produto
 
 ```mermaid
 flowchart LR
@@ -72,8 +72,8 @@ flowchart TB
   UI --> AI["/api/ai"]
   CRON["Vercel Cron"] --> JOB["/api/cron/refresh-legislative-data"]
   JOB --> BOOT
-  BOOT --> CAMARA["Dados Abertos Câmara"]
-  BOOT --> SENADO["Dados Abertos Senado"]
+  BOOT --> CAMARA["Dados abertos da Câmara"]
+  BOOT --> SENADO["Dados abertos do Senado"]
   PROXY --> CAMARA
   PROXY --> SENADO
   CACHE --> BLOB["Vercel Blob opcional"]
@@ -92,7 +92,7 @@ flowchart TB
 | IA opcional | `@google/genai` |
 | Qualidade | Vitest, Testing Library, ESLint, TypeScript |
 
-## Estrutura Do Projeto
+## Estrutura do projeto
 
 ```text
 .
@@ -114,7 +114,7 @@ flowchart TB
 `-- views/                       # Telas principais
 ```
 
-## Como Rodar Localmente
+## Como rodar localmente
 
 Requisitos:
 
@@ -132,7 +132,7 @@ Depois acesse:
 http://localhost:5173
 ```
 
-### QA Local Com Dados De Produção
+### QA local com dados de produção
 
 O Vite local não executa as functions de `/api`. Para testar o frontend local usando dados reais de produção:
 
@@ -164,7 +164,7 @@ Quando `VITE_BOOTSTRAP_ENDPOINT` aponta para produção, o frontend também usa 
 
 </details>
 
-## Variáveis De Ambiente
+## Variáveis de ambiente
 
 Crie `.env.local` quando precisar ativar IA, cache persistente ou endpoints específicos.
 
@@ -193,7 +193,7 @@ VITE_LEGISLATIVE_API_PROXY=/api/camara
 VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 ```
 
-### Degradação Segura
+### Degradação segura
 
 O app continua funcionando sem `API_KEY` e sem `BLOB_READ_WRITE_TOKEN`.
 
@@ -211,7 +211,7 @@ O app continua funcionando sem `API_KEY` e sem `BLOB_READ_WRITE_TOKEN`.
 | `POST` | `/api/ai` | Ações de IA usadas pelo app. |
 | `GET`/`PUT` | `/api/profile-cache?type=politician&id=...` | Cache de perfis parlamentares. |
 
-## Cron Jobs
+## Cron jobs
 
 O `vercel.json` agenda o refresh legislativo diário:
 
@@ -240,9 +240,9 @@ npm run build
 npm audit --omit=dev
 ```
 
-## README Dinâmico
+## README dinâmico
 
-Este README usa cartões SVG gerados pelo próprio repositório. Eles são atualizados pelo workflow [`README Widgets`](.github/workflows/readme-widgets.yml), que roda diariamente e também pode ser disparado manualmente pelo GitHub Actions.
+Este README usa cartões SVG gerados pelo próprio repositório. Eles são atualizados pelo workflow [`README widgets`](.github/workflows/readme-widgets.yml), que roda diariamente e também pode ser disparado manualmente pelo GitHub Actions.
 
 O gerador consulta os endpoints públicos do projeto, consolida métricas e escreve:
 
@@ -257,7 +257,7 @@ Para atualizar localmente:
 npm run readme:widgets
 ```
 
-## Roadmap Sugerido
+## Roadmap sugerido
 
 - Adicionar screenshots reais do produto no README.
 - Criar testes E2E com Playwright no CI.

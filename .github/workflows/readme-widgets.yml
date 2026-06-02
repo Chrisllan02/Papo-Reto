@@ -1,4 +1,4 @@
-name: README Widgets
+name: README widgets
 
 on:
   workflow_dispatch:
