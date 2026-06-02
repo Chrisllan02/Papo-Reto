@@ -11,7 +11,8 @@
     "build": "tsc && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "readme:widgets": "node scripts/generate-readme-widgets.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

@@ -8,6 +8,12 @@ Transparência política brasileira em linguagem direta.
 [![Vite](https://img.shields.io/badge/Vite-build-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
 [![Vercel Functions](https://img.shields.io/badge/API-Vercel_Functions-000?logo=vercel&logoColor=white)](https://vercel.com/)
 
+<p align="center">
+  <img src="docs/readme/status.svg" alt="Status de produção do PapoReto" width="32%" />
+  <img src="docs/readme/data.svg" alt="Resumo dinâmico dos dados legislativos" width="32%" />
+  <img src="docs/readme/quality.svg" alt="Resumo dinâmico de qualidade técnica" width="32%" />
+</p>
+
 ## Acesso Rápido
 
 | Ambiente | Link |
@@ -232,6 +238,23 @@ npm test
 npm run lint -- --quiet
 npm run build
 npm audit --omit=dev
+```
+
+## README Dinâmico
+
+Este README usa cartões SVG gerados pelo próprio repositório. Eles são atualizados pelo workflow [`README Widgets`](.github/workflows/readme-widgets.yml), que roda diariamente e também pode ser disparado manualmente pelo GitHub Actions.
+
+O gerador consulta os endpoints públicos do projeto, consolida métricas e escreve:
+
+- [`docs/readme/status.svg`](docs/readme/status.svg)
+- [`docs/readme/data.svg`](docs/readme/data.svg)
+- [`docs/readme/quality.svg`](docs/readme/quality.svg)
+- [`docs/readme/metrics.json`](docs/readme/metrics.json)
+
+Para atualizar localmente:
+
+```bash
+npm run readme:widgets
 ```
 
 ## Roadmap Sugerido

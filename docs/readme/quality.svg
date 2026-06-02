@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="250" viewBox="0 0 380 250" role="img" aria-label="Qualidade Técnica">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1">
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#020617" flood-opacity="0.35" />
+    </filter>
+  </defs>
+  <rect width="380" height="250" rx="22" fill="url(#bg)" filter="url(#shadow)" />
+  <rect x="1" y="1" width="378" height="248" rx="21" fill="none" stroke="#334155" stroke-opacity="0.8" />
+  <rect x="0" y="0" width="380" height="6" fill="url(#accent)" />
+  <circle cx="323" cy="42" r="42" fill="#7c3aed" opacity="0.14" />
+  <circle cx="352" cy="20" r="22" fill="#22c55e" opacity="0.12" />
+  <text x="24" y="38" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="900" fill="#ffffff">Qualidade Técnica</text>
+  <text x="24" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Baseline automatizada do projeto</text>
+  
+      <g transform="translate(24 92)">
+        <circle cx="7" cy="7" r="5" fill="#7c3aed" opacity="0.95" />
+        <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">Runtime</text>
+        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">&gt;=18.0.0</text>
+        <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Vite + Vercel Functions</text>
+      </g>
+    
+      <g transform="translate(24 136)">
+        <circle cx="7" cy="7" r="5" fill="#8b5cf6" opacity="0.95" />
+        <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">Dependências</text>
+        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">8 prod / 19 dev</text>
+        <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Audit de produção no CI</text>
+      </g>
+    
+      <g transform="translate(24 180)">
+        <circle cx="7" cy="7" r="5" fill="#a855f7" opacity="0.95" />
+        <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">Checks</text>
+        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">lint + test + build</text>
+        <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">GitHub Actions</text>
+      </g>
+    
+  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 02/06/2026, 19:14</text>
+</svg>

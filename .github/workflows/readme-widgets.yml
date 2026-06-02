@@ -1,0 +1,51 @@
+name: README Widgets
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 12 * * *"
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - scripts/generate-readme-widgets.mjs
+      - .github/workflows/readme-widgets.yml
+      - package.json
+      - package-lock.json
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme-widgets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate dynamic widgets
+        run: npm run readme:widgets
+        env:
+          README_APP_URL: https://papo-reto-beige.vercel.app
+
+      - name: Commit updated widgets
+        run: |
+          if git diff --quiet -- docs/readme; then
+            echo "No README widget changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/readme/*.svg docs/readme/metrics.json
+          git commit -m "Update README dynamic widgets"
+          git push
