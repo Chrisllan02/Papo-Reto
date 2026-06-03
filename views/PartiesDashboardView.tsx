@@ -366,6 +366,12 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
     }, [politicians, selectedState]);
 
     const activeRegionData = REGIONS_STRUCT.find(r => r.name === selectedRegion) || REGIONS_STRUCT[3];
+    const regionsWithTotals = useMemo(() => REGIONS_STRUCT.map(region => ({
+        ...region,
+        total: region.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0)
+    })), [stateCounts]);
+    const activeRegionTotal = activeRegionData.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0);
+    const activeRegionMaxStateCount = Math.max(...activeRegionData.states.map(uf => stateCounts[uf] || 0), 1);
 
     return (
         <section className="glass-panel rounded-[2.5rem] p-4 md:p-6 min-h-[550px] w-full relative overflow-hidden flex flex-col">
@@ -391,62 +397,125 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-stretch flex-1 relative z-10">
-                {/* Seletor de Estados (Tabs + Grid) */}
+                {/* Seletor de Estados */}
                 <div className="w-full lg:w-3/5 flex flex-col gap-4">
                     
-                    {/* Region Tabs (Scrollable on Mobile) */}
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                        {REGIONS_STRUCT.map(region => (
-                            <button
-                                key={region.name}
-                                onClick={() => { setSelectedRegion(region.name); setSelectedState(null); }}
-                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all border ${
-                                    selectedRegion === region.name
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                    : 'bg-gray-50 dark:bg-white/5 text-gray-500 border-gray-100 dark:border-white/5 hover:bg-gray-100'
-                                }`}
-                            >
-                                {region.name}
-                            </button>
-                        ))}
+                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] p-2 shadow-sm">
+                        <div className="flex items-center justify-between gap-3 px-2 pb-2">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Região</p>
+                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Filtre os estados por bloco geográfico</p>
+                            </div>
+                            <span className="hidden sm:inline-flex rounded-full bg-blue-50 dark:bg-blue-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                                {activeRegionTotal} representantes
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+                            {regionsWithTotals.map(region => {
+                                const isActive = selectedRegion === region.name;
+
+                                return (
+                                    <button
+                                        key={region.name}
+                                        type="button"
+                                        onClick={() => { setSelectedRegion(region.name); setSelectedState(null); }}
+                                        aria-pressed={isActive}
+                                        className={`group min-h-16 rounded-xl border px-3 py-2 text-left transition-all ${
+                                            isActive
+                                            ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-900/15'
+                                            : 'border-gray-100 bg-gray-50/80 text-gray-600 hover:border-blue-200 hover:bg-white hover:text-blue-700 dark:border-white/5 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:border-blue-400/30 dark:hover:bg-white/[0.07]'
+                                        }`}
+                                    >
+                                        <span className="flex items-center justify-between gap-2">
+                                            <span className="truncate text-[11px] font-black uppercase tracking-wide">{region.name}</span>
+                                            <span className={`h-2 w-2 rounded-full transition-colors ${
+                                                isActive ? 'bg-white' : 'bg-gray-300 group-hover:bg-blue-500 dark:bg-gray-600'
+                                            }`} />
+                                        </span>
+                                        <span className={`mt-2 block text-sm font-black ${
+                                            isActive ? 'text-blue-100' : 'text-gray-900 dark:text-white'
+                                        }`}>
+                                            {region.total}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* States Grid for Active Region */}
                     <div className={`p-4 rounded-3xl border flex-1 ${activeRegionData.color} flex flex-col relative transition-colors duration-300`}>
-                        <div className="flex justify-between items-center mb-3">
-                            <span className="font-black uppercase tracking-wider text-sm flex items-center gap-2">
-                                <MapPin size={14}/> {activeRegionData.name}
-                            </span>
-                            <span className="text-[10px] font-bold bg-white/50 dark:bg-black/20 px-2 py-1 rounded-full opacity-80">
-                                {activeRegionData.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0)} Reps
-                            </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                            <div>
+                                <span className="font-black uppercase tracking-wider text-sm flex items-center gap-2">
+                                    <MapPin size={14} aria-hidden="true" /> {activeRegionData.name}
+                                </span>
+                                <p className="text-[11px] font-semibold opacity-70 mt-1">
+                                    {selectedState ? `Estado selecionado: ${selectedState}` : 'Escolha um estado para detalhar o cenário partidário'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black bg-white/65 dark:bg-black/20 px-2.5 py-1.5 rounded-full uppercase tracking-wide">
+                                    {activeRegionTotal} representantes
+                                </span>
+                                {selectedState && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedState(null)}
+                                        className="rounded-full bg-white/70 dark:bg-black/20 p-1.5 transition-colors hover:bg-white dark:hover:bg-black/30"
+                                        aria-label="Limpar estado selecionado"
+                                    >
+                                        <X size={12} aria-hidden="true" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 content-start">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 content-start">
                             {activeRegionData.states.map(uf => {
                                 const isActive = selectedState === uf;
                                 const count = stateCounts[uf] || 0;
+                                const share = Math.max((count / activeRegionMaxStateCount) * 100, 6);
+
                                 return (
                                     <button
                                         key={uf}
+                                        type="button"
                                         onClick={() => setSelectedState(prev => prev === uf ? null : uf)}
-                                        className={`py-3 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 border shadow-sm ${
+                                        aria-pressed={isActive}
+                                        className={`rounded-2xl border p-3 text-left transition-all shadow-sm ${
                                             isActive
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105 z-20 ring-2 ring-white dark:ring-midnight'
-                                            : 'bg-white/80 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-transparent hover:bg-white hover:scale-105'
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-900/15 ring-2 ring-white dark:ring-midnight'
+                                            : 'bg-white/85 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-white/80 dark:border-white/10 hover:bg-white hover:border-blue-200'
                                         }`}
                                     >
-                                        <span>{uf}</span>
-                                        <span className={`text-[9px] font-bold ${isActive ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>{count}</span>
+                                        <span className="flex items-center justify-between gap-2">
+                                            <span className="text-sm font-black">{uf}</span>
+                                            <span className={`text-[10px] font-black ${
+                                                isActive ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                                            }`}>
+                                                {count}
+                                            </span>
+                                        </span>
+                                        <span className={`mt-3 block h-1.5 overflow-hidden rounded-full ${
+                                            isActive ? 'bg-white/20' : 'bg-gray-100 dark:bg-white/10'
+                                        }`}>
+                                            <span
+                                                className={`block h-full rounded-full transition-all duration-500 ${
+                                                    isActive ? 'bg-white' : 'bg-blue-500/70'
+                                                }`}
+                                                style={{ width: `${share}%` }}
+                                            />
+                                        </span>
                                     </button>
                                 );
                             })}
                         </div>
                         
                         {!selectedState && (
-                            <div className="mt-auto pt-4 text-center">
-                                <p className="text-[10px] uppercase font-bold opacity-60 flex items-center justify-center gap-1">
-                                    <MousePointerClick size={12}/> Selecione um estado
+                            <div className="mt-4 rounded-2xl bg-white/45 dark:bg-black/10 px-3 py-2 text-center">
+                                <p className="text-[10px] uppercase font-black tracking-wide opacity-70 flex items-center justify-center gap-1">
+                                    <MousePointerClick size={12} aria-hidden="true" /> Toque em um estado para filtrar o gráfico
                                 </p>
                             </div>
                         )}
