@@ -198,23 +198,33 @@ export const useInitialData = () => {
                 const serverBootstrap = await fetchServerBootstrap();
                 if (serverBootstrap && serverBootstrap.politicians.length > 0) {
                     if (cancelled) return;
+                    const shouldHydrateSenate = serverBootstrap.warnings?.includes('senado_senadores_unavailable');
+                    const fallbackSenators = shouldHydrateSenate
+                        ? await fetchSenadores().catch(() => [])
+                        : [];
+                    const nextPoliticians = fallbackSenators.length > 0
+                        ? [
+                            ...serverBootstrap.politicians.filter(pol => pol.hasApiIntegration !== false),
+                            ...fallbackSenators
+                        ]
+                        : serverBootstrap.politicians;
                     const nextFeedItems = serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS;
                     const nextParties = serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties();
                     const nextArticles = serverBootstrap.articles && serverBootstrap.articles.length > 0
                         ? serverBootstrap.articles
                         : (EDUCATION_CAROUSEL as EducationalArticle[]);
-                    setPoliticians(serverBootstrap.politicians);
+                    setPoliticians(nextPoliticians);
                     setFeedItems(nextFeedItems);
                     setParties(nextParties);
                     setArticles(nextArticles);
                     writeBootstrapCache({
-                        politicians: serverBootstrap.politicians,
+                        politicians: nextPoliticians,
                         feedItems: nextFeedItems,
                         parties: nextParties,
                         articles: nextArticles
                     });
                     setIsLoading(false);
-                    hydrateMissingSexMetadata(serverBootstrap.politicians, setPoliticians);
+                    hydrateMissingSexMetadata(nextPoliticians, setPoliticians);
                     return;
                 }
 
