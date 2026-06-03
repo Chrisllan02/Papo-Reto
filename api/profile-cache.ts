@@ -59,6 +59,23 @@ const jsonResponse = (res: VercelResponse, status: number, data: any) => {
   res.end(JSON.stringify(data));
 };
 
+const isProductionRuntime = () => process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
+const getWriteSecret = () => process.env.PROFILE_CACHE_WRITE_SECRET || process.env.CRON_SECRET || '';
+
+const authorizeWrite = (req: VercelRequest) => {
+  const secret = getWriteSecret();
+  if (!secret) {
+    return isProductionRuntime()
+      ? { ok: false, status: 503, error: 'Profile cache writes are not configured.' }
+      : { ok: true };
+  }
+
+  return req.headers.authorization === `Bearer ${secret}`
+    ? { ok: true }
+    : { ok: false, status: 401, error: 'Unauthorized.' };
+};
+
 const normalizePayload = (body: any) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   return {
@@ -153,6 +170,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (method === 'PUT') {
+    const authorization = authorizeWrite(req);
+    if (!authorization.ok) {
+      return jsonResponse(res, authorization.status || 401, { error: authorization.error || 'Unauthorized.' });
+    }
+
     let body: any;
     try {
       body = await readBody(req);

@@ -36,6 +36,9 @@ class RequestError extends Error {
 }
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT = 20;
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const SUPPORTED_ACTIONS: ApiAction[] = [
   'generateEducationalContent',
   'generateNewsImage',
@@ -65,6 +68,29 @@ const jsonResponse = (res: VercelResponse, status: number, data: any) => {
   res.status?.(status);
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(data));
+};
+
+const getClientBucket = (req: VercelRequest) => {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers?.['x-real-ip'] || 'unknown';
+  return String(ip).split(',')[0].trim() || 'unknown';
+};
+
+const isRateLimited = (bucket: string) => {
+  const now = Date.now();
+  const current = rateLimitStore.get(bucket);
+
+  if (!current || current.resetAt <= now) {
+    rateLimitStore.set(bucket, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+
+  if (current.count >= RATE_LIMIT) {
+    return true;
+  }
+
+  current.count += 1;
+  return false;
 };
 
 const readBody = async (req: VercelRequest) => {
@@ -130,6 +156,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = (req.method || 'POST').toUpperCase();
   if (method !== 'POST') {
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
+  }
+
+  if (isRateLimited(getClientBucket(req))) {
+    return jsonResponse(res, 429, { error: 'Too many requests.' });
   }
 
   let body: Record<string, any>;

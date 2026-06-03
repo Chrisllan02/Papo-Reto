@@ -16,7 +16,9 @@ const jsonResponse = (res: VercelResponse, status: number, data: unknown) => {
 
 const isAuthorized = (req: VercelRequest) => {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    return process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1';
+  }
   return req.headers.authorization === `Bearer ${secret}`;
 };
 

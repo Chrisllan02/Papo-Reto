@@ -191,10 +191,16 @@ Quando `VITE_BOOTSTRAP_ENDPOINT` aponta para produção, o frontend também usa 
 Crie `.env.local` quando precisar ativar IA, cache persistente ou endpoints específicos.
 
 ```bash
+# IA opcional
+API_KEY=...
+
 # Cache persistente opcional no Vercel Blob
 BLOB_READ_WRITE_TOKEN=...
 
-# Proteção para chamadas manuais do cron
+# Escrita server-side no cache de perfis
+PROFILE_CACHE_WRITE_SECRET=...
+
+# Proteção do cron em produção
 CRON_SECRET=...
 
 # Origem pública para APIs quando o frontend roda fora do Vercel
@@ -219,15 +225,13 @@ VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 | `GET` | `/api/camara?url=...` | Faz proxy controlado para fontes legislativas oficiais. |
 | `GET` | `/api/cron/refresh-legislative-data` | Aquece o cache legislativo de forma automatizada. |
 | `POST` | `/api/ai` | Executa ações de IA usadas pelo app quando a chave está configurada. |
-| `GET`/`PUT` | `/api/profile-cache?type=politician&id=...` | Consulta ou atualiza cache de perfis parlamentares. |
+| `GET`/`PUT` | `/api/profile-cache?type=politician&id=...` | Consulta cache de perfis; escrita exige segredo server-side. |
 
 ## Evolução planejada
 
 - Adicionar screenshots reais do produto no README.
 - Criar testes E2E com Playwright no CI.
 - Adicionar monitoramento com Sentry ou ferramenta equivalente.
-- Endurecer permissões de escrita em caches server-side.
-- Melhorar a sinalização de dados parciais quando uma fonte oficial estiver indisponível.
 - Evoluir comparativos entre parlamentar, partido, estado e média da Casa.
 
 ## Deploy

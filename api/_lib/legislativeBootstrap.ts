@@ -25,6 +25,9 @@ export type LegislativeBootstrap = {
   parties: Party[];
   articles: EducationalArticle[];
   generatedAt: string;
+  partial: boolean;
+  warnings: string[];
+  sources: Record<string, { ok: boolean; count: number; fallback?: boolean }>;
 };
 
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -262,6 +265,13 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
     fetchFeed(),
     fetchParties(),
   ]);
+  const partiesFallback = parties.length > 0 && parties.every((party) => Number(party.id) >= 1000);
+  const warnings = [
+    deputados.length === 0 ? 'camara_deputados_unavailable' : '',
+    senadores.length === 0 ? 'senado_senadores_unavailable' : '',
+    feedItems.length === 0 ? 'camara_feed_unavailable' : '',
+    partiesFallback ? 'camara_parties_using_fallback' : '',
+  ].filter(Boolean);
 
   return {
     politicians: [...deputados, ...senadores],
@@ -269,5 +279,13 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
     parties,
     articles: [],
     generatedAt: new Date().toISOString(),
+    partial: warnings.length > 0,
+    warnings,
+    sources: {
+      camaraDeputados: { ok: deputados.length > 0, count: deputados.length },
+      senadoSenadores: { ok: senadores.length > 0, count: senadores.length },
+      camaraFeed: { ok: feedItems.length > 0, count: feedItems.length },
+      camaraParties: { ok: !partiesFallback, count: parties.length, fallback: partiesFallback },
+    },
   };
 };

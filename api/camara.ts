@@ -11,10 +11,20 @@ type VercelResponse = ServerResponse & {
   setHeader: (name: string, value: string) => void;
 };
 
+class RequestError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 const ALLOWED_HOSTS = new Set([
   'dadosabertos.camara.leg.br',
   'legis.senado.leg.br',
 ]);
+const MAX_UPSTREAM_BYTES = 2_000_000;
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 
@@ -30,6 +40,40 @@ const getRequestedUrl = (req: VercelRequest) => {
 
   const requestUrl = new URL(req.url || '', 'http://localhost');
   return requestUrl.searchParams.get('url') || '';
+};
+
+const readLimitedBody = async (response: Response) => {
+  const contentLength = Number(response.headers.get('content-length') || 0);
+  if (contentLength > MAX_UPSTREAM_BYTES) {
+    throw new RequestError(413, 'Upstream response too large.');
+  }
+
+  if (!response.body) {
+    const body = await response.arrayBuffer();
+    if (body.byteLength > MAX_UPSTREAM_BYTES) {
+      throw new RequestError(413, 'Upstream response too large.');
+    }
+    return Buffer.from(body);
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_UPSTREAM_BYTES) {
+      reader.cancel().catch(() => undefined);
+      throw new RequestError(413, 'Upstream response too large.');
+    }
+    chunks.push(value);
+  }
+
+  return Buffer.concat(chunks);
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -67,13 +111,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
-    const body = await upstream.arrayBuffer();
+    const body = await readLimitedBody(upstream);
 
     res.status?.(upstream.status);
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', upstream.ok ? 'public, s-maxage=300, stale-while-revalidate=3600' : 'no-store');
-    res.end(Buffer.from(body));
+    res.end(body);
   } catch (error: any) {
+    if (error instanceof RequestError) {
+      return jsonResponse(res, error.statusCode, { error: error.message });
+    }
     const aborted = error?.name === 'AbortError';
     return jsonResponse(res, aborted ? 504 : 502, { error: aborted ? 'Upstream timeout.' : 'Upstream request failed.' });
   } finally {

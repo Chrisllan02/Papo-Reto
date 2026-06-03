@@ -56,4 +56,26 @@ describe('/api/camara', () => {
       })
     );
   });
+
+  it('rejects upstream responses that are too large', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response('too large', {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'content-length': '2000001',
+        },
+      })
+    ));
+
+    const response = createJsonResponse();
+    await handler({
+      method: 'GET',
+      headers: { accept: 'application/json' },
+      query: { url: 'https://dadosabertos.camara.leg.br/api/v2/deputados?itens=1000' },
+    } as any, response.res as any);
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toEqual({ error: 'Upstream response too large.' });
+  });
 });

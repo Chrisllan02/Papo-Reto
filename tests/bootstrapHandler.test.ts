@@ -81,12 +81,71 @@ describe('/api/bootstrap', () => {
 
     await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
 
-    const payload = response.json<{ ok: boolean; data: { politicians: any[]; feedItems: any[]; parties: any[] } }>();
+    const payload = response.json<{
+      ok: boolean;
+      partial: boolean;
+      warnings: string[];
+      data: { politicians: any[]; feedItems: any[]; parties: any[]; partial: boolean; warnings: string[] };
+    }>();
     expect(response.statusCode).toBe(200);
     expect(payload.ok).toBe(true);
+    expect(payload.partial).toBe(false);
+    expect(payload.warnings).toEqual([]);
     expect(payload.data.politicians).toHaveLength(2);
+    expect(payload.data.partial).toBe(false);
     expect(payload.data.feedItems).toHaveLength(1);
     expect(payload.data.feedItems[0].category).toBe('health');
     expect(payload.data.parties).toHaveLength(1);
+  });
+
+  it('marks bootstrap as partial when a legislative source is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/deputados?')) {
+        return jsonResponse({
+          dados: [{
+            id: 1,
+            nome: 'MARIA TESTE',
+            siglaPartido: 'PT',
+            siglaUf: 'SP',
+            urlFoto: 'https://example.com/maria.jpg',
+            sexo: 'F',
+            email: 'maria@example.com',
+          }],
+        });
+      }
+
+      if (url.includes('/partidos?')) {
+        return jsonResponse({ dados: [{ id: 10, sigla: 'PT', nome: 'Partido dos Trabalhadores', uri: 'x' }] });
+      }
+
+      if (url.includes('/votacoes?')) {
+        return jsonResponse({ dados: [] });
+      }
+
+      if (url.includes('/proposicoes?')) {
+        return jsonResponse({ dados: [] });
+      }
+
+      if (url.includes('/eventos?')) {
+        return jsonResponse({ dados: [] });
+      }
+
+      if (url.includes('legis.senado.leg.br')) {
+        return new Response('', { status: 503 });
+      }
+
+      return jsonResponse({ dados: [] });
+    }));
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; partial: boolean; warnings: string[]; data: { partial: boolean } }>();
+    expect(response.statusCode).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.partial).toBe(true);
+    expect(payload.data.partial).toBe(true);
+    expect(payload.warnings).toContain('senado_senadores_unavailable');
+    expect(payload.warnings).toContain('camara_feed_unavailable');
   });
 });
