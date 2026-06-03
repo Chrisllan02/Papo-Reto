@@ -92,16 +92,14 @@ export const hasProfileCacheData = (cached?: Partial<Politician> | null) => {
     return hasArrays || hasStats;
 };
 
-const saveCachedPolitician = async (id: number, data: Partial<Politician>) => {
+const saveCachedPolitician = async (id: number, _data: Partial<Politician>) => {
     const endpoint = getProfileCacheEndpoint();
     try {
         await fetch(`${endpoint}?type=politician&id=${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            method: 'POST'
         });
     } catch {
-        // Silently ignore cache write errors
+        // Silently ignore server-side cache refresh errors.
     }
 };
 

@@ -3,6 +3,7 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
 const UPSTREAM_TIMEOUT_MS = 6000;
+const SENADO_TIMEOUT_MS = 12000;
 
 const PARTY_FALLBACK: Record<string, { nome: string; ideology: 'Esquerda' | 'Centro' | 'Direita' }> = {
   PT: { nome: 'Partido dos Trabalhadores', ideology: 'Esquerda' },
@@ -69,9 +70,9 @@ const fetchJson = async <T>(url: string): Promise<T | null> => {
   }
 };
 
-const fetchText = async (url: string): Promise<string | null> => {
+const fetchText = async (url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<string | null> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
@@ -134,7 +135,7 @@ const fetchDeputados = async (): Promise<Politician[]> => {
 };
 
 const fetchSenadores = async (): Promise<Politician[]> => {
-  const xml = await fetchText(SENADO_URL);
+  const xml = await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
   if (!xml) return [];
 
   const blocks = xml.match(/<Parlamentar>[\s\S]*?<\/Parlamentar>/g) || [];

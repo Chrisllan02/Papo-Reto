@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "readme:widgets": "node scripts/generate-readme-widgets.mjs"
+    "readme:widgets": "node scripts/generate-readme-widgets.mjs",
+    "smoke:prod": "node scripts/production-smoke.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

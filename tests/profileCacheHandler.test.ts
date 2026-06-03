@@ -66,4 +66,49 @@ describe('/api/profile-cache', () => {
       expect.objectContaining({ access: 'public', addRandomSuffix: false })
     );
   });
+
+  it('refreshes cache server-side from official data without accepting a client payload', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      dados: {
+        nomeCivil: 'MARIA TESTE',
+        sexo: 'F',
+        dataNascimento: '1980-01-01',
+        municipioNascimento: 'São Paulo',
+        ufNascimento: 'SP',
+        redeSocial: ['https://example.com'],
+        ultimoStatus: {
+          nomeEleitoral: 'MARIA TESTE',
+          siglaPartido: 'PT',
+          siglaUf: 'SP',
+          urlFoto: 'https://example.com/maria.jpg',
+          situacao: 'Exercício',
+          condicaoEleitoral: 'Titular',
+          descricaoStatus: '',
+          gabinete: {
+            sala: '101',
+            andar: '1',
+            predio: 'Anexo',
+            telefone: '1234',
+            email: 'maria@example.com',
+          },
+        },
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const response = createJsonResponse();
+
+    await handler({
+      method: 'POST',
+      headers: { 'x-forwarded-for': '10.0.0.4' },
+      query: { type: 'politician', id: '1' },
+      body: { ignored: true },
+    } as any, response.res as any);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true, refreshed: true });
+    expect(put).toHaveBeenCalledWith(
+      'politicians/1.json',
+      expect.stringContaining('"civilName": "Maria teste"'),
+      expect.objectContaining({ access: 'public', addRandomSuffix: false })
+    );
+  });
 });

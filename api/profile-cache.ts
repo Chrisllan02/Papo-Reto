@@ -11,6 +11,7 @@ type VercelResponse = ServerResponse & {
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 const isSafeNumericId = (value?: string | null) => Boolean(value && /^\d+$/.test(value));
+const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 5 * 60 * 1000;
@@ -37,7 +38,7 @@ const getClientBucket = (req: VercelRequest) => {
 const isRateLimited = (bucket: string, method: string) => {
   const key = `${bucket}:${method}`;
   const now = Date.now();
-  const limit = method === 'PUT' ? WRITE_LIMIT : READ_LIMIT;
+  const limit = method === 'PUT' || method === 'POST' ? WRITE_LIMIT : READ_LIMIT;
   const current = rateLimitStore.get(key);
 
   if (!current || current.resetAt <= now) {
@@ -113,6 +114,19 @@ const readBody = async (req: VercelRequest) => {
 
 const pathForId = (id: string) => `politicians/${id}.json`;
 
+const formatText = (text?: string | null) => {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+};
+
+const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
+  if (!value) return undefined;
+  const cleaned = value.trim().toUpperCase();
+  if (cleaned.startsWith('F')) return 'F';
+  if (cleaned.startsWith('M')) return 'M';
+  return undefined;
+};
+
 async function readFromBlob(pathname: string) {
   try {
     const { blobs } = await list({ prefix: pathname, limit: 10 });
@@ -133,6 +147,55 @@ async function writeToBlob(pathname: string, payload: any) {
     addRandomSuffix: false
   });
   return blob;
+}
+
+async function buildOfficialPoliticianCache(id: string) {
+  const response = await fetch(`${BASE_URL_CAMARA}/deputados/${id}`, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+    },
+  });
+
+  if (response.status === 404) {
+    throw new RequestError(404, 'Politician not found.');
+  }
+  if (!response.ok) {
+    throw new RequestError(502, 'Official profile request failed.');
+  }
+
+  const payload = await response.json();
+  const data = payload?.dados;
+  if (!data || typeof data !== 'object') {
+    throw new RequestError(502, 'Invalid official profile response.');
+  }
+
+  const sex = normalizeSex(data.sexo);
+  return normalizePayload({
+    id: Number(id),
+    name: formatText(data.ultimoStatus?.nomeEleitoral || data.nomeCivil),
+    party: data.ultimoStatus?.siglaPartido,
+    state: data.ultimoStatus?.siglaUf,
+    photo: data.ultimoStatus?.urlFoto,
+    role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+    sex,
+    civilName: formatText(data.nomeCivil),
+    birthDate: data.dataNascimento,
+    birthCity: data.municipioNascimento,
+    birthState: data.ufNascimento,
+    email: data.ultimoStatus?.gabinete?.email,
+    cabinet: {
+      room: data.ultimoStatus?.gabinete?.sala,
+      floor: data.ultimoStatus?.gabinete?.andar,
+      building: data.ultimoStatus?.gabinete?.predio,
+      phone: data.ultimoStatus?.gabinete?.telefone,
+      email: data.ultimoStatus?.gabinete?.email,
+    },
+    socials: data.redeSocial || [],
+    situation: data.ultimoStatus?.situacao,
+    condition: data.ultimoStatus?.condicaoEleitoral,
+    statusDescription: data.ultimoStatus?.descricaoStatus,
+  });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -197,6 +260,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch {
       MEMORY_CACHE.set(pathname, JSON.stringify(payload));
       return jsonResponse(res, 200, { ok: true, fallback: 'memory' });
+    }
+  }
+
+  if (method === 'POST') {
+    let payload: any;
+    try {
+      payload = await buildOfficialPoliticianCache(id as string);
+    } catch (error: any) {
+      return jsonResponse(res, error?.statusCode || 502, { error: error?.message || 'Profile refresh failed.' });
+    }
+
+    try {
+      await writeToBlob(pathname, payload);
+      MEMORY_CACHE.set(pathname, JSON.stringify(payload));
+      return jsonResponse(res, 200, { ok: true, refreshed: true });
+    } catch {
+      MEMORY_CACHE.set(pathname, JSON.stringify(payload));
+      return jsonResponse(res, 200, { ok: true, refreshed: true, fallback: 'memory' });
     }
   }
 

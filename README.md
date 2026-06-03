@@ -127,6 +127,7 @@ O projeto foi pensado para falhar de forma controlada. Quando uma integração o
 | Manutenibilidade | Separação entre domínio, serviços, hooks e visualizações. |
 | Qualidade | Testes automatizados, lint, build TypeScript e auditoria de dependências. |
 | Observabilidade | Endpoint de saúde e cartões dinâmicos no README para leitura rápida do estado público. |
+| Monitoramento | Smoke agendado no GitHub Actions para validar produção periodicamente. |
 
 ## README dinâmico
 
@@ -185,6 +186,7 @@ Quando `VITE_BOOTSTRAP_ENDPOINT` aponta para produção, o frontend também usa 
 | `npm test` | Executa Vitest. |
 | `npm audit --omit=dev` | Audita dependências de produção. |
 | `npm run readme:widgets` | Atualiza os cartões dinâmicos do README. |
+| `npm run smoke:prod` | Valida app publicado, bootstrap e proteções básicas. |
 
 ## Variáveis de ambiente
 
@@ -216,6 +218,8 @@ VITE_LEGISLATIVE_API_PROXY=/api/camara
 VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 ```
 
+Para produção na Vercel, veja o checklist de operação em [`docs/operations/vercel-environment.md`](docs/operations/vercel-environment.md).
+
 ## Endpoints
 
 | Método | Endpoint | Papel no produto |
@@ -225,12 +229,11 @@ VITE_PROFILE_CACHE_ENDPOINT=/api/profile-cache
 | `GET` | `/api/camara?url=...` | Faz proxy controlado para fontes legislativas oficiais. |
 | `GET` | `/api/cron/refresh-legislative-data` | Aquece o cache legislativo de forma automatizada. |
 | `POST` | `/api/ai` | Executa ações de IA usadas pelo app quando a chave está configurada. |
-| `GET`/`PUT` | `/api/profile-cache?type=politician&id=...` | Consulta cache de perfis; escrita exige segredo server-side. |
+| `GET`/`POST`/`PUT` | `/api/profile-cache?type=politician&id=...` | Consulta cache de perfis; `POST` atualiza dados oficiais no servidor; `PUT` exige segredo server-side. |
 
 ## Evolução planejada
 
 - Adicionar screenshots reais do produto no README.
-- Criar testes E2E com Playwright no CI.
 - Adicionar monitoramento com Sentry ou ferramenta equivalente.
 - Evoluir comparativos entre parlamentar, partido, estado e média da Casa.
 
