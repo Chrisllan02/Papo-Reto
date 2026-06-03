@@ -30,7 +30,7 @@ type LegislativeBootstrap = {
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
-const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v3';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v4';
 const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
 
 const readSexCache = (): Record<string, SexCode> => {
@@ -183,11 +183,13 @@ export const useInitialData = () => {
         const hasFreshBootstrap = Boolean(cached);
 
         if (hasFreshBootstrap) {
-            setPoliticians(cached!.politicians || POLITICIANS_DB);
+            const cachedPoliticians = cached!.politicians || POLITICIANS_DB;
+            setPoliticians(cachedPoliticians);
             setFeedItems(cached!.feedItems || FEED_ITEMS);
             setParties(cached!.parties || getStaticParties());
             setArticles(cached!.articles || (EDUCATION_CAROUSEL as EducationalArticle[]));
             setIsLoading(false);
+            hydrateMissingSexMetadata(cachedPoliticians, setPoliticians);
             return;
         }
 
@@ -258,6 +260,7 @@ export const useInitialData = () => {
                 } else {
                     if (cancelled) return;
                     setPoliticians(POLITICIANS_DB);
+                    hydrateMissingSexMetadata(POLITICIANS_DB, setPoliticians);
                     setFeedItems(feeds && feeds.length > 0 ? feeds : FEED_ITEMS);
                     setParties(parts && parts.length > 0 ? parts : getStaticParties());
                     setArticles(EDUCATION_CAROUSEL as EducationalArticle[]);

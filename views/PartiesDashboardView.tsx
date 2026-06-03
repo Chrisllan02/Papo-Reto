@@ -50,30 +50,34 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
 
     const stats = useMemo(() => {
         const total = Math.max(politicians.length, 1);
-        const women = politicians.filter(p => normalizeSex(p.sex) === 'F');
+        const knownPoliticians = politicians.filter(p => normalizeSex(p.sex));
+        const knownTotal = knownPoliticians.length;
+        const unknownSexCount = Math.max(politicians.length - knownTotal, 0);
+        const women = knownPoliticians.filter(p => normalizeSex(p.sex) === 'F');
         const womenCount = women.length;
-        const percentage = ((womenCount / total) * 100).toFixed(1);
+        const percentageBase = Math.max(knownTotal || politicians.length, 1);
+        const percentage = ((womenCount / percentageBase) * 100).toFixed(1);
 
         // Agrupamento por partido
-        const partyCounts: Record<string, number> = {};
-        const allParties = new Set<string>();
+        const partyWomenCounts: Record<string, number> = {};
+        const knownParties = new Set<string>();
         
-        politicians.forEach(p => {
+        knownPoliticians.forEach(p => {
             const pName = p.party || 'S/P';
-            allParties.add(pName);
+            knownParties.add(pName);
             if (normalizeSex(p.sex) === 'F') {
-                partyCounts[pName] = (partyCounts[pName] || 0) + 1;
+                partyWomenCounts[pName] = (partyWomenCounts[pName] || 0) + 1;
             }
         });
 
-        const withWomen = Object.entries(partyCounts)
-            .sort((a, b) => b[1] - a[1]); // Ordernar por quem tem mais mulheres
+        const withWomen = Object.entries(partyWomenCounts)
+            .sort((a, b) => b[1] - a[1]); // Ordenar por quem tem mais mulheres
 
-        const withoutWomen = Array.from(allParties)
-            .filter(p => !partyCounts[p])
+        const withoutWomen = Array.from(knownParties)
+            .filter(p => !partyWomenCounts[p])
             .sort();
 
-        return { total, womenCount, percentage, withWomen, withoutWomen };
+        return { total, knownTotal, unknownSexCount, womenCount, percentage, withWomen, withoutWomen };
     }, [politicians]);
 
     // Configuração do SVG Donut
@@ -115,6 +119,9 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                 </div>
                 <div className="mt-2 text-center">
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total: {stats.womenCount}</p>
+                    <p className="mt-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                        Base: {stats.knownTotal}/{stats.total} confirmados
+                    </p>
                 </div>
             </div>
 
@@ -127,14 +134,26 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                         </div>
                         <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-tight">Representatividade</h4>
                     </div>
-                    <button 
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                        {isExpanded ? 'Ver menos' : 'Ver todos'}
-                        {isExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {stats.unknownSexCount > 0 && (
+                            <span className="hidden sm:inline-flex rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                                atualizando {stats.unknownSexCount}
+                            </span>
+                        )}
+                        <button 
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                            {isExpanded ? 'Ver menos' : 'Ver todos'}
+                            {isExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                        </button>
+                    </div>
                 </div>
+                {stats.unknownSexCount > 0 && (
+                    <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2">
+                        O gráfico está usando apenas parlamentares com sexo confirmado enquanto a base completa é atualizada em segundo plano.
+                    </p>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Column 1: Parties WITH Women */}
