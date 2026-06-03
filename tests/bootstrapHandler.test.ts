@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '../api/bootstrap';
+import { clearServerCacheForTests } from '../api/lib/serverCache';
 import { createJsonResponse } from './testUtils';
 
 const jsonResponse = (body: unknown) => new Response(JSON.stringify(body), {
@@ -15,6 +16,7 @@ const xmlResponse = (body: string) => new Response(body, {
 describe('/api/bootstrap', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearServerCacheForTests();
     delete process.env.BLOB_READ_WRITE_TOKEN;
   });
 
@@ -147,5 +149,18 @@ describe('/api/bootstrap', () => {
     expect(payload.data.partial).toBe(true);
     expect(payload.warnings).toContain('senado_senadores_unavailable');
     expect(payload.warnings).toContain('camara_feed_unavailable');
+  });
+
+  it('does not return success when no politicians are available', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ dados: [] })));
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; error: string; warnings: string[] }>();
+    expect(response.statusCode).toBe(503);
+    expect(payload.ok).toBe(false);
+    expect(payload.error).toBe('Bootstrap did not return politicians.');
+    expect(payload.warnings).toContain('camara_deputados_unavailable');
   });
 });

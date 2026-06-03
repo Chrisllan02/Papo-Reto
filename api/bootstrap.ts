@@ -16,10 +16,10 @@ type VercelResponse = ServerResponse & {
 const CACHE_KEY = 'legislative-bootstrap-v1';
 const CACHE_TTL_MS = 1000 * 60 * 15;
 
-const jsonResponse = (res: VercelResponse, status: number, data: unknown) => {
+const jsonResponse = (res: VercelResponse, status: number, data: unknown, cacheControl?: string) => {
   res.status?.(status);
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Cache-Control', status === 200 ? 'public, s-maxage=300, stale-while-revalidate=900' : 'no-store');
+  res.setHeader('Cache-Control', cacheControl || (status === 200 ? 'public, s-maxage=300, stale-while-revalidate=900' : 'no-store'));
   res.end(JSON.stringify(data));
 };
 
@@ -44,6 +44,9 @@ const createBootstrapResponse = (
 
 export const refreshLegislativeBootstrap = async () => {
   const data = await buildLegislativeBootstrap();
+  if (!data.politicians.length) {
+    return { data, cache: { persisted: false, skipped: true } };
+  }
   const cache = await writeServerCache<LegislativeBootstrap>(CACHE_KEY, data);
   return { data, cache };
 };
@@ -57,12 +60,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const shouldRefresh = getRefreshFlag(req);
     const cached = shouldRefresh ? null : await readServerCache<LegislativeBootstrap>(CACHE_KEY, CACHE_TTL_MS);
-    if (cached) {
+    if (cached?.politicians?.length) {
       return jsonResponse(res, 200, createBootstrapResponse('cache', cached));
     }
 
     const { data, cache } = await refreshLegislativeBootstrap();
-    return jsonResponse(res, 200, createBootstrapResponse(cache.persisted ? 'refresh:blob' : 'refresh:memory', data));
+    if (!data.politicians.length) {
+      const stale = await readServerCache<LegislativeBootstrap>(CACHE_KEY, 0);
+      if (stale?.politicians?.length) {
+        return jsonResponse(res, 200, createBootstrapResponse('stale-cache', stale), 'no-store');
+      }
+      return jsonResponse(res, 503, {
+        ok: false,
+        error: 'Bootstrap did not return politicians.',
+        partial: true,
+        warnings: data.warnings,
+        sources: data.sources,
+      });
+    }
+
+    return jsonResponse(
+      res,
+      200,
+      createBootstrapResponse(cache.persisted ? 'refresh:blob' : 'refresh:memory', data),
+      shouldRefresh ? 'no-store' : undefined
+    );
   } catch (error: any) {
     return jsonResponse(res, 502, { ok: false, error: error?.message || 'Bootstrap refresh failed.' });
   }

@@ -61,3 +61,9 @@ export const writeServerCache = async <T>(key: string, data: T) => {
 
   return { persisted: true };
 };
+
+export const clearServerCacheForTests = () => {
+  if (process.env.NODE_ENV === 'test') {
+    memoryCache.clear();
+  }
+};
