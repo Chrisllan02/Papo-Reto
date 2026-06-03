@@ -160,7 +160,36 @@ describe('/api/bootstrap', () => {
     const payload = response.json<{ ok: boolean; error: string; warnings: string[] }>();
     expect(response.statusCode).toBe(503);
     expect(payload.ok).toBe(false);
-    expect(payload.error).toBe('Bootstrap did not return politicians.');
+    expect(payload.error).toBe('Bootstrap did not return deputies.');
     expect(payload.warnings).toContain('camara_deputados_unavailable');
+  });
+
+  it('does not cache a senate-only bootstrap as a healthy response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('legis.senado.leg.br') || url.includes('/api/camara?url=')) {
+        return xmlResponse(`
+          <ListaParlamentarEmExercicio>
+            <Parlamentar>
+              <CodigoParlamentar>99</CodigoParlamentar>
+              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
+              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
+              <UfParlamentar>RJ</UfParlamentar>
+              <SexoParlamentar>M</SexoParlamentar>
+            </Parlamentar>
+          </ListaParlamentarEmExercicio>
+        `);
+      }
+      return jsonResponse({ dados: [] });
+    }));
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; error: string; sources: any }>();
+    expect(response.statusCode).toBe(503);
+    expect(payload.ok).toBe(false);
+    expect(payload.error).toBe('Bootstrap did not return deputies.');
+    expect(payload.sources.senadoSenadores.count).toBe(1);
+    expect(payload.sources.camaraDeputados.ok).toBe(false);
   });
 });

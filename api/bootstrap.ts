@@ -42,9 +42,12 @@ const createBootstrapResponse = (
   data,
 });
 
+const hasDeputies = (data?: LegislativeBootstrap | null) =>
+  Boolean(data?.sources?.camaraDeputados?.ok && data.politicians.some((politician) => politician.hasApiIntegration !== false));
+
 export const refreshLegislativeBootstrap = async () => {
   const data = await buildLegislativeBootstrap();
-  if (!data.politicians.length) {
+  if (!hasDeputies(data)) {
     return { data, cache: { persisted: false, skipped: true } };
   }
   const cache = await writeServerCache<LegislativeBootstrap>(CACHE_KEY, data);
@@ -60,19 +63,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const shouldRefresh = getRefreshFlag(req);
     const cached = shouldRefresh ? null : await readServerCache<LegislativeBootstrap>(CACHE_KEY, CACHE_TTL_MS);
-    if (cached?.politicians?.length) {
+    if (cached && hasDeputies(cached)) {
       return jsonResponse(res, 200, createBootstrapResponse('cache', cached));
     }
 
     const { data, cache } = await refreshLegislativeBootstrap();
-    if (!data.politicians.length) {
+    if (!hasDeputies(data)) {
       const stale = await readServerCache<LegislativeBootstrap>(CACHE_KEY, 0);
-      if (stale?.politicians?.length) {
+      if (stale && hasDeputies(stale)) {
         return jsonResponse(res, 200, createBootstrapResponse('stale-cache', stale), 'no-store');
       }
       return jsonResponse(res, 503, {
         ok: false,
-        error: 'Bootstrap did not return politicians.',
+        error: 'Bootstrap did not return deputies.',
         partial: true,
         warnings: data.warnings,
         sources: data.sources,
