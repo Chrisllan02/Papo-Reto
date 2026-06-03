@@ -30,7 +30,7 @@
       <g transform="translate(24 136)">
         <circle cx="7" cy="7" r="5" fill="#22c55e" opacity="0.95" />
         <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">Atividades</text>
-        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">30</text>
+        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">20</text>
         <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Feed legislativo recente</text>
       </g>
     
@@ -41,5 +41,5 @@
         <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Metadados e composição</text>
       </g>
     
-  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 03/06/2026, 14:23</text>
+  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 03/06/2026, 15:00</text>
 </svg>
