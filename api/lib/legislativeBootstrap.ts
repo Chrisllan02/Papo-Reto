@@ -2,6 +2,7 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
+const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
 const UPSTREAM_TIMEOUT_MS = 6000;
 const SENADO_TIMEOUT_MS = 12000;
 
@@ -135,7 +136,7 @@ const fetchDeputados = async (): Promise<Politician[]> => {
 };
 
 const fetchSenadores = async (): Promise<Politician[]> => {
-  const xml = await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
+  const xml = await fetchText(SENADO_PROXY_URL, SENADO_TIMEOUT_MS) || await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
   if (!xml) return [];
 
   const blocks = xml.match(/<Parlamentar>[\s\S]*?<\/Parlamentar>/g) || [];
