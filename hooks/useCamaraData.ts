@@ -24,11 +24,13 @@ type LegislativeBootstrap = {
     parties: Party[];
     articles?: EducationalArticle[];
     generatedAt?: string;
+    partial?: boolean;
+    warnings?: string[];
 };
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
-const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v2';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v3';
 const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
 
 const readSexCache = (): Record<string, SexCode> => {
@@ -57,6 +59,10 @@ const readBootstrapCache = () => {
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return null;
         if (Date.now() - Number(parsed.timestamp || 0) > BOOTSTRAP_CACHE_TTL) return null;
+        if (!Array.isArray(parsed.data?.politicians) || parsed.data.politicians.length === 0) {
+            localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+            return null;
+        }
         return parsed.data as {
             politicians?: Politician[];
             feedItems?: FeedItem[];

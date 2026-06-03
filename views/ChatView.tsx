@@ -308,7 +308,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                 </div>
                 <div className="text-center mt-2">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                        IA Gemini 2.5 • Pode cometer erros
+                        IA opcional • Pode cometer erros
                     </p>
                 </div>
             </div>

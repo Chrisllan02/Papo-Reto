@@ -174,7 +174,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
   }).filter((p) => p.name && p.party && p.state);
 };
 
-const fetchParties = async (): Promise<Party[]> => {
+const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> => {
   const data = await fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/partidos?ordem=ASC&ordenarPor=sigla&itens=100`);
   const parties = (data?.dados || []).map((p) => ({
     id: p.id,
@@ -184,14 +184,17 @@ const fetchParties = async (): Promise<Party[]> => {
     ideology: PARTY_FALLBACK[p.sigla]?.ideology || 'Centro',
   } as Party));
 
-  if (parties.length > 0) return parties;
-  return Object.entries(PARTY_FALLBACK).map(([sigla, data], index) => ({
-    id: index + 1000,
-    sigla,
-    nome: data.nome,
-    uri: '',
-    ideology: data.ideology,
-  }));
+  if (parties.length > 0) return { parties, fallback: false };
+  return {
+    parties: Object.entries(PARTY_FALLBACK).map(([sigla, data], index) => ({
+      id: index + 1000,
+      sigla,
+      nome: data.nome,
+      uri: '',
+      ideology: data.ideology,
+    })),
+    fallback: true,
+  };
 };
 
 const fetchFeed = async (): Promise<FeedItem[]> => {
@@ -259,13 +262,14 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
 };
 
 export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap> => {
-  const [deputados, senadores, feedItems, parties] = await Promise.all([
+  const [deputados, senadores, feedItems, partiesResult] = await Promise.all([
     fetchDeputados(),
     fetchSenadores(),
     fetchFeed(),
     fetchParties(),
   ]);
-  const partiesFallback = parties.length > 0 && parties.every((party) => Number(party.id) >= 1000);
+  const parties = partiesResult.parties;
+  const partiesFallback = partiesResult.fallback;
   const warnings = [
     deputados.length === 0 ? 'camara_deputados_unavailable' : '',
     senadores.length === 0 ? 'senado_senadores_unavailable' : '',

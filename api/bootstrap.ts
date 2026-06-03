@@ -206,14 +206,17 @@ const fetchParties = async () => {
     ideology: PARTY_FALLBACK[p.sigla]?.ideology || 'Centro',
   }));
 
-  if (parties.length > 0) return parties;
-  return Object.entries(PARTY_FALLBACK).map(([sigla, data], index) => ({
-    id: index + 1000,
-    sigla,
-    nome: data.nome,
-    uri: '',
-    ideology: data.ideology,
-  }));
+  if (parties.length > 0) return { parties, fallback: false };
+  return {
+    parties: Object.entries(PARTY_FALLBACK).map(([sigla, data], index) => ({
+      id: index + 1000,
+      sigla,
+      nome: data.nome,
+      uri: '',
+      ideology: data.ideology,
+    })),
+    fallback: true,
+  };
 };
 
 const fetchFeed = async () => {
@@ -281,13 +284,14 @@ const fetchFeed = async () => {
 };
 
 const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap> => {
-  const [deputados, senadores, feedItems, parties] = await Promise.all([
+  const [deputados, senadores, feedItems, partiesResult] = await Promise.all([
     fetchDeputados(),
     fetchSenadores(),
     fetchFeed(),
     fetchParties(),
   ]);
-  const partiesFallback = parties.length > 0 && parties.every((party) => Number(party.id) >= 1000);
+  const parties = partiesResult.parties;
+  const partiesFallback = partiesResult.fallback;
   const warnings = [
     deputados.length === 0 ? 'camara_deputados_unavailable' : '',
     senadores.length === 0 ? 'senado_senadores_unavailable' : '',
