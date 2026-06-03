@@ -67,7 +67,7 @@ describe('/api/bootstrap', () => {
               <CodigoParlamentar>99</CodigoParlamentar>
               <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
               <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-              <SiglaUfParlamentar>RJ</SiglaUfParlamentar>
+              <UfParlamentar>RJ</UfParlamentar>
               <SexoParlamentar>M</SexoParlamentar>
               <UrlFotoParlamentar>https://example.com/joao.jpg</UrlFotoParlamentar>
             </Parlamentar>

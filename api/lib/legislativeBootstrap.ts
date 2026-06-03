@@ -144,7 +144,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
     const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
     const name = getXmlTag(block, 'NomeParlamentar') || getXmlTag(block, 'NomeCompletoParlamentar');
     const party = getXmlTag(block, 'SiglaPartidoParlamentar');
-    const state = getXmlTag(block, 'SiglaUfParlamentar');
+    const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
     const sex = normalizeSex(getXmlTag(block, 'SexoParlamentar'));
 
     return {

@@ -262,7 +262,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
                 const name = getText('NomeParlamentar') || getText('NomeCompletoParlamentar');
                 const party = getText('SiglaPartidoParlamentar');
-                const state = getText('SiglaUfParlamentar');
+                const state = getText('SiglaUfParlamentar') || getText('UfParlamentar');
                 const photo = getText('UrlFotoParlamentar');
                 const sex = normalizeSex(getText('SexoParlamentar'));
 
