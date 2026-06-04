@@ -3,7 +3,7 @@ import { NewsArticle } from '../types';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 // Cache Utils
-const NEWS_CACHE_KEY = 'paporeto_news_v23_clean_agenda_cards'; 
+const NEWS_CACHE_KEY = 'paporeto_news_v24_compact_agenda_cards'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
 const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
@@ -259,7 +259,7 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
         else if (lowerText.includes('convocada')) explanation = "Reunião convocada para debater pautas prioritárias.";
         else {
             const agendaSubject = extractAgendaSubject(rawText);
-            explanation = `Discussão pública sobre ${agendaSubject}. Acompanhe para entender impactos, convidados e próximos encaminhamentos.`;
+            explanation = `Discussão pública sobre ${agendaSubject}. Acompanhe os impactos e próximos encaminhamentos.`;
         }
 
         if (explanation.length > 170) explanation = `${explanation.substring(0, 167).trim()}...`;
