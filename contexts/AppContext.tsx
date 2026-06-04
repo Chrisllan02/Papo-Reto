@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { useInitialData } from '../hooks/useCamaraData';
+import { normalizeLocationUF, reverseGeocodeToUF } from '../utils/location';
 
 // --- Types ---
 interface AppState {
@@ -109,27 +110,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const [userLocation, setUserLocation] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
+  const LOCATION_AUTO_PROMPT_KEY = 'paporeto_location_auto_prompted_at';
+  const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
 
   // Geo Logic Refactored for Reusability
-  const detectLocation = async () => {
+  const detectLocation = async (silent = false) => {
       if (!navigator.geolocation) {
-          alert("Geolocalização não suportada neste dispositivo.");
+          if (!silent) alert("Geolocalização não suportada neste dispositivo.");
           return;
       }
 
       setIsLocating(true);
       
+      return new Promise<void>((resolve) => {
       navigator.geolocation.getCurrentPosition(
           async (position) => {
               try {
                   const { latitude, longitude } = position.coords;
-                  // Usando API Free de Reverse Geocoding (BigDataCloud é bom fallback)
-                  const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=pt`);
-                  const data = await response.json();
-                  // Tenta extrair UF do código ISO (ex: BR-SP -> SP) ou principalSubdivisionCode
-                  const uf = data.principalSubdivisionCode ? data.principalSubdivisionCode.split('-')[1] : null;
+                  const uf = await reverseGeocodeToUF(latitude, longitude);
                   
-                  if (uf && uf.length === 2) {
+                  if (uf) {
                       updateUserLocation(uf);
                   } else {
                       console.warn("Não foi possível determinar o estado exato.");
@@ -138,22 +138,52 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                   console.warn("Erro na API de geolocalização:", e);
               } finally {
                   setIsLocating(false);
+                  resolve();
               }
           },
           (err) => {
               console.warn("Permissão de geolocalização negada ou erro:", err);
               setIsLocating(false);
+              resolve();
           },
-          { timeout: 10000, enableHighAccuracy: false } // Timeout de 10s
+          { timeout: 15000, enableHighAccuracy: true, maximumAge: 1000 * 60 * 10 }
       );
+      });
   };
 
   // Initial Load Location Check
   useEffect(() => {
       const savedLoc = localStorage.getItem('paporeto_user_location');
-      if (savedLoc) {
-          setUserLocation(savedLoc);
+      const normalizedSavedLoc = normalizeLocationUF(savedLoc);
+      if (normalizedSavedLoc) {
+          setUserLocation(normalizedSavedLoc);
+          if (normalizedSavedLoc !== savedLoc) {
+              localStorage.setItem('paporeto_user_location', normalizedSavedLoc);
+          }
+          return;
       }
+      if (savedLoc) localStorage.removeItem('paporeto_user_location');
+
+      if (!navigator.geolocation) return;
+
+      const lastPrompt = Number(localStorage.getItem(LOCATION_AUTO_PROMPT_KEY) || 0);
+      const canPromptAgain = Date.now() - lastPrompt > LOCATION_AUTO_PROMPT_TTL;
+
+      const detectIfAllowed = async () => {
+          try {
+              const permissions = await navigator.permissions?.query?.({ name: 'geolocation' as PermissionName });
+              if (permissions?.state === 'denied') return;
+              if (permissions?.state === 'prompt' && !canPromptAgain) return;
+              localStorage.setItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
+              await detectLocation(true);
+          } catch {
+              if (!canPromptAgain) return;
+              localStorage.setItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
+              await detectLocation(true);
+          }
+      };
+
+      void detectIfAllowed();
   }, []);
 
   // --- ACESSIBILIDADE: Efeitos Colaterais ---
@@ -262,8 +292,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateUserLocation = (uf: string) => {
-      setUserLocation(uf);
-      localStorage.setItem('paporeto_user_location', uf);
+      const normalized = normalizeLocationUF(uf);
+      setUserLocation(normalized);
+      if (normalized) {
+          localStorage.setItem('paporeto_user_location', normalized);
+      } else {
+          localStorage.removeItem('paporeto_user_location');
+      }
   };
 
   const resetNavigation = () => {
