@@ -4,6 +4,12 @@ import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../servi
 import { NewsArticle } from '../types';
 import { Sparkles, ExternalLink, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
+const clampText = (text: string, maxLength: number) => {
+    const clean = (text || '').replace(/\s+/g, ' ').trim();
+    if (clean.length <= maxLength) return clean;
+    return `${clean.slice(0, maxLength - 3).trim()}...`;
+};
+
 const NewsTicker: React.FC = () => {
     // 1. Initialize state immediately with cache OR emergency fallback.
     const [news, setNews] = useState<NewsArticle[]>(() => {
@@ -84,10 +90,13 @@ const NewsTicker: React.FC = () => {
 
     const theme = getNewsTheme(currentNews.summary.context || "", currentNews.title);
     const ThemeIcon = theme.icon;
+    const displayTitle = clampText(currentNews.title, 72);
+    const displayContext = clampText(currentNews.summary.context || currentNews.source || 'Atualização', 26);
+    const displaySummary = clampText(currentNews.summary.main, 170);
 
     return (
         <section 
-            className={`w-full relative overflow-hidden rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group h-[220px] md:h-64 hover:shadow-2xl hover:scale-[1.01]`}
+            className={`w-full relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group min-h-[300px] md:min-h-[330px] hover:shadow-2xl hover:scale-[1.005]`}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             aria-label="Destaque de notícia política"
@@ -101,15 +110,15 @@ const NewsTicker: React.FC = () => {
             {/* Ambient Light */}
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none opacity-50"></div>
 
-            <div className="relative z-10 p-5 md:p-8 flex flex-col h-full text-white">
+            <div className="relative z-10 p-5 md:p-8 flex flex-col min-h-[300px] md:min-h-[330px] text-white">
                 
                 {/* Header: Source & Status */}
-                <div className="flex justify-between items-start mb-2 md:mb-4">
+                <div className="flex justify-between items-start gap-3 mb-5">
                     <div className="flex items-center gap-2 animate-in fade-in">
                         <span className={`backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-1.5 ${theme.labelColor}`}>
                             <ThemeIcon size={12} /> {currentNews.source}
                         </span>
-                        <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 ml-2">
+                        <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 ml-1 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> {currentNews.time}
                         </span>
                     </div>
@@ -118,32 +127,37 @@ const NewsTicker: React.FC = () => {
                         href={currentNews.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
                         title="Ler na fonte oficial"
                     >
-                        Ver na Íntegra <ExternalLink size={10} />
+                        <span className="hidden sm:inline">Ver na Íntegra</span><ExternalLink size={12} />
                     </a>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 flex flex-col justify-start mt-2">
+                <div className="flex-1 flex flex-col justify-start">
                     {/* Title */}
-                    <h3 className="font-black leading-tight tracking-tight drop-shadow-md text-xl md:text-3xl mb-3 md:mb-4 line-clamp-3">
-                        {currentNews.title}
+                    <h3 className="font-black leading-[1.05] tracking-tight drop-shadow-md text-3xl md:text-5xl mb-5 line-clamp-2 max-w-5xl">
+                        {displayTitle}
                     </h3>
                     
                     {/* Summary (Structured Context + Main) */}
-                    <div className="bg-white/10 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                        <div className="flex items-start gap-3">
-                            <Sparkles size={16} className="text-yellow-300 shrink-0 mt-0.5" />
-                            <p className="text-sm font-medium leading-relaxed text-white/90 line-clamp-3 md:line-clamp-3">
-                                {/* Contexto em Destaque */}
-                                <strong className="text-white font-black uppercase tracking-wide text-xs bg-white/20 px-1.5 py-0.5 rounded mr-2">
-                                    {currentNews.summary.context}
-                                </strong>
-                                {/* Texto Principal Limpo */}
-                                {currentNews.summary.main}
-                            </p>
+                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-6xl">
+                        <div className="grid grid-cols-[auto,1fr] gap-3">
+                            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+                                <Sparkles size={15} className="text-yellow-300" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <strong className="text-white font-black uppercase tracking-wide text-[10px] bg-white/20 px-2 py-1 rounded-lg max-w-full truncate">
+                                        {displayContext}
+                                    </strong>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/55">O que importa</span>
+                                </div>
+                                <p className="text-sm md:text-base font-semibold leading-relaxed text-white/90 line-clamp-3">
+                                    {displaySummary}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

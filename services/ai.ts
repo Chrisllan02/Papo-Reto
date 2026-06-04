@@ -3,7 +3,7 @@ import { NewsArticle } from '../types';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 // Cache Utils
-const NEWS_CACHE_KEY = 'paporeto_news_v21_journalistic'; 
+const NEWS_CACHE_KEY = 'paporeto_news_v22_clean_cards'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
 const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
@@ -127,9 +127,45 @@ const TITLE_RULES: Array<{ regex: RegExp, template: string }> = [
     { regex: /transformado na lei/i, template: "Sanção: Nova Lei em Vigor" }
 ];
 
+const cleanLegislativeText = (rawText: string) => rawText
+    .replace(/PAUTA SUJEITA A ALTERAÇÕES.*/i, '')
+    .replace(/A - Deliberação.*/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:])/g, '$1')
+    .trim();
+
+const extractAgendaSubject = (rawText: string) => {
+    const cleaned = cleanLegislativeText(rawText)
+        .replace(/^Na pauta:\s*/i, '')
+        .replace(/^Pauta:\s*/i, '');
+
+    const beforeGuests = cleaned.split(/\s+\d+\)\s+/)[0]?.trim() || cleaned;
+    const subject = beforeGuests
+        .split(/;|\.\s/)[0]
+        .replace(/\s+-\s+$/g, '')
+        .trim();
+
+    return subject || 'pauta legislativa';
+};
+
+const sentenceCase = (text: string) => {
+    const clean = text.trim();
+    if (!clean) return clean;
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+};
+
 function generateJournalisticTitle(rawText: string, type: 'voto' | 'evento' | 'proposicao' = 'voto'): string {
     if (!rawText) return "Movimentação no Congresso";
     const text = rawText.trim();
+
+    if (type === 'evento') {
+        const agendaSubject = extractAgendaSubject(text);
+        if (/educação domiciliar/i.test(agendaSubject)) return 'Debate sobre educação domiciliar';
+        if (agendaSubject.length > 8 && !/^audiência pública$/i.test(agendaSubject)) {
+            const title = sentenceCase(agendaSubject.split(',')[0]);
+            return title.length > 58 ? `${title.slice(0, 55)}...` : title;
+        }
+    }
 
     // 1. Regras Diretas (Substituição Completa)
     for (const rule of TITLE_RULES) {
@@ -210,7 +246,12 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
         if (lowerText.includes('oitiva')) explanation = "Deputados ouvem testemunhas e investigados em comissão.";
         else if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
         else if (lowerText.includes('convocada')) explanation = "Reunião convocada para debater pautas prioritárias.";
-        else explanation = subject.length > 10 ? `Na pauta: ${subject}` : rawText;
+        else {
+            const agendaSubject = extractAgendaSubject(rawText);
+            explanation = `Discussão pública sobre ${agendaSubject}. Acompanhe para entender impactos, convidados e próximos encaminhamentos.`;
+        }
+
+        if (explanation.length > 170) explanation = `${explanation.substring(0, 167).trim()}...`;
         
         return { context, main: explanation };
     }
