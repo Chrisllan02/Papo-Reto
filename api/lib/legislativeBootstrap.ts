@@ -5,6 +5,9 @@ const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual
 const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
 const UPSTREAM_TIMEOUT_MS = 6000;
 const SENADO_TIMEOUT_MS = 12000;
+const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
+const DEPUTY_SEX_ENRICHMENT_CONCURRENCY = 24;
+const DEPUTY_SEX_ENRICHMENT_BUDGET_MS = 9000;
 
 const PARTY_FALLBACK: Record<string, { nome: string; ideology: 'Esquerda' | 'Centro' | 'Direita' }> = {
   PT: { nome: 'Partido dos Trabalhadores', ideology: 'Esquerda' },
@@ -51,9 +54,9 @@ const formatText = (text: string) => {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
-const fetchJson = async <T>(url: string): Promise<T | null> => {
+const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<T | null> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
@@ -104,9 +107,54 @@ const getXmlTag = (source: string, tag: string) => {
   return match?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
 };
 
+const fetchDeputySex = async (id: number): Promise<'F' | 'M' | undefined> => {
+  const data = await fetchJson<{ dados?: { sexo?: string | null } }>(
+    `${BASE_URL_CAMARA}/deputados/${id}`,
+    DEPUTY_DETAIL_TIMEOUT_MS
+  );
+  return normalizeSex(data?.dados?.sexo);
+};
+
+const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politician[]> => {
+  const missing = deputies.filter((deputy) => !normalizeSex(deputy.sex));
+  if (missing.length === 0) return deputies;
+
+  const updates = new Map<number, 'F' | 'M'>();
+  const startedAt = Date.now();
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < missing.length && Date.now() - startedAt < DEPUTY_SEX_ENRICHMENT_BUDGET_MS) {
+      const deputy = missing[cursor];
+      cursor += 1;
+      const sex = await fetchDeputySex(deputy.id);
+      if (sex) updates.set(deputy.id, sex);
+    }
+  };
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(DEPUTY_SEX_ENRICHMENT_CONCURRENCY, missing.length) },
+      () => worker()
+    )
+  );
+
+  if (updates.size === 0) return deputies;
+
+  return deputies.map((deputy) => {
+    const sex = updates.get(deputy.id);
+    if (!sex) return deputy;
+    return {
+      ...deputy,
+      sex,
+      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+    };
+  });
+};
+
 const fetchDeputados = async (): Promise<Politician[]> => {
   const data = await fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/deputados?ordem=ASC&ordenarPor=nome`);
-  return (data?.dados || []).map((d) => {
+  const deputies = (data?.dados || []).map((d) => {
     const sex = normalizeSex(d.sexo);
     return {
       id: d.id,
@@ -133,6 +181,8 @@ const fetchDeputados = async (): Promise<Politician[]> => {
       votes: {},
     } as Politician;
   });
+
+  return enrichDeputiesSexMetadata(deputies);
 };
 
 const fetchSenadores = async (): Promise<Politician[]> => {

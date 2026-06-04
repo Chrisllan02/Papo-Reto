@@ -100,6 +100,67 @@ describe('/api/bootstrap', () => {
     expect(payload.data.parties).toHaveLength(1);
   });
 
+  it('hydrates deputy sex metadata from detail endpoint when list omits it', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/deputados?')) {
+        return jsonResponse({
+          dados: [{
+            id: 42,
+            nome: 'ANA DETALHE',
+            siglaPartido: 'PSB',
+            siglaUf: 'BA',
+            urlFoto: 'https://example.com/ana.jpg',
+            email: 'ana@example.com',
+          }],
+        });
+      }
+
+      if (url.includes('/deputados/42')) {
+        return jsonResponse({ dados: { id: 42, sexo: 'F' } });
+      }
+
+      if (url.includes('/partidos?')) {
+        return jsonResponse({ dados: [{ id: 10, sigla: 'PSB', nome: 'Partido Socialista Brasileiro', uri: 'x' }] });
+      }
+
+      if (url.includes('/votacoes?') || url.includes('/proposicoes?') || url.includes('/eventos?')) {
+        return jsonResponse({ dados: [] });
+      }
+
+      if (url.includes('legis.senado.leg.br')) {
+        return xmlResponse(`
+          <ListaParlamentarEmExercicio>
+            <Parlamentar>
+              <CodigoParlamentar>99</CodigoParlamentar>
+              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
+              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
+              <UfParlamentar>RJ</UfParlamentar>
+              <SexoParlamentar>M</SexoParlamentar>
+            </Parlamentar>
+          </ListaParlamentarEmExercicio>
+        `);
+      }
+
+      return jsonResponse({ dados: [] });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; data: { politicians: any[] } }>();
+    const deputy = payload.data.politicians.find((politician) => politician.id === 42);
+    expect(response.statusCode).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(deputy.sex).toBe('F');
+    expect(deputy.role).toBe('Deputada Federal');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://dadosabertos.camara.leg.br/api/v2/deputados/42',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+
   it('marks bootstrap as partial when a legislative source is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url.includes('/deputados?')) {
