@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Activity, Database, Landmark, Newspaper, RotateCcw } from 'lucide-react';
+import { Activity, RotateCcw } from 'lucide-react';
 import { FeedCategory, FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
 import NewsTicker from '../components/NewsTicker';
@@ -29,8 +29,6 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
     }, []);
 
     const spotlightCandidates = useMemo(() => politicians.slice(0, 6), [politicians]);
-    const deputiesCount = useMemo(() => politicians.filter(pol => pol.hasApiIntegration !== false).length, [politicians]);
-    const senatorsCount = Math.max(0, politicians.length - deputiesCount);
     const categoryOptions = useMemo(() => {
         const counts = feedItems.reduce((acc, item) => {
             const category = item.category || 'activity';
@@ -87,36 +85,6 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                         </p>
                     </div>
                 </header>
-
-                <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8" aria-label="Resumo dos dados carregados">
-                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-200 flex items-center justify-center">
-                            <Landmark size={18} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Parlamentares</p>
-                            <p className="text-lg font-black text-midnight dark:text-white">{politicians.length}</p>
-                        </div>
-                    </div>
-                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-200 flex items-center justify-center">
-                            <Newspaper size={18} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Atividades</p>
-                            <p className="text-lg font-black text-midnight dark:text-white">{feedItems.length}</p>
-                        </div>
-                    </div>
-                    <div className="glass-surface rounded-2xl px-4 py-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 flex items-center justify-center">
-                            <Database size={18} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-subtle">Fontes</p>
-                            <p className="text-lg font-black text-midnight dark:text-white">{deputiesCount > 0 ? 'Câmara' : 'Cache'}{senatorsCount > 0 ? ' + Senado' : ''}</p>
-                        </div>
-                    </div>
-                </section>
 
                 {/* News Ticker */}
                 <NewsTicker />
