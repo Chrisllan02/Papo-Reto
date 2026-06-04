@@ -101,6 +101,7 @@ describe('/api/bootstrap', () => {
   });
 
   it('hydrates deputy sex metadata from detail endpoint when list omits it', async () => {
+    let detailAvailable = true;
     const fetchMock = vi.fn(async (url: string) => {
       if (url.includes('/deputados?')) {
         return jsonResponse({
@@ -116,7 +117,7 @@ describe('/api/bootstrap', () => {
       }
 
       if (url.includes('/deputados/42')) {
-        return jsonResponse({ dados: { id: 42, sexo: 'F' } });
+        return jsonResponse({ dados: detailAvailable ? { id: 42, sexo: 'F' } : { id: 42 } });
       }
 
       if (url.includes('/partidos?')) {
@@ -159,6 +160,18 @@ describe('/api/bootstrap', () => {
       'https://dadosabertos.camara.leg.br/api/v2/deputados/42',
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
+
+    detailAvailable = false;
+    const cachedResponse = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, cachedResponse.res as any);
+
+    const cachedPayload = cachedResponse.json<{ ok: boolean; data: { politicians: any[] } }>();
+    const cachedDeputy = cachedPayload.data.politicians.find((politician) => politician.id === 42);
+    expect(cachedResponse.statusCode).toBe(200);
+    expect(cachedPayload.ok).toBe(true);
+    expect(cachedDeputy.sex).toBe('F');
+    expect(cachedDeputy.role).toBe('Deputada Federal');
   });
 
   it('marks bootstrap as partial when a legislative source is unavailable', async () => {

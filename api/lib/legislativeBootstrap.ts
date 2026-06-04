@@ -1,4 +1,5 @@
 import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } from '../../types';
+import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
@@ -8,6 +9,7 @@ const SENADO_TIMEOUT_MS = 12000;
 const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
 const DEPUTY_SEX_ENRICHMENT_CONCURRENCY = 24;
 const DEPUTY_SEX_ENRICHMENT_BUDGET_MS = 9000;
+const DEPUTY_SEX_CACHE_KEY = 'deputy-sex-cache-v1';
 
 const PARTY_FALLBACK: Record<string, { nome: string; ideology: 'Esquerda' | 'Centro' | 'Direita' }> = {
   PT: { nome: 'Partido dos Trabalhadores', ideology: 'Esquerda' },
@@ -102,12 +104,15 @@ const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
   return undefined;
 };
 
+type SexCode = 'F' | 'M';
+type DeputySexCache = Record<string, SexCode>;
+
 const getXmlTag = (source: string, tag: string) => {
   const match = source.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
   return match?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
 };
 
-const fetchDeputySex = async (id: number): Promise<'F' | 'M' | undefined> => {
+const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   const data = await fetchJson<{ dados?: { sexo?: string | null } }>(
     `${BASE_URL_CAMARA}/deputados/${id}`,
     DEPUTY_DETAIL_TIMEOUT_MS
@@ -116,10 +121,25 @@ const fetchDeputySex = async (id: number): Promise<'F' | 'M' | undefined> => {
 };
 
 const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politician[]> => {
-  const missing = deputies.filter((deputy) => !normalizeSex(deputy.sex));
-  if (missing.length === 0) return deputies;
+  const missingInitial = deputies.filter((deputy) => !normalizeSex(deputy.sex));
+  if (missingInitial.length === 0) return deputies;
 
-  const updates = new Map<number, 'F' | 'M'>();
+  const cachedSex = await readServerCache<DeputySexCache>(DEPUTY_SEX_CACHE_KEY, 0) || {};
+  const withCachedSex = deputies.map((deputy) => {
+    if (normalizeSex(deputy.sex)) return deputy;
+    const sex = cachedSex[String(deputy.id)];
+    if (sex !== 'F' && sex !== 'M') return deputy;
+    return {
+      ...deputy,
+      sex,
+      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+    };
+  });
+
+  const missing = withCachedSex.filter((deputy) => !normalizeSex(deputy.sex));
+  if (missing.length === 0) return withCachedSex;
+
+  const updates = new Map<number, SexCode>();
   const startedAt = Date.now();
   let cursor = 0;
 
@@ -139,9 +159,15 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     )
   );
 
-  if (updates.size === 0) return deputies;
+  if (updates.size === 0) return withCachedSex;
 
-  return deputies.map((deputy) => {
+  const nextCache: DeputySexCache = { ...cachedSex };
+  updates.forEach((sex, id) => {
+    nextCache[String(id)] = sex;
+  });
+  await writeServerCache(DEPUTY_SEX_CACHE_KEY, nextCache);
+
+  return withCachedSex.map((deputy) => {
     const sex = updates.get(deputy.id);
     if (!sex) return deputy;
     return {
