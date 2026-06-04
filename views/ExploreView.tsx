@@ -42,6 +42,8 @@ interface PartyCardProps {
   onSelect: (name: string) => void;
 }
 
+const IDEOLOGY_SECTION_ORDER: Array<'Direita' | 'Centro' | 'Esquerda'> = ['Direita', 'Centro', 'Esquerda'];
+
 const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     const ideology = group.ideology || 'Centro';
     const theme = getIdeologyTheme(ideology);
@@ -333,6 +335,17 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
     const itemsToRender = selectedParty ? currentPartyMembers : filteredPoliticians;
 
+    const partySections = useMemo(() => {
+        return IDEOLOGY_SECTION_ORDER
+            .map(ideology => {
+                const groups = partiesData.filter(group => group.ideology === ideology);
+                const representatives = groups.reduce((total, group) => total + group.members.length, 0);
+
+                return { ideology, groups, representatives };
+            })
+            .filter(section => section.groups.length > 0);
+    }, [partiesData]);
+
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
             
@@ -455,15 +468,42 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                     {viewMode === 'parties' && !selectedParty && (
                         <div 
                             ref={partiesListRef}
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
+                            className="space-y-8"
                         >
-                            {partiesData.map((group) => (
-                                <PartyCard 
-                                    key={group.name} 
-                                    group={group} 
-                                    onSelect={handleSelectPartyWrapper} 
-                                />
-                            ))}
+                            {partySections.map((section) => {
+                                const theme = getIdeologyTheme(section.ideology);
+
+                                return (
+                                    <section key={section.ideology} className="space-y-4" aria-labelledby={`section-${section.ideology}`}>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between px-1">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`h-10 w-2 rounded-full ${theme.iconBg}`} aria-hidden="true" />
+                                                <div>
+                                                    <h2 id={`section-${section.ideology}`} className="text-xl md:text-2xl font-black text-gray-950 dark:text-white tracking-tight">
+                                                        {section.ideology}
+                                                    </h2>
+                                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                                        {section.groups.length} partidos nesta posição
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${theme.badgeBg} ${theme.badgeText}`}>
+                                                {section.representatives} parlamentares
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                                            {section.groups.map((group) => (
+                                                <PartyCard 
+                                                    key={group.name} 
+                                                    group={group} 
+                                                    onSelect={handleSelectPartyWrapper} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </section>
+                                );
+                            })}
                         </div>
                     )}
 
