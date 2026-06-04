@@ -323,6 +323,13 @@ export interface FeedItem {
   tramitacaoLabel?: string;
   // NOVO: Convidados de Audiência Pública
   guests?: string[];
+  originalDescription?: string;
+  summary?: string;
+  whyItMatters?: string;
+  nextStep?: string;
+  organ?: string;
+  location?: string;
+  priority?: number;
 }
 
 export interface Alert {

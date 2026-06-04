@@ -56,6 +56,130 @@ const formatText = (text: string) => {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
+const sentenceCase = (text: string) => {
+  const cleaned = text.trim().replace(/\s+/g, ' ');
+  if (!cleaned) return '';
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+};
+
+const cleanOfficialText = (text?: string | null) => {
+  if (!text) return '';
+  return text
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+};
+
+const stripGuestList = (text: string) => {
+  return cleanOfficialText(text)
+    .replace(/\b(convidados?|participantes?|expositores?|mesa de convidados)\s*:?\s*[\s\S]*$/i, '')
+    .replace(/\n\s*\d+\)\s+[\s\S]*$/i, '')
+    .replace(/\(\s*req(?:uerimento)?[^)]*\)/gi, '')
+    .replace(/\breq\.?\s*\d+\/\d{4}\s*[A-Z]*\b/gi, '')
+    .trim();
+};
+
+const isGenericAgendaText = (text: string) => {
+  const normalized = normalize(text);
+  return /discussao e votacao de propostas legislativas/.test(normalized)
+    || /reuniao deliberativa/.test(normalized)
+    || /^audiencia publica$/.test(normalized);
+};
+
+const extractEventSubject = (description?: string | null) => {
+  const withoutGuests = stripGuestList(description || '');
+  const firstLine = withoutGuests
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => line.length > 0) || '';
+
+  const subject = firstLine
+    .replace(/^debater?\s+(sobre\s+)?/i, '')
+    .replace(/^debate\s+(sobre\s+)?/i, '')
+    .replace(/^tema:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return sentenceCase(subject);
+};
+
+const compactTitle = (text: string, fallback: string) => {
+  const cleaned = sentenceCase(text);
+  if (!cleaned || isGenericAgendaText(cleaned)) return fallback;
+  if (cleaned.length <= 78) return cleaned;
+  const beforeColon = cleaned.split(':')[0];
+  if (beforeColon.length >= 24 && beforeColon.length <= 78) return beforeColon;
+  return `${cleaned.slice(0, 75).trim()}...`;
+};
+
+const buildEventItem = (event: any): FeedItem | null => {
+  const subject = extractEventSubject(event.descricao);
+  const organ = event.orgaos?.[0]?.sigla || event.orgaos?.[0]?.nomeResumido || event.siglaOrgao;
+  const fallbackTitle = organ ? `Pauta legislativa em ${organ}` : event.descricaoTipo || 'Atividade Legislativa';
+  const title = compactTitle(subject, fallbackTitle);
+  const originalDescription = cleanOfficialText(event.descricao || event.localCamara?.nome || event.descricaoTipo || '');
+  const topic = isGenericAgendaText(subject) ? '' : subject;
+
+  if (!topic && isGenericAgendaText(originalDescription)) return null;
+
+  const typeLabel = event.descricaoTipo || 'Evento legislativo';
+  const location = event.localCamara?.nome || event.localExterno || '';
+  const summary = topic
+    ? `${typeLabel} para discutir ${topic.charAt(0).toLowerCase()}${topic.slice(1)}.`
+    : `${typeLabel} da Câmara com pauta registrada na fonte oficial.`;
+  const whyItMatters = topic
+    ? `Ajuda a antecipar quais temas podem virar pressão política, relatório ou votação nas próximas etapas.`
+    : `Indica movimentação de comissão, mas a pauta oficial ainda tem pouco detalhe público.`;
+  const nextStep = event.situacao === 'Convocada'
+    ? 'Acompanhar a reunião e verificar se surgem requerimentos, relatórios ou votação.'
+    : 'Consultar o registro oficial para ver encaminhamentos e documentos publicados.';
+  const priority = (topic ? 30 : 5)
+    + (event.descricaoTipo?.toLowerCase().includes('audiência') ? 12 : 0)
+    + (event.situacao === 'Convocada' ? 8 : 0)
+    + Math.min(20, Math.floor(originalDescription.length / 180));
+
+  return {
+    id: event.id,
+    type: 'evento',
+    title,
+    date: new Date(event.dataHoraInicio).toLocaleDateString('pt-BR'),
+    description: summary,
+    originalDescription,
+    summary,
+    whyItMatters,
+    nextStep,
+    status: 'Tramitação',
+    sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${event.id}`,
+    category: detectCategory(`${topic} ${originalDescription}`),
+    organ,
+    location,
+    priority,
+  } as FeedItem;
+};
+
+const buildLegislativeInsight = (kind: 'vote' | 'proposition', text?: string | null) => {
+  const cleaned = sentenceCase(cleanOfficialText(text || ''));
+  const category = detectCategory(cleaned);
+  const base = cleaned || 'Movimentação legislativa registrada pela Câmara.';
+  const summary = kind === 'proposition'
+    ? `Nova proposta apresentada: ${base}`
+    : `Movimentação de votação: ${base}`;
+  const whyItMatters = kind === 'proposition'
+    ? 'Pode alterar regras públicas se avançar nas comissões, no plenário e nas etapas seguintes.'
+    : 'Mostra o andamento real da pauta e ajuda a identificar temas que estão ganhando prioridade política.';
+  const nextStep = kind === 'proposition'
+    ? 'Acompanhar distribuição, relatoria e parecer nas comissões.'
+    : 'Verificar o resultado, os votos e se a matéria segue para nova etapa.';
+
+  return {
+    summary: summary.length > 180 ? `${summary.slice(0, 177).trim()}...` : summary,
+    whyItMatters,
+    nextStep,
+    category,
+  };
+};
+
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1): Promise<T | null> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -293,56 +417,64 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
   const dateStr = dateLimit.toISOString().split('T')[0];
 
   const [votesData, propsData, eventsData] = await Promise.all([
-    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=10`),
-    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`),
-    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=10`),
+    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=15`),
+    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=15`),
+    fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=20`),
   ]);
 
   const votes = (votesData?.dados || []).map((v) => {
     const propId = v.uriProposicaoObjeto?.split('/').pop();
+    const insight = buildLegislativeInsight('vote', v.descricao);
     return {
       id: parseInt(v.id, 10) || Math.floor(Date.now() + Math.random() * 1000),
       type: 'voto',
       title: `${v.siglaOrgao} ${v.uri ? v.uri.split('/').pop() : ''}`,
       date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
       description: formatText(v.descricao),
+      originalDescription: cleanOfficialText(v.descricao),
+      summary: insight.summary,
+      whyItMatters: insight.whyItMatters,
+      nextStep: insight.nextStep,
       status: 'Tramitação',
       sourceUrl: propId
         ? `https://www.camara.leg.br/propostas-legislativas/${propId}`
         : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(v.descricao)}`,
-      category: detectCategory(`${v.descricao} ${v.siglaOrgao}`),
+      category: insight.category,
       candidateId: propId ? parseInt(propId, 10) : undefined,
+      organ: v.siglaOrgao,
+      priority: 40 + (propId ? 10 : 0),
     } as FeedItem;
   });
 
-  const propositions = (propsData?.dados || []).map((p) => ({
-    id: p.id,
-    type: 'voto',
-    title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
-    date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
-    description: formatText(p.ementa),
-    status: 'Tramitação',
-    sourceUrl: `https://www.camara.leg.br/propostas-legislativas/${p.id}`,
-    category: detectCategory(p.ementa || ''),
-    fullTextUrl: p.urlInteiroTeor,
-  } as FeedItem));
+  const propositions = (propsData?.dados || []).map((p) => {
+    const insight = buildLegislativeInsight('proposition', p.ementa);
+    return {
+      id: p.id,
+      type: 'voto',
+      title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
+      date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
+      description: formatText(p.ementa),
+      originalDescription: cleanOfficialText(p.ementa),
+      summary: insight.summary,
+      whyItMatters: insight.whyItMatters,
+      nextStep: insight.nextStep,
+      status: 'Tramitação',
+      sourceUrl: `https://www.camara.leg.br/propostas-legislativas/${p.id}`,
+      category: insight.category,
+      fullTextUrl: p.urlInteiroTeor,
+      priority: 35,
+    } as FeedItem;
+  });
 
-  const events = (eventsData?.dados || []).map((event) => ({
-    id: event.id,
-    type: 'evento',
-    title: event.descricaoTipo || 'Evento Legislativo',
-    date: new Date(event.dataHoraInicio).toLocaleDateString('pt-BR'),
-    description: formatText(event.descricao || event.localCamara?.nome || 'Audiência Pública'),
-    status: 'Tramitação',
-    sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${event.id}`,
-    category: detectCategory(event.descricao || ''),
-  } as FeedItem));
+  const events = (eventsData?.dados || [])
+    .map(buildEventItem)
+    .filter((item): item is FeedItem => Boolean(item));
 
   return [...votes, ...propositions, ...events]
     .sort((a, b) => {
       const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0;
       const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0;
-      return dateB - dateA || (b.id - a.id);
+      return (b.priority || 0) - (a.priority || 0) || dateB - dateA || (b.id - a.id);
     })
     .slice(0, 30);
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { X, Clock, Scale, ArrowRight, ExternalLink, Share2, Landmark, Banknote, Lightbulb, FileText, Users, GitCommit, Loader2, Calendar, Mic2, Star } from 'lucide-react';
+import { X, Clock, Scale, ArrowRight, ExternalLink, Share2, Landmark, Banknote, Lightbulb, FileText, Users, GitCommit, Loader2, Calendar, Mic2, Star, Target, Route } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import AudioPlayer from './AudioPlayer';
 import { getDidacticContext, renderWithGlossary } from '../utils/legislativeTranslator';
@@ -152,6 +152,37 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                     </div>
 
                     <h2 id="modal-title" className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight mb-8 tracking-tight">{item.title}</h2>
+
+                    {(item.summary || item.whyItMatters || item.nextStep) && (
+                        <div className="mb-8 grid gap-3">
+                            {item.summary && (
+                                <div className="bg-white/60 dark:bg-white/5 p-5 rounded-3xl border border-white/60 dark:border-white/10">
+                                    <p className="text-xs font-black uppercase tracking-widest text-subtle mb-2">Resumo cidadão</p>
+                                    <p className="text-base font-bold leading-relaxed text-gray-900 dark:text-white">{item.summary}</p>
+                                </div>
+                            )}
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {item.whyItMatters && (
+                                    <div className="bg-blue-50/90 dark:bg-blue-900/15 p-5 rounded-3xl border border-blue-100 dark:border-blue-900/30">
+                                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-xs font-black uppercase tracking-widest mb-2">
+                                            <Target size={14} />
+                                            Por que importa
+                                        </div>
+                                        <p className="text-sm font-bold leading-relaxed text-blue-950 dark:text-blue-100">{item.whyItMatters}</p>
+                                    </div>
+                                )}
+                                {item.nextStep && (
+                                    <div className="bg-slate-50/90 dark:bg-white/5 p-5 rounded-3xl border border-slate-100 dark:border-white/10">
+                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-widest mb-2">
+                                            <Route size={14} />
+                                            Próximo passo
+                                        </div>
+                                        <p className="text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100">{item.nextStep}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* --- CONVIDADOS E MESA (PARA EVENTOS) --- */}
                     {isEvent && (
@@ -305,7 +336,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
 
                     <div className="text-muted-strong font-medium leading-loose mb-8 text-sm md:text-base">
                         <p className="mb-3 font-bold text-xs uppercase text-subtle tracking-wider">Texto Original:</p>
-                        <p>{item.content || item.description}</p>
+                        <p>{item.content || item.originalDescription || item.description}</p>
                     </div>
 
                     <div className="flex flex-col gap-4 mt-auto">

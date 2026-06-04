@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Landmark, ArrowRight, Sparkles, CalendarDays, CheckCircle2, Clock3, ExternalLink, Radio } from 'lucide-react';
+import { Landmark, ArrowRight, Sparkles, CalendarDays, CheckCircle2, Clock3, ExternalLink, Radio, Target, Route } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
 import AudioPlayer from './AudioPlayer';
@@ -18,9 +18,9 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     const isExpense = item.type === 'despesa';
     const typeLabel = item.type === 'evento' ? 'Evento' : item.type === 'despesa' ? 'Despesa' : item.type === 'educacao' ? 'Educação' : 'Votação';
     const displayTitle = item.type === 'evento' && item.description
-        ? formatCardTitle(item.description, item.type)
+        ? formatCardTitle(item.title, item.type)
         : formatCardTitle(item.title, item.type);
-    const displayDescription = item.type === 'evento' ? '' : item.description;
+    const displayDescription = item.summary || (item.type === 'evento' ? item.description : item.description);
     const statusTone = item.status === 'Aprovado'
         ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40'
         : item.status === 'Rejeitado'
@@ -101,8 +101,38 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                     )}
                 </div>
 
-                {/* Micro-Tradução Exposta */}
-                {showSnippet && !isExpense && (
+                {displayDescription && !isExpense && (
+                    <p className="text-sm text-muted-strong font-medium leading-relaxed line-clamp-2 mb-4">
+                        {displayDescription}
+                    </p>
+                )}
+
+                {item.whyItMatters && !isExpense && (
+                    <div className="flex items-start gap-2 mb-3 bg-blue-50/80 dark:bg-blue-900/15 p-3 rounded-xl border border-blue-100/80 dark:border-blue-900/25">
+                        <Target size={13} className="text-blue-600 dark:text-blue-300 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-300 mb-0.5">Por que importa</p>
+                            <p className="text-[11px] font-bold text-blue-800 dark:text-blue-100 leading-tight line-clamp-2">
+                                {item.whyItMatters}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {item.nextStep && !isExpense && (
+                    <div className="flex items-start gap-2 mb-3 bg-slate-50/90 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/10">
+                        <Route size={13} className="text-slate-500 dark:text-slate-300 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 mb-0.5">Próximo passo</p>
+                            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-100 leading-tight line-clamp-2">
+                                {item.nextStep}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Fallback para itens antigos salvos em cache local */}
+                {showSnippet && !item.summary && !item.whyItMatters && !isExpense && (
                     <div className="flex items-start gap-2 mb-3 bg-blue-50/70 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100/70 dark:border-blue-900/20">
                         <Sparkles size={12} className="text-blue-500 shrink-0 mt-0.5" />
                         <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300 leading-tight line-clamp-2">
@@ -118,11 +148,6 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                     </div>
                 )}
 
-                {!isExpense && displayDescription && (
-                    <p className="text-sm text-muted font-medium leading-relaxed line-clamp-3 mb-5">
-                        {displayDescription}
-                    </p>
-                )}
             </div>
 
             {politician ? (
@@ -145,7 +170,16 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center">
                             <Landmark size={18} className="text-subtle"/>
                         </div>
-                        <span className="text-xs font-bold text-subtle uppercase tracking-widest">Congresso Nacional</span>
+                        <div className="min-w-0">
+                            <span className="block text-xs font-bold text-subtle uppercase tracking-widest truncate">
+                                {item.organ || 'Congresso Nacional'}
+                            </span>
+                            {item.location && (
+                                <span className="block text-[10px] font-bold text-subtle truncate">
+                                    {item.location}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     {/* Audio Button on Card */}
                     <div onClick={(e) => e.stopPropagation()}>

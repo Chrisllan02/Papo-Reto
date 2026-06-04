@@ -97,7 +97,89 @@ describe('/api/bootstrap', () => {
     expect(payload.data.partial).toBe(false);
     expect(payload.data.feedItems).toHaveLength(1);
     expect(payload.data.feedItems[0].category).toBe('health');
+    expect(payload.data.feedItems[0].summary).toContain('Movimentação de votação');
+    expect(payload.data.feedItems[0].whyItMatters).toContain('andamento real da pauta');
     expect(payload.data.parties).toHaveLength(1);
+  });
+
+  it('enriches useful agenda events and drops generic agenda noise', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/deputados?')) {
+        return jsonResponse({
+          dados: [{
+            id: 1,
+            nome: 'MARIA TESTE',
+            siglaPartido: 'PT',
+            siglaUf: 'SP',
+            urlFoto: 'https://example.com/maria.jpg',
+            sexo: 'F',
+            email: 'maria@example.com',
+          }],
+        });
+      }
+
+      if (url.includes('/partidos?')) {
+        return jsonResponse({ dados: [{ id: 10, sigla: 'PT', nome: 'Partido dos Trabalhadores', uri: 'x' }] });
+      }
+
+      if (url.includes('/votacoes?') || url.includes('/proposicoes?')) {
+        return jsonResponse({ dados: [] });
+      }
+
+      if (url.includes('/eventos?')) {
+        return jsonResponse({
+          dados: [
+            {
+              id: 100,
+              descricaoTipo: 'Reunião Deliberativa',
+              descricao: 'Discussão e votação de propostas legislativas',
+              dataHoraInicio: '2026-06-09T10:00:00',
+              situacao: 'Convocada',
+              orgaos: [{ sigla: 'CCJC' }],
+              localCamara: { nome: 'Plenário 01' },
+            },
+            {
+              id: 101,
+              descricaoTipo: 'Audiência Pública',
+              descricao: 'Debater a situação do Instituto Nacional do Câncer INCA e de seus servidores\n\n1) CONVIDADO TESTE - Ministério da Saúde',
+              dataHoraInicio: '2026-06-09T16:00:00',
+              situacao: 'Convocada',
+              orgaos: [{ sigla: 'CASP' }],
+              localCamara: { nome: 'Plenário 08' },
+            },
+          ],
+        });
+      }
+
+      if (url.includes('legis.senado.leg.br')) {
+        return xmlResponse(`
+          <ListaParlamentarEmExercicio>
+            <Parlamentar>
+              <CodigoParlamentar>99</CodigoParlamentar>
+              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
+              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
+              <UfParlamentar>RJ</UfParlamentar>
+              <SexoParlamentar>M</SexoParlamentar>
+            </Parlamentar>
+          </ListaParlamentarEmExercicio>
+        `);
+      }
+
+      return jsonResponse({ dados: [] });
+    }));
+
+    const response = createJsonResponse();
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; data: { feedItems: any[] } }>();
+    expect(response.statusCode).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data.feedItems).toHaveLength(1);
+    expect(payload.data.feedItems[0].id).toBe(101);
+    expect(payload.data.feedItems[0].title).toContain('Instituto Nacional do Câncer');
+    expect(payload.data.feedItems[0].summary).toContain('Audiência Pública');
+    expect(payload.data.feedItems[0].whyItMatters).toContain('pressão política');
+    expect(payload.data.feedItems[0].nextStep).toContain('Acompanhar');
   });
 
   it('hydrates deputy sex metadata from detail endpoint when list omits it', async () => {
