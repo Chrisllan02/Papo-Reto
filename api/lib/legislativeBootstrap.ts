@@ -4,7 +4,7 @@ import { readServerCache, writeServerCache } from './serverCache.js';
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
 const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
-const UPSTREAM_TIMEOUT_MS = 6000;
+const UPSTREAM_TIMEOUT_MS = 15000;
 const SENADO_TIMEOUT_MS = 12000;
 const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
 const DEPUTY_SEX_ENRICHMENT_CONCURRENCY = 24;
@@ -56,7 +56,7 @@ const formatText = (text: string) => {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
-const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<T | null> => {
+const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1): Promise<T | null> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -67,9 +67,17 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promi
       },
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (retries > 0 && (res.status >= 500 || res.status === 429)) {
+        return fetchJson<T>(url, timeoutMs, retries - 1);
+      }
+      return null;
+    }
     return await res.json() as T;
   } catch {
+    if (retries > 0) {
+      return fetchJson<T>(url, timeoutMs, retries - 1);
+    }
     return null;
   } finally {
     clearTimeout(timeoutId);
