@@ -336,7 +336,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     return (
         <div className="w-full h-full bg-transparent flex flex-col">
             
-            <div className="sticky top-0 z-30 pt-2 px-2 md:pt-4 md:px-6 pb-2">
+            <div className="sticky top-0 z-30 pt-2 px-2 md:pt-11 md:px-6 pb-2">
                 <div className="w-full glass-panel rounded-[2.5rem] p-4 flex flex-col gap-4">
                     
                     {/* Header Controls */}
