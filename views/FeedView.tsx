@@ -100,7 +100,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                 <Activity size={24} className="text-nuit dark:text-blue-400"/>
                                 Últimas Atividades
                             </h2>
-                            <p className="text-sm text-muted font-medium mt-1">
+                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium mt-1">
                                 Filtre por tema para entender rapidamente onde o Congresso está atuando.
                             </p>
                         </div>
@@ -131,7 +131,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                 onClick={() => setSelectedCategory('all')}
                                 className={`shrink-0 px-4 h-11 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                                     selectedCategory === 'all'
-                                        ? 'bg-midnight text-white border-midnight dark:bg-white dark:text-midnight dark:border-white shadow-lg'
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20 dark:bg-blue-500/20 dark:text-blue-100 dark:border-blue-400/50'
                                         : 'bg-white/60 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10'
                                 }`}
                             >
