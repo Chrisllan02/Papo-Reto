@@ -3,7 +3,7 @@ import { NewsArticle } from '../types';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 // Cache Utils
-const NEWS_CACHE_KEY = 'paporeto_news_v22_clean_cards'; 
+const NEWS_CACHE_KEY = 'paporeto_news_v23_clean_agenda_cards'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
 const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
@@ -137,11 +137,22 @@ const cleanLegislativeText = (rawText: string) => rawText
 const extractAgendaSubject = (rawText: string) => {
     const cleaned = cleanLegislativeText(rawText)
         .replace(/^Na pauta:\s*/i, '')
-        .replace(/^Pauta:\s*/i, '');
+        .replace(/^Pauta:\s*/i, '')
+        .replace(/\(Requerimento[^)]*\)/gi, '')
+        .replace(/Requerimento\s*n[ºo.]?\s*[\w/.-]+/gi, '')
+        .replace(/CONVIDADOS?.*/i, '')
+        .trim();
 
     const beforeGuests = cleaned.split(/\s+\d+\)\s+/)[0]?.trim() || cleaned;
-    const subject = beforeGuests
+    const debateSubject = beforeGuests.match(/(?:tratam|trata|debater|debate|discutir|discussão)\s+sobre\s+(.*?)(?:,|;|\.|\(|$)/i)?.[1]
+        || beforeGuests.match(/sobre\s+(.*?)(?:,|;|\.|\(|$)/i)?.[1];
+
+    const subject = (debateSubject || beforeGuests)
         .split(/;|\.\s/)[0]
+        .replace(/^debate\s+sobre\s+/i, '')
+        .replace(/^projetos?\s+que\s+tratam\s+sobre\s+/i, '')
+        .replace(/^a\s+/i, '')
+        .replace(/^o\s+/i, '')
         .replace(/\s+-\s+$/g, '')
         .trim();
 
