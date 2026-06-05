@@ -609,7 +609,10 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         let profession = pol.profession;
         if (occupations.length > 0) {
             // Tenta pegar a mais recente que não seja "Deputado"
-            const relevant = occupations.filter((o: any) => !o.title.toLowerCase().includes('deputado') && !o.title.toLowerCase().includes('vereador'));
+            const relevant = occupations.filter((o: any) => {
+                const title = String(o?.title || '').toLowerCase();
+                return title && !title.includes('deputado') && !title.includes('vereador');
+            });
             if (relevant.length > 0) {
                 profession = relevant[0].title;
             }
