@@ -64,12 +64,33 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
         }
     }, [politicians, userLocation]);
 
-    // Função auxiliar para cor do card
     const getIdeologyStyle = (party: string) => {
         const ideology = getIdeology(party);
-        if (ideology === 'Esquerda') return 'bg-rose-50/80 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800';
-        if (ideology === 'Direita') return 'bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
-        return 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+        if (ideology === 'Esquerda') {
+            return {
+                accent: 'bg-rose-500',
+                dot: 'bg-rose-500',
+                ring: 'border-rose-100 dark:border-rose-900/40',
+                badge: 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/25 dark:text-rose-200 dark:border-rose-800/50',
+                glow: 'from-rose-500/10'
+            };
+        }
+        if (ideology === 'Direita') {
+            return {
+                accent: 'bg-emerald-500',
+                dot: 'bg-emerald-500',
+                ring: 'border-emerald-100 dark:border-emerald-900/40',
+                badge: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/25 dark:text-emerald-200 dark:border-emerald-800/50',
+                glow: 'from-emerald-500/10'
+            };
+        }
+        return {
+            accent: 'bg-amber-500',
+            dot: 'bg-amber-500',
+            ring: 'border-amber-100 dark:border-amber-900/40',
+            badge: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/25 dark:text-amber-200 dark:border-amber-800/50',
+            glow: 'from-amber-500/10'
+        };
     };
 
     if (isLoading) return <div className="h-64 w-full glass-surface rounded-[2.5rem] animate-pulse mb-8"></div>;
@@ -116,46 +137,36 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     {/* Container Scrollável */}
                     <div 
                         ref={scrollContainerRef}
-                        className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth"
+                        className="flex overflow-x-auto gap-4 py-5 pb-8 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth"
                     >
                         {statePoliticians.map((pol) => {
                             const ideology = getIdeology(pol.party);
-                            const cardStyle = getIdeologyStyle(pol.party);
+                            const cardTheme = getIdeologyStyle(pol.party);
                             const isSenator = pol.role.toLowerCase().includes('senad');
-                            
-                            // Configuração do Indicador Visual (Barra Lateral + Dot)
-                            let indicatorBorder = 'border-l-amber-400';
-                            let dotColor = 'bg-amber-500';
-                            
-                            if (ideology === 'Esquerda') {
-                                indicatorBorder = 'border-l-rose-500';
-                                dotColor = 'bg-rose-500';
-                            } else if (ideology === 'Direita') {
-                                indicatorBorder = 'border-l-emerald-500';
-                                dotColor = 'bg-emerald-500';
-                            }
                             
                             return (
                                 <div 
                                     key={pol.id} 
                                     onClick={() => onSelectCandidate(pol)}
-                                    className={`snap-center shrink-0 w-56 rounded-[2.2rem] p-5 flex flex-col items-center text-center shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] border cursor-pointer hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 border-l-[6px] ${indicatorBorder} ${cardStyle}`}
+                                    className={`group/card relative snap-center shrink-0 w-52 md:w-56 min-h-[220px] overflow-hidden rounded-[1.75rem] border bg-white/90 p-5 text-center shadow-[0_16px_28px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(15,23,42,0.16)] active:scale-[0.99] dark:bg-white/[0.06] dark:shadow-[0_18px_34px_rgba(0,0,0,0.45)] cursor-pointer ${cardTheme.ring}`}
                                 >
-                                    <div className="relative w-24 h-24 mb-4">
-                                        <div className={`w-full h-full rounded-full overflow-hidden shadow-md ${isSenator ? 'border-[3px] border-yellow-400 dark:border-yellow-500 ring-4 ring-yellow-400/20' : 'border-[3px] border-white/50 dark:border-gray-600'}`}>
+                                    <div className={`absolute inset-x-0 top-0 h-1.5 ${cardTheme.accent}`} aria-hidden="true"></div>
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${cardTheme.glow} via-transparent to-transparent opacity-80`} aria-hidden="true"></div>
+                                    <div className="relative mx-auto mb-4 mt-2 h-24 w-24">
+                                        <div className={`h-full w-full overflow-hidden rounded-full bg-slate-100 shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-transform duration-300 group-hover/card:scale-[1.04] dark:bg-slate-800 ${isSenator ? 'border-[3px] border-amber-400 dark:border-amber-500 ring-4 ring-amber-400/20' : 'border-[4px] border-white dark:border-slate-700'}`}>
                                             <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
                                         </div>
                                         {isSenator && (
-                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-[8px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg tracking-widest border border-white/20 z-10 whitespace-nowrap">
+                                            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/20 bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-white shadow-lg whitespace-nowrap">
                                                 Senado
                                             </div>
                                         )}
                                     </div>
-                                    <h3 className="text-sm font-black text-midnight dark:text-white leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{pol.name}</h3>
+                                    <h3 className="relative mb-3 min-h-[2.5em] text-sm font-black capitalize leading-tight text-midnight line-clamp-2 dark:text-white">{pol.name}</h3>
                                     
-                                    <div className="flex items-center gap-2 bg-white/40 dark:bg-white/5 px-3 py-1 rounded-md border border-white/20">
-                                        <div className={`w-2 h-2 rounded-full ${dotColor} shadow-sm`} title={`Ideologia: ${ideology}`}></div>
-                                        <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{pol.party}</p>
+                                    <div className={`relative mx-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ${cardTheme.badge}`}>
+                                        <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology}`}></div>
+                                        <p className="text-xs font-bold uppercase">{pol.party}</p>
                                     </div>
                                 </div>
                             );
