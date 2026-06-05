@@ -12,9 +12,11 @@ import {
     fetchAPI,
     normalizeSex,
     getStaticParties,
-    TTL_DYNAMIC,
     fetchCachedPoliticianProfile,
-    hasProfileCacheData
+    hasProfileCacheData,
+    getProfileDataScore,
+    PROFILE_DETAIL_FRESH_TTL,
+    PROFILE_DETAIL_STALE_TTL
 } from '../services/camaraApi';
 import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
 
@@ -378,15 +380,20 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                 || (initialCandidate.fronts && initialCandidate.fronts.length > 0);
 
             const cacheKey = `paporeto_cache_v7_complete_pol_full_v2_${initialCandidate.id}`;
+            let staleLocalProfile: Politician | null = null;
             try {
                 const cached = localStorage.getItem(cacheKey);
                 if (cached) {
                     const { data, timestamp } = JSON.parse(cached);
-                    if (Date.now() - timestamp < TTL_DYNAMIC) {
+                    const age = Date.now() - Number(timestamp || 0);
+                    if (data && age < PROFILE_DETAIL_STALE_TTL) {
+                        staleLocalProfile = data as Politician;
                         if (cancelled) return;
                         setCandidate(data);
-                        setIsLoadingDetails(false);
-                        return;
+                        if (age < PROFILE_DETAIL_FRESH_TTL) {
+                            setIsLoadingDetails(false);
+                            return;
+                        }
                     }
                 }
             } catch {}
@@ -394,8 +401,12 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             try {
                 const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
                 if (hasProfileCacheData(cachedGithub)) {
+                    const merged = { ...(staleLocalProfile || initialCandidate), ...cachedGithub } as Politician;
                     if (cancelled) return;
-                    setCandidate(prev => prev ? { ...prev, ...cachedGithub } : (cachedGithub as Politician));
+                    setCandidate(prev => {
+                        if (!prev) return merged;
+                        return getProfileDataScore(merged) >= getProfileDataScore(prev) ? { ...prev, ...merged } : prev;
+                    });
                     setIsLoadingDetails(false);
                     return;
                 }
@@ -408,20 +419,27 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
             }
 
             if (cancelled) return;
-            setIsLoadingDetails(true);
+            setIsLoadingDetails(!staleLocalProfile);
             setLoadingStatus("Identificando parlamentar...");
             
             try {
                 // Step 1: Fast Enrich (Identity, Contact, Bio) - returns fast
                 const fastData = await enrichPoliticianFast(initialCandidate);
                 if (cancelled) return;
-                setCandidate(prev => prev ? { ...prev, ...fastData } : fastData);
+                setCandidate(prev => {
+                    if (!prev) return fastData;
+                    const merged = { ...prev, ...fastData };
+                    return getProfileDataScore(merged) >= getProfileDataScore(prev) ? merged : prev;
+                });
 
                 // Step 2: Deep Enrich (Votes, Expenses, History) - takes time
                 // Pass callback to update status text
                 const fullData = await enrichPoliticianData(fastData, (msg) => setLoadingStatus(msg));
                 if (cancelled) return;
-                setCandidate(fullData);
+                setCandidate(prev => {
+                    if (!prev) return fullData;
+                    return getProfileDataScore(fullData) >= getProfileDataScore(prev) ? fullData : prev;
+                });
             } catch (e) {
                 console.error(`Error enriching profile for ${initialCandidate.name}`, e);
             } finally {

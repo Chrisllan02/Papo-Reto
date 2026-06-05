@@ -8,6 +8,8 @@ export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 // FORCE CACHE INVALIDATION TO GET NEW SPEECH DATA
 const CACHE_PREFIX = 'paporeto_cache_v7_complete_'; 
 export const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
+export const PROFILE_DETAIL_FRESH_TTL = 1000 * 60 * 60 * 24; // 24 horas
+export const PROFILE_DETAIL_STALE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 dias
 const TTL_STATIC = 1000 * 60 * 60 * 24; // 24 horas
 const inFlightCacheRequests = new Map<string, Promise<any>>();
 
@@ -90,6 +92,26 @@ export const hasProfileCacheData = (cached?: Partial<Politician> | null) => {
         (cached.occupations && cached.occupations.length > 0);
     const hasStats = Boolean(cached.stats && (cached.stats.spending > 0 || cached.stats.projects > 0));
     return hasArrays || hasStats;
+};
+
+export const getProfileDataScore = (profile?: Partial<Politician> | null) => {
+    if (!profile) return 0;
+    const count = (items?: unknown[]) => Array.isArray(items) ? items.length : 0;
+    const stats = profile.stats;
+    return (
+        count(profile.detailedExpenses) * 3 +
+        count(profile.expensesBreakdown) * 4 +
+        count(profile.votingHistory) * 3 +
+        count(profile.fronts) * 2 +
+        count(profile.occupations) * 2 +
+        count(profile.speeches) * 2 +
+        count(profile.agenda) * 2 +
+        (stats?.spending && stats.spending > 0 ? 12 : 0) +
+        (stats?.projects && stats.projects > 0 ? 8 : 0) +
+        (profile.birthDate ? 3 : 0) +
+        (profile.cabinet ? 2 : 0) +
+        (profile.socials && profile.socials.length > 0 ? 2 : 0)
+    );
 };
 
 const saveCachedPolitician = async (id: number, _data: Partial<Politician>) => {
@@ -405,18 +427,33 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 
 export const enrichPoliticianData = async (pol: Politician, onProgress?: (status: string) => void): Promise<Politician> => {
     const cacheKey = `pol_full_v2_${pol.id}`;
+    const fullCacheKey = `${CACHE_PREFIX}${cacheKey}`;
+    let staleLocalProfile: Politician | null = null;
     
-    // Tenta cache primeiro
-    const cached = localStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
-    if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < TTL_DYNAMIC) return data;
+    // Tenta cache local primeiro. Perfil parlamentar é dado lento: se já temos um dado bom,
+    // ele continua sendo exibido mesmo quando a API pública oscila.
+    try {
+        const cached = localStorage.getItem(fullCacheKey);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            const age = Date.now() - Number(timestamp || 0);
+            if (data && age < PROFILE_DETAIL_STALE_TTL) {
+                staleLocalProfile = data;
+                if (age < PROFILE_DETAIL_FRESH_TTL) return data;
+            }
+        }
+    } catch {
+        staleLocalProfile = null;
     }
 
     try {
         const cachedGithub = await fetchCachedPolitician(pol.id);
         if (hasProfileCacheData(cachedGithub)) {
-            return { ...pol, ...cachedGithub } as Politician;
+            const merged = { ...(staleLocalProfile || pol), ...cachedGithub } as Politician;
+            if (!staleLocalProfile || getProfileDataScore(merged) >= getProfileDataScore(staleLocalProfile)) {
+                localStorage.setItem(fullCacheKey, JSON.stringify({ data: merged, timestamp: Date.now() }));
+                return merged;
+            }
         }
     } catch {
         // ignore github cache read errors
@@ -666,6 +703,11 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             suplentes: suplentes
         };
 
+        if (staleLocalProfile && getProfileDataScore(result) < getProfileDataScore(staleLocalProfile)) {
+            localStorage.setItem(fullCacheKey, JSON.stringify({ data: staleLocalProfile, timestamp: Date.now() }));
+            return staleLocalProfile;
+        }
+
         saveCachedPolitician(pol.id, {
             id: pol.id,
             stats: updatedStats,
@@ -683,12 +725,12 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             suplentes: suplentes.slice(0, 5)
         });
 
-        localStorage.setItem(`${CACHE_PREFIX}${cacheKey}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+        localStorage.setItem(fullCacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
         return result;
 
     } catch (e) {
         console.error("Enrich error", e);
-        return pol;
+        return staleLocalProfile || pol;
     }
 };
 
@@ -707,7 +749,7 @@ export const prefetchPoliticianProfile = async (pol: Politician) => {
         const cached = localStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
         if (cached) {
             const { timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < TTL_DYNAMIC) {
+            if (Date.now() - timestamp < PROFILE_DETAIL_FRESH_TTL) {
                 marks[String(pol.id)] = Date.now();
                 writePrefetchMarks(marks);
                 return;
