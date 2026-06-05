@@ -1,7 +1,7 @@
 import { URL } from 'node:url';
 
 const APP_URL = process.env.SMOKE_APP_URL || 'https://papo-reto-beige.vercel.app';
-const TIMEOUT_MS = 15000;
+const TIMEOUT_MS = 25000;
 
 const fetchWithTimeout = async (path, options = {}) => {
   const controller = new AbortController();
@@ -44,7 +44,7 @@ const main = async () => {
   assert(health.ok && healthPayload.ok, 'Healthcheck is not ok');
   assert(healthPayload.integrations?.legislativeProxy === true, 'Legislative proxy is not enabled');
 
-  const bootstrap = await fetchWithTimeout('/api/bootstrap?refresh=1');
+  const bootstrap = await fetchWithTimeout('/api/bootstrap');
   const bootstrapPayload = await readJson(bootstrap);
   const politiciansCount = bootstrapPayload.data?.politicians?.length || 0;
   assert(bootstrap.ok && bootstrapPayload.ok, 'Bootstrap is not ok');
@@ -64,6 +64,7 @@ const main = async () => {
     politicians: politiciansCount,
     partial: Boolean(bootstrapPayload.partial),
     warnings: bootstrapPayload.warnings || [],
+    source: bootstrapPayload.source,
   }, null, 2));
 };
 

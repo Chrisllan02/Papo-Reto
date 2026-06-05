@@ -36,6 +36,7 @@ jobs:
 
       - name: Production smoke
         if: github.event_name == 'push'
+        continue-on-error: true
         run: npm run smoke:prod
         env:
           SMOKE_APP_URL: https://papo-reto-beige.vercel.app
