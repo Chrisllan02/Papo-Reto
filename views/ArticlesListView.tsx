@@ -11,6 +11,30 @@ interface ArticlesListViewProps {
 
 const PAGE_SIZE = 12;
 
+const ARTICLE_THEMES = [
+    { bg: 'bg-gradient-to-br from-picture to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
+    { bg: 'bg-gradient-to-br from-nuit to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
+    { bg: 'bg-gradient-to-br from-blue-700 to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
+    { bg: 'bg-gradient-to-br from-emerald-700 to-slate-950', icon: 'bg-white/20', badge: 'bg-white/20' },
+    { bg: 'bg-gradient-to-br from-orange-700 to-orange-950', icon: 'bg-white/20', badge: 'bg-white/20' },
+    { bg: 'bg-gradient-to-br from-slate-800 to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' }
+];
+
+const getArticleTheme = (topic: string | undefined, index: number) => {
+    const normalized = (topic || '').toLowerCase();
+    if (normalized.includes('educ')) return ARTICLE_THEMES[1];
+    if (normalized.includes('legis') || normalized.includes('lei') || normalized.includes('congresso')) return ARTICLE_THEMES[0];
+    if (normalized.includes('econom') || normalized.includes('orçamento') || normalized.includes('tribut')) return ARTICLE_THEMES[2];
+    if (normalized.includes('segurança')) return ARTICLE_THEMES[4];
+    if (normalized.includes('saúde') || normalized.includes('ambiente')) return ARTICLE_THEMES[3];
+    return ARTICLE_THEMES[index % ARTICLE_THEMES.length];
+};
+
+const cleanPreviewText = (text: string) => text
+    .replace(/\*\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, onOpenNewsHistory, articles, readArticleIds = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [search, setSearch] = useState('');
@@ -185,6 +209,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                         {displayedArticles.map((item, index) => {
                             const isRead = readArticleIds.includes(item.id);
+                            const theme = getArticleTheme(item.topic, index);
                             return (
                                 <button 
                                     key={item.id}
@@ -192,15 +217,16 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                     className={`group relative text-left h-full min-h-[320px] outline-none col-span-12 ${getGridSpanClass(index)} transition-transform hover:scale-[1.01] active:scale-[0.99]`}
                                 >
                                     {/* Background Container with Refined Glassmorphism */}
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${item.colorFrom} ${item.colorTo} rounded-[2.5rem] shadow-sm group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)] transition-all duration-500 overflow-hidden border border-white/20 dark:border-white/5`}>
+                                    <div className={`absolute inset-0 rounded-[2.5rem] bg-midnight ${theme.bg} shadow-sm group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)] transition-all duration-500 overflow-hidden border border-white/20 dark:border-white/5`}>
                                         {/* Texture Overlay */}
                                         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                                        <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
                                     </div>
                                     
                                     <div className="relative z-10 p-8 flex flex-col h-full text-white">
                                         {/* Icon Header */}
                                         <div className="flex justify-between items-start mb-6">
-                                            <div className={`w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300 border border-white/30 ${isRead ? 'opacity-60' : ''}`}>
+                                            <div className={`w-14 h-14 rounded-2xl ${theme.icon} backdrop-blur-md flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300 border border-white/30 ${isRead ? 'opacity-60' : ''}`}>
                                                 {renderIcon(item.icon, 24, "drop-shadow-sm")}
                                             </div>
                                         <div className="flex gap-2">
@@ -209,7 +235,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                                         <CheckCircle2 size={10} /> Lido
                                                     </div>
                                                 )}
-                                                <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white/90 border border-white/20">
+                                                <div className={`${theme.badge} backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white/90 border border-white/20`}>
                                                     {item.topic || 'Geral'}
                                                 </div>
                                             </div>
@@ -220,7 +246,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                             {item.title}
                                         </h3>
                                         <p className={`text-sm font-medium leading-relaxed line-clamp-3 mb-6 transition-colors text-white/90 drop-shadow-md`}>
-                                            {item.text}
+                                            {cleanPreviewText(item.text)}
                                         </p>
 
                                         {item.sourceTitle && (

@@ -9,8 +9,28 @@ interface EducationViewProps {
   onSelectArticle: (id: number) => void;
 }
 
+const ARTICLE_THEMES = [
+  { bg: 'bg-gradient-to-br from-picture to-midnight', text: 'text-picture' },
+  { bg: 'bg-gradient-to-br from-nuit to-midnight', text: 'text-nuit' },
+  { bg: 'bg-gradient-to-br from-blue-700 to-midnight', text: 'text-blue-600' },
+  { bg: 'bg-gradient-to-br from-emerald-700 to-slate-950', text: 'text-emerald-700' },
+  { bg: 'bg-gradient-to-br from-orange-700 to-orange-950', text: 'text-orange-600' },
+  { bg: 'bg-gradient-to-br from-slate-800 to-midnight', text: 'text-slate-700' }
+];
+
+const getArticleTheme = (topic: string | undefined, index: number) => {
+  const normalized = (topic || '').toLowerCase();
+  if (normalized.includes('educ')) return ARTICLE_THEMES[1];
+  if (normalized.includes('legis') || normalized.includes('lei') || normalized.includes('congresso')) return ARTICLE_THEMES[0];
+  if (normalized.includes('econom') || normalized.includes('orçamento') || normalized.includes('tribut')) return ARTICLE_THEMES[2];
+  if (normalized.includes('segurança')) return ARTICLE_THEMES[4];
+  if (normalized.includes('saúde') || normalized.includes('ambiente')) return ARTICLE_THEMES[3];
+  return ARTICLE_THEMES[index % ARTICLE_THEMES.length];
+};
+
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
   const article = useMemo(() => articles.find(a => a.id === educationId), [articles, educationId]);
+  const articleIndex = useMemo(() => articles.findIndex(a => a.id === educationId), [articles, educationId]);
   
   // Lógica inteligente para "Próximo Artigo"
   const nextItem = useMemo(() => {
@@ -63,6 +83,9 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   };
 
   if (!article) return null;
+  const articleTheme = getArticleTheme(article.topic, articleIndex);
+  const nextIndex = nextItem ? articles.findIndex(a => a.id === nextItem.id) : -1;
+  const nextTheme = nextItem ? getArticleTheme(nextItem.topic, nextIndex) : null;
 
   const renderIcon = (iconName: string, size: number, className: string) => {
       switch(iconName) {
@@ -73,13 +96,14 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   };
 
   return (
-    <div className="w-full h-full bg-white dark:bg-gray-900 font-sans overflow-y-auto animate-in slide-in-from-right duration-300">
+    <div className="w-full h-full bg-transparent font-sans overflow-y-auto animate-in slide-in-from-right duration-300">
         
         <div className="px-4 md:px-8 pt-4 md:pt-6">
             {/* Hero Header */}
-            <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-gradient-to-br ${article.colorFrom} ${article.colorTo}`}>
+            <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-midnight ${articleTheme.bg}`}>
                 {/* Texture */}
                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
                 
                 {/* Nav */}
                 <div className="relative z-10 flex justify-between items-start">
@@ -170,11 +194,11 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                         <button 
                             type="button"
                             onClick={() => onSelectArticle(nextItem.id)}
-                            className={`w-full group bg-gradient-to-r ${nextItem.colorFrom} ${nextItem.colorTo} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
+                            className={`w-full group ${nextTheme?.bg || 'bg-gradient-to-r from-nuit to-midnight'} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
                         >
                             <div className="glass-panel rounded-[2.3rem] p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextItem.colorFrom.replace('from-', 'text-')}`}>
+                                    <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextTheme?.text || 'text-nuit'}`}>
                                         {renderIcon(nextItem.icon, 20, "opacity-80")}
                                     </div>
                                     <div>
