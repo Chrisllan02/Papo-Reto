@@ -334,6 +334,27 @@ const buildEducationalArticles = (feedItems: FeedItem[], generatedAt: string): E
   return merged.slice(0, 12);
 };
 
+export const withGeneratedEducationalArticles = (data: LegislativeBootstrap): LegislativeBootstrap => {
+  const generatedAt = data.generatedAt || new Date().toISOString();
+  const existingUsefulArticles = (data.articles || []).filter(article => article.generatedAt || article.sourceUrl);
+  const articles = existingUsefulArticles.length > 0
+    ? data.articles
+    : buildEducationalArticles(data.feedItems || [], generatedAt);
+
+  return {
+    ...data,
+    articles,
+    sources: {
+      ...(data.sources || {}),
+      educationArticles: { ok: articles.length > 0, count: articles.length },
+    },
+    warnings: [
+      ...(data.warnings || []).filter(warning => warning !== 'education_articles_unavailable'),
+      ...(articles.length === 0 ? ['education_articles_unavailable'] : []),
+    ],
+  };
+};
+
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1): Promise<T | null> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

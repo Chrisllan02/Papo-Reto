@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { buildLegislativeBootstrap, type LegislativeBootstrap } from './lib/legislativeBootstrap.js';
+import { buildLegislativeBootstrap, withGeneratedEducationalArticles, type LegislativeBootstrap } from './lib/legislativeBootstrap.js';
 import { readServerCache, writeServerCache } from './lib/serverCache.js';
 
 type VercelRequest = IncomingMessage & {
@@ -14,6 +14,7 @@ type VercelResponse = ServerResponse & {
 };
 
 const CACHE_KEY = 'legislative-bootstrap-v2';
+const LEGACY_CACHE_KEYS = ['legislative-bootstrap-v1'];
 const CACHE_TTL_MS = 1000 * 60 * 15;
 
 const jsonResponse = (res: VercelResponse, status: number, data: unknown, cacheControl?: string) => {
@@ -46,7 +47,7 @@ const hasDeputies = (data?: LegislativeBootstrap | null) =>
   Boolean(data?.sources?.camaraDeputados?.ok && data.politicians.some((politician) => politician.hasApiIntegration !== false));
 
 export const refreshLegislativeBootstrap = async () => {
-  const data = await buildLegislativeBootstrap();
+  const data = withGeneratedEducationalArticles(await buildLegislativeBootstrap());
   if (!hasDeputies(data)) {
     return { data, cache: { persisted: false, skipped: true } };
   }
@@ -64,14 +65,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const shouldRefresh = getRefreshFlag(req);
     const cached = shouldRefresh ? null : await readServerCache<LegislativeBootstrap>(CACHE_KEY, CACHE_TTL_MS);
     if (cached && hasDeputies(cached)) {
-      return jsonResponse(res, 200, createBootstrapResponse('cache', cached));
+      return jsonResponse(res, 200, createBootstrapResponse('cache', withGeneratedEducationalArticles(cached)));
     }
 
     const { data, cache } = await refreshLegislativeBootstrap();
     if (!hasDeputies(data)) {
-      const stale = await readServerCache<LegislativeBootstrap>(CACHE_KEY, 0);
+      const stale = await readServerCache<LegislativeBootstrap>(CACHE_KEY, 0)
+        || await readLegacyBootstrapCache();
       if (stale && hasDeputies(stale)) {
-        return jsonResponse(res, 200, createBootstrapResponse('stale-cache', stale), 'no-store');
+        return jsonResponse(res, 200, createBootstrapResponse('stale-cache', withGeneratedEducationalArticles(stale)), 'no-store');
       }
       return jsonResponse(res, 503, {
         ok: false,
@@ -92,3 +94,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 502, { ok: false, error: error?.message || 'Bootstrap refresh failed.' });
   }
 }
+
+const readLegacyBootstrapCache = async () => {
+  for (const key of LEGACY_CACHE_KEYS) {
+    const cached = await readServerCache<LegislativeBootstrap>(key, 0);
+    if (cached && hasDeputies(cached)) return cached;
+  }
+  return null;
+};
