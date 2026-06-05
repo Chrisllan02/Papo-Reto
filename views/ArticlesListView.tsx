@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, ArrowRight, Lightbulb, Banknote, ScrollText, History, CheckCircle2, Search, X, ChevronDown } from 'lucide-react';
+import { BookOpen, ArrowRight, Lightbulb, Banknote, ScrollText, History, CheckCircle2, Search, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { EducationalArticle } from '../types';
 
 interface ArticlesListViewProps {
@@ -53,6 +53,15 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
       return filteredArticles.slice(0, visibleCount);
   }, [filteredArticles, visibleCount]);
 
+  const generatedCount = useMemo(() => articles.filter(article => article.generatedAt || article.sourceUrl).length, [articles]);
+  const latestGeneratedAt = useMemo(() => {
+      const timestamps = articles
+          .map(article => article.generatedAt ? new Date(article.generatedAt).getTime() : 0)
+          .filter(Boolean);
+      if (timestamps.length === 0) return '';
+      return new Date(Math.max(...timestamps)).toLocaleDateString('pt-BR');
+  }, [articles]);
+
   const handleLoadMore = () => {
       setVisibleCount(prev => prev + PAGE_SIZE);
   };
@@ -94,8 +103,14 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                         </span>
                     </h1>
                     <p className="text-lg font-medium text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
-                        Descomplique a política. Artigos rápidos e acervo histórico.
+                        Conteúdos rápidos gerados a partir de pautas, votações e fontes oficiais.
                     </p>
+                    {generatedCount > 0 && (
+                        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-green-700 dark:text-green-300">
+                            <RefreshCw size={12} />
+                            {generatedCount} materiais atualizados pelo cron{latestGeneratedAt ? ` em ${latestGeneratedAt}` : ''}
+                        </div>
+                    )}
                 </div>
 
                 {onOpenNewsHistory && (
@@ -188,8 +203,8 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                             <div className={`w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300 border border-white/30 ${isRead ? 'opacity-60' : ''}`}>
                                                 {renderIcon(item.icon, 24, "drop-shadow-sm")}
                                             </div>
-                                            <div className="flex gap-2">
-                                                {isRead && (
+                                        <div className="flex gap-2">
+                                            {isRead && (
                                                     <div className="bg-green-500/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-green-100 border border-green-400/30 flex items-center gap-1 shadow-sm">
                                                         <CheckCircle2 size={10} /> Lido
                                                     </div>
@@ -207,6 +222,13 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                         <p className={`text-sm font-medium leading-relaxed line-clamp-3 mb-6 transition-colors text-white/90 drop-shadow-md`}>
                                             {item.text}
                                         </p>
+
+                                        {item.sourceTitle && (
+                                            <div className="mb-4 rounded-2xl bg-white/10 border border-white/15 px-4 py-3 backdrop-blur-md">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-white/70 mb-1">Fonte da pauta</p>
+                                                <p className="text-xs font-bold text-white/90 line-clamp-1">{item.sourceTitle}</p>
+                                            </div>
+                                        )}
 
                                         {/* Footer */}
                                         <div className="mt-auto pt-6 border-t border-white/20 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white group-hover:gap-3 transition-all drop-shadow-md">

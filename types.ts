@@ -361,6 +361,9 @@ export interface EducationalArticle {
   colorFrom: string;
   colorTo: string;
   icon: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  generatedAt?: string;
 }
 
 // --- AI Chat Types ---

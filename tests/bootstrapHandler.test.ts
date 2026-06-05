@@ -87,7 +87,7 @@ describe('/api/bootstrap', () => {
       ok: boolean;
       partial: boolean;
       warnings: string[];
-      data: { politicians: any[]; feedItems: any[]; parties: any[]; partial: boolean; warnings: string[] };
+      data: { politicians: any[]; feedItems: any[]; parties: any[]; articles: any[]; partial: boolean; warnings: string[] };
     }>();
     expect(response.statusCode).toBe(200);
     expect(payload.ok).toBe(true);
@@ -100,6 +100,9 @@ describe('/api/bootstrap', () => {
     expect(payload.data.feedItems[0].summary).toContain('Movimentação de votação');
     expect(payload.data.feedItems[0].whyItMatters).toContain('andamento real da pauta');
     expect(payload.data.parties).toHaveLength(1);
+    expect(payload.data.articles.length).toBeGreaterThan(0);
+    expect(payload.data.articles[0].id).toBeGreaterThanOrEqual(1000);
+    expect(payload.data.articles[0].sourceUrl).toBeTruthy();
   });
 
   it('enriches useful agenda events and drops generic agenda noise', async () => {
@@ -171,7 +174,7 @@ describe('/api/bootstrap', () => {
     const response = createJsonResponse();
     await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
 
-    const payload = response.json<{ ok: boolean; data: { feedItems: any[] } }>();
+    const payload = response.json<{ ok: boolean; data: { feedItems: any[]; articles: any[] } }>();
     expect(response.statusCode).toBe(200);
     expect(payload.ok).toBe(true);
     expect(payload.data.feedItems).toHaveLength(1);
@@ -180,6 +183,7 @@ describe('/api/bootstrap', () => {
     expect(payload.data.feedItems[0].summary).toContain('Audiência Pública');
     expect(payload.data.feedItems[0].whyItMatters).toContain('pressão política');
     expect(payload.data.feedItems[0].nextStep).toContain('Acompanhar');
+    expect(payload.data.articles.some(article => article.sourceTitle.includes('Instituto Nacional do Câncer'))).toBe(true);
   });
 
   it('hydrates deputy sex metadata from detail endpoint when list omits it', async () => {

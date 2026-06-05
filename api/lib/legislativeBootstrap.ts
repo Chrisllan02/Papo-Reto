@@ -180,6 +180,160 @@ const buildLegislativeInsight = (kind: 'vote' | 'proposition', text?: string | n
   };
 };
 
+const ARTICLE_STYLES = [
+  { colorFrom: 'from-picture', colorTo: 'to-midnight', icon: 'Lightbulb' },
+  { colorFrom: 'from-nuit', colorTo: 'to-blue-900', icon: 'ScrollText' },
+  { colorFrom: 'from-green-700', colorTo: 'to-emerald-950', icon: 'Banknote' },
+  { colorFrom: 'from-amber-700', colorTo: 'to-orange-900', icon: 'ScrollText' },
+  { colorFrom: 'from-sky-700', colorTo: 'to-blue-950', icon: 'Lightbulb' },
+  { colorFrom: 'from-lime-700', colorTo: 'to-green-900', icon: 'Banknote' },
+];
+
+const CATEGORY_TOPIC: Record<FeedCategory, { topic: string; legislation: string; impact: string; icon?: string }> = {
+  education: {
+    topic: 'Educação',
+    legislation: 'CF/88, art. 205 a 214; LDB e Plano Nacional de Educação.',
+    impact: 'Pode afetar escolas, famílias, orçamento educacional e regras de ensino.',
+  },
+  health: {
+    topic: 'Saúde',
+    legislation: 'CF/88, art. 196 a 200; leis orgânicas do SUS.',
+    impact: 'Pode afetar atendimento, hospitais, prevenção, orçamento do SUS e acesso a tratamentos.',
+  },
+  economy: {
+    topic: 'Economia',
+    legislation: 'CF/88, art. 145 a 169; regras tributárias, fiscais e orçamentárias.',
+    impact: 'Pode afetar impostos, gastos públicos, empresas, empregos e preços na vida cotidiana.',
+    icon: 'Banknote',
+  },
+  security: {
+    topic: 'Segurança',
+    legislation: 'CF/88, art. 5º e art. 144; legislação penal e de segurança pública.',
+    impact: 'Pode afetar policiamento, prevenção, direitos individuais e combate ao crime.',
+  },
+  work: {
+    topic: 'Trabalho',
+    legislation: 'CF/88, art. 6º e art. 7º; CLT e legislação previdenciária.',
+    impact: 'Pode afetar salário, contratos, proteção trabalhista, fiscalização e direitos sociais.',
+  },
+  environment: {
+    topic: 'Meio Ambiente',
+    legislation: 'CF/88, art. 225; Código Florestal e normas ambientais.',
+    impact: 'Pode afetar fiscalização ambiental, uso do solo, água, clima e atividades econômicas.',
+  },
+  justice: {
+    topic: 'Legislação',
+    legislation: 'CF/88, art. 59 a 69; processo legislativo e controle constitucional.',
+    impact: 'Ajuda a entender como uma proposta pode virar regra obrigatória para todos.',
+    icon: 'ScrollText',
+  },
+  activity: {
+    topic: 'Congresso',
+    legislation: 'CF/88, art. 44 a 69; Regimento Interno da Câmara e do Senado.',
+    impact: 'Mostra onde a agenda política está se movendo e quais temas merecem acompanhamento.',
+  },
+};
+
+const articleTitleForItem = (item: FeedItem) => {
+  if (item.type === 'evento') return `Entenda a pauta: ${item.title}`;
+  if (/^PL|^PEC|^PLP|^MPV|^PDL/i.test(item.title)) return `Como acompanhar ${item.title}`;
+  return `O que está em jogo: ${item.title}`;
+};
+
+const buildArticleText = (item: FeedItem, topic: string) => {
+  const subject = item.summary || item.description || item.title;
+  const why = item.whyItMatters || 'O tema pode influenciar decisões públicas, prioridades de governo e serviços usados pela população.';
+  const next = item.nextStep || 'Acompanhe a tramitação, os pareceres e as próximas votações na fonte oficial.';
+  const organ = item.organ ? ` A discussão aparece vinculada a ${item.organ}.` : '';
+
+  return [
+    `**O que aconteceu:** ${subject}${organ}`,
+    `**Por que isso importa:** ${why}`,
+    `**Como acompanhar:** ${next} Use a fonte oficial para verificar documentos, autores, convidados e mudanças na tramitação.`,
+    `**Tema central:** ${topic}. Entender esse assunto ajuda a separar notícia, opinião e decisão formal do Congresso.`
+  ].join('\n\n');
+};
+
+const buildStaticEducationArticles = (generatedAt: string): EducationalArticle[] => [
+  {
+    id: 9001,
+    title: 'Como um projeto vira lei',
+    text: '**Entrada:** uma proposta pode nascer na Câmara, Senado, Executivo ou iniciativa popular.\n\n**Análise:** passa por comissões, recebe relator e pode ser alterada por emendas.\n\n**Decisão:** se aprovada nas Casas, segue para sanção ou veto presidencial. O ponto importante é acompanhar parecer, votação e texto final, não só o título da proposta.',
+    topic: 'Legislação',
+    legislation: 'CF/88, art. 59 a 69.',
+    impact: 'Ajuda a entender em que etapa uma promessa política realmente pode virar obrigação legal.',
+    colorFrom: 'from-nuit',
+    colorTo: 'to-blue-900',
+    icon: 'ScrollText',
+    generatedAt,
+  },
+  {
+    id: 9002,
+    title: 'O que olhar em uma audiência pública',
+    text: '**Função:** audiência pública serve para ouvir especialistas, governo, entidades e cidadãos sobre uma pauta.\n\n**Limite:** ela não aprova lei sozinha, mas pode influenciar relatório, emendas e pressão política.\n\n**Sinal útil:** veja quem foi convidado, qual comissão chamou a reunião e se depois surgiram requerimentos ou pareceres.',
+    topic: 'Congresso',
+    legislation: 'Regimento Interno da Câmara; participação social no processo legislativo.',
+    impact: 'Mostra quais grupos estão tentando influenciar uma decisão antes da votação.',
+    colorFrom: 'from-picture',
+    colorTo: 'to-midnight',
+    icon: 'Lightbulb',
+    generatedAt,
+  },
+  {
+    id: 9003,
+    title: 'Orçamento público sem mistério',
+    text: '**Ideia central:** orçamento é a autorização política para arrecadar e gastar dinheiro público.\n\n**Na prática:** saúde, educação, segurança, obras e emendas dependem dessa disputa.\n\n**Como fiscalizar:** procure programa, valor, autor da emenda, órgão executor e entrega real. O número grande só importa quando vira serviço público acompanhado.',
+    topic: 'Orçamento',
+    legislation: 'CF/88, art. 165 a 169.',
+    impact: 'Ajuda a fiscalizar se dinheiro público está virando entrega ou só promessa.',
+    colorFrom: 'from-green-700',
+    colorTo: 'to-emerald-950',
+    icon: 'Banknote',
+    generatedAt,
+  },
+];
+
+const buildEducationalArticles = (feedItems: FeedItem[], generatedAt: string): EducationalArticle[] => {
+  const byTopic = new Map<string, FeedItem>();
+
+  feedItems
+    .filter(item => item.sourceUrl && (item.summary || item.whyItMatters || item.description))
+    .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+    .forEach((item) => {
+      const meta = CATEGORY_TOPIC[item.category || 'activity'];
+      if (!byTopic.has(meta.topic)) byTopic.set(meta.topic, item);
+    });
+
+  const dynamicArticles = Array.from(byTopic.entries()).slice(0, 9).map(([topic, item], index) => {
+    const categoryMeta = CATEGORY_TOPIC[item.category || 'activity'];
+    const style = ARTICLE_STYLES[index % ARTICLE_STYLES.length];
+
+    return {
+      id: 1000 + index,
+      title: articleTitleForItem(item),
+      text: buildArticleText(item, topic),
+      topic,
+      legislation: categoryMeta.legislation,
+      impact: categoryMeta.impact,
+      colorFrom: style.colorFrom,
+      colorTo: style.colorTo,
+      icon: categoryMeta.icon || style.icon,
+      sourceUrl: item.sourceUrl,
+      sourceTitle: item.title,
+      generatedAt,
+    } as EducationalArticle;
+  });
+
+  const fallback = buildStaticEducationArticles(generatedAt);
+  const seenTitles = new Set(dynamicArticles.map(article => normalize(article.title)));
+  const merged = [
+    ...dynamicArticles,
+    ...fallback.filter(article => !seenTitles.has(normalize(article.title))),
+  ];
+
+  return merged.slice(0, 12);
+};
+
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1): Promise<T | null> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -488,10 +642,13 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
   ]);
   const parties = partiesResult.parties;
   const partiesFallback = partiesResult.fallback;
+  const generatedAt = new Date().toISOString();
+  const articles = buildEducationalArticles(feedItems, generatedAt);
   const warnings = [
     deputados.length === 0 ? 'camara_deputados_unavailable' : '',
     senadores.length === 0 ? 'senado_senadores_unavailable' : '',
     feedItems.length === 0 ? 'camara_feed_unavailable' : '',
+    articles.length === 0 ? 'education_articles_unavailable' : '',
     partiesFallback ? 'camara_parties_using_fallback' : '',
   ].filter(Boolean);
 
@@ -499,14 +656,15 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
     politicians: [...deputados, ...senadores],
     feedItems,
     parties,
-    articles: [],
-    generatedAt: new Date().toISOString(),
+    articles,
+    generatedAt,
     partial: warnings.length > 0,
     warnings,
     sources: {
       camaraDeputados: { ok: deputados.length > 0, count: deputados.length },
       senadoSenadores: { ok: senadores.length > 0, count: senadores.length },
       camaraFeed: { ok: feedItems.length > 0, count: feedItems.length },
+      educationArticles: { ok: articles.length > 0, count: articles.length },
       camaraParties: { ok: !partiesFallback, count: parties.length, fallback: partiesFallback },
     },
   };

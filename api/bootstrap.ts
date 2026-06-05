@@ -13,7 +13,7 @@ type VercelResponse = ServerResponse & {
   setHeader: (name: string, value: string) => void;
 };
 
-const CACHE_KEY = 'legislative-bootstrap-v1';
+const CACHE_KEY = 'legislative-bootstrap-v2';
 const CACHE_TTL_MS = 1000 * 60 * 15;
 
 const jsonResponse = (res: VercelResponse, status: number, data: unknown, cacheControl?: string) => {

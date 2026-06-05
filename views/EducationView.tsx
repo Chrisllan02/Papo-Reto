@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText } from 'lucide-react';
+import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText, ExternalLink, RefreshCw } from 'lucide-react';
 import { EducationalArticle } from '../types';
 
 interface EducationViewProps {
@@ -137,6 +137,29 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                         </div>
                     )}
                 </div>
+
+                {(article.sourceUrl || article.generatedAt) && (
+                    <div className="mb-12 rounded-3xl border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/10 p-6">
+                        <div className="flex items-center gap-2 mb-3 text-green-700 dark:text-green-300 font-black uppercase text-xs tracking-widest">
+                            <RefreshCw size={16} />
+                            Conteúdo gerado pelo cron
+                        </div>
+                        <p className="text-sm font-bold leading-relaxed text-green-900 dark:text-green-100 mb-4">
+                            Este material foi montado automaticamente a partir de movimentações legislativas recentes e pode mudar conforme novas pautas entram no Congresso.
+                        </p>
+                        {article.sourceUrl && (
+                            <a
+                                href={article.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 rounded-2xl bg-white/70 dark:bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-green-800 dark:text-green-100 border border-green-100 dark:border-green-800 hover:bg-white dark:hover:bg-white/15 transition-colors"
+                            >
+                                Fonte oficial
+                                <ExternalLink size={13} />
+                            </a>
+                        )}
+                    </div>
+                )}
 
                 {/* Next Suggestion - INCREASED PADDING BOTTOM FOR MOBILE */}
                 {nextItem && (

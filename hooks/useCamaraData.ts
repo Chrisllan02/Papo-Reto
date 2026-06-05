@@ -30,7 +30,7 @@ type LegislativeBootstrap = {
 
 type SexCode = 'F' | 'M';
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
-const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v4';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v5';
 const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
 
 const readSexCache = (): Record<string, SexCode> => {
