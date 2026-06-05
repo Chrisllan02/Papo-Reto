@@ -175,6 +175,11 @@ const MobileNav: React.FC = () => {
                 aria-label={isMenuOpen ? "Fechar Menu" : "Abrir Menu"}
                 aria-expanded={isMenuOpen}
             >
+                {userLocation && !isMenuOpen && (
+                    <span className="absolute -top-1 right-3 rounded-full bg-blue-600 px-1.5 py-0.5 text-[8px] font-black leading-none text-white shadow-sm">
+                        {userLocation}
+                    </span>
+                )}
                 {isMenuOpen ? (
                     <X size={20} strokeWidth={2.5} />
                 ) : (

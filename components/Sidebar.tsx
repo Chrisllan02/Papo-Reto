@@ -39,7 +39,7 @@ const Sidebar: React.FC = () => {
           ${activeTab === id 
             ? 'text-white shadow-lg shadow-nuit/30 scale-105 backdrop-blur-md dark:shadow-[0_0_30px_rgba(30,72,143,0.6)]' 
             : 'text-midnight dark:text-blue-200 hover:bg-white/40 dark:hover:bg-white/10 hover:backdrop-blur-sm active:scale-95'
-          }`}
+          } focus-visible:ring-4 focus-visible:ring-blue-500/30`}
       >
         {activeTab === id && (
             <div className={`absolute inset-0 ${colorClass} rounded-full opacity-100 transition-opacity duration-500`}></div>
@@ -82,6 +82,30 @@ const Sidebar: React.FC = () => {
           <NavItem id="parties" icon={BarChart3} label="Gráficos" colorClass="bg-gradient-to-r from-blue-500 to-blue-600" />
           <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" colorClass="bg-gradient-to-r from-picture to-green-900" />
         </div>
+
+        <button
+            type="button"
+            onClick={() => {
+                if (userLocation) {
+                    actions.goToExplore(userLocation);
+                } else {
+                    actions.detectLocation();
+                }
+            }}
+            disabled={isLocating}
+            className="mt-2 flex w-full items-center xl:justify-start justify-center gap-3 rounded-2xl border border-blue-100/70 dark:border-white/10 bg-white/35 dark:bg-white/5 px-3 py-3 text-nuit dark:text-blue-200 shadow-sm transition-all hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+            aria-label={userLocation ? `Abrir bancada de ${userLocation}` : 'Detectar localização'}
+        >
+            <div className="rounded-xl bg-blue-100 dark:bg-blue-900/30 p-2">
+                {isLocating ? <Loader2 size={18} className="animate-spin" /> : userLocation ? <MapPin size={18} /> : <LocateFixed size={18} />}
+            </div>
+            <div className="hidden xl:block text-left leading-tight">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Minha região</p>
+                <p className="text-sm font-black text-midnight dark:text-white">
+                    {isLocating ? 'Localizando...' : userLocation ? `Bancada ${userLocation}` : 'Detectar estado'}
+                </p>
+            </div>
+        </button>
       </div>
 
       <div className="mt-auto pt-4 relative">
