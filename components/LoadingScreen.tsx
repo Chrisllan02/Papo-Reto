@@ -102,19 +102,6 @@ const LoadingScreen: React.FC = () => {
             transition: color 0.3s ease; 
         }
 
-        .loading-subtitle {
-            margin-top: -3rem;
-            max-width: 22rem;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #475569;
-            line-height: 1.5;
-        }
-
-        .dark .loading-subtitle {
-            color: #cbd5e1;
-        }
-
         /* Dark mode support */
         .dark .loading-text-wrapper {
              color: #EDF5FA; 
