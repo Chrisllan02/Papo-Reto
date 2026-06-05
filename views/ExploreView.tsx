@@ -164,7 +164,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     const [selectedIdeology, setSelectedIdeology] = useState<IdeologyFilter>('Todos');
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('parties');
-    const [showStateSelector, setShowStateSelector] = useState(false);
 
     // Refs para Persistência de Scroll
     const partiesListRef = useRef<HTMLDivElement>(null);
@@ -444,16 +443,24 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     })}
                                 </div>
 
-                                {/* Bottom Sheet Trigger */}
+                                {/* Inline state selector */}
                                 <div className="relative shrink-0 snap-start">
-                                    <button
-                                        onClick={() => setShowStateSelector(true)}
-                                        className="relative flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300 pl-3 pr-4 py-2 rounded-xl font-bold text-xs uppercase border border-blue-100 dark:border-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shrink-0 h-full focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                                    >
-                                        <MapPin size={16} />
-                                        <span>{selectedUF || 'Brasil'}</span>
-                                        <ChevronDown size={14} className="ml-1 opacity-50" />
-                                    </button>
+                                    <label className="relative flex h-full items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-8 text-xs font-black uppercase text-blue-900 transition-colors hover:bg-blue-100 focus-within:ring-2 focus-within:ring-blue-500 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40">
+                                        <MapPin size={16} aria-hidden="true" />
+                                        <span className="sr-only">Filtrar por estado</span>
+                                        <select
+                                            value={selectedUF}
+                                            onChange={(event) => setSelectedUF(event.target.value)}
+                                            className="min-w-[4.5rem] cursor-pointer appearance-none bg-transparent pr-1 font-black uppercase outline-none"
+                                            aria-label="Filtrar por estado"
+                                        >
+                                            <option value="">Brasil</option>
+                                            {ESTADOS_BRASIL.map(uf => (
+                                                <option key={uf} value={uf}>{uf}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="pointer-events-none absolute right-3 opacity-50" aria-hidden="true" />
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -569,40 +576,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                 </div>
             </div>
 
-            {/* Bottom Sheet Modal */}
-            {showStateSelector && (
-                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowStateSelector(false)}>
-                    <div 
-                        className="glass-panel w-full max-w-sm rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col max-h-[80vh] animate-in slide-in-from-bottom-10 duration-300" 
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="p-4 border-b border-white/10 flex justify-between items-center glass-surface">
-                            <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                <MapPin size={16} className="text-blue-600"/> Filtrar por Estado
-                            </span>
-                            <button onClick={() => setShowStateSelector(false)} className="p-1.5 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"><X size={16}/></button>
-                        </div>
-                        
-                        <div className="p-4 grid grid-cols-4 gap-2">
-                            <button
-                                onClick={() => { setSelectedUF(""); setShowStateSelector(false); }}
-                                className={`col-span-4 p-3 rounded-xl font-bold text-sm mb-2 transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${selectedUF === "" ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                            >
-                               <MapPin size={16} /> Todo o Brasil
-                            </button>
-                            {ESTADOS_BRASIL.map(uf => (
-                                <button
-                                    key={uf}
-                                    onClick={() => { setSelectedUF(uf); setShowStateSelector(false); }}
-                                    className={`p-3 rounded-xl font-black text-xs transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${selectedUF === uf ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-100 dark:border-gray-700'}`}
-                                >
-                                    {uf}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
