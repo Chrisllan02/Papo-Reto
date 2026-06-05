@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
-import { ESTADOS_BRASIL } from '../constants';
 
 const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
@@ -112,48 +111,25 @@ const Sidebar: React.FC = () => {
          <button 
             onClick={() => setShowAccessMenu(!showAccessMenu)}
             className={`flex items-center xl:justify-start justify-center gap-4 p-3.5 rounded-full backdrop-blur-sm transition-all duration-300 w-full group relative border border-white/20 active:scale-95 ${showAccessMenu ? 'bg-white text-black shadow-lg dark:bg-midnight dark:text-white dark:border-white/20 dark:shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'}`}
-            aria-label="Menu de Acessibilidade"
+            aria-label="Menu de Configurações"
             aria-expanded={showAccessMenu}
          >
             {showAccessMenu ? <X size={24}/> : <Settings size={24} />}
-            <span className="hidden xl:block text-base font-medium">Acessibilidade</span>
+            <span className="hidden xl:block text-base font-medium">Configurações</span>
             
             {/* Tooltip */}
             <span className="absolute left-full ml-3 px-3 py-1.5 bg-midnight dark:bg-white text-white dark:text-midnight text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-xl xl:hidden whitespace-nowrap z-50 border border-white/10 scale-95 group-hover:scale-100 origin-left">
-                Acessibilidade
+                Configurações
             </span>
          </button>
 
          {showAccessMenu && (
-             <div ref={accessMenuRef} className="absolute bottom-full left-0 right-0 mb-3 glass-panel rounded-[1.5rem] p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
+             <div ref={accessMenuRef} className="absolute bottom-full left-0 mb-3 w-[min(22rem,calc(100vw-2rem))] glass-panel rounded-[1.5rem] p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-white/10">
-                     <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Ajustes</span>
-                 </div>
-                 
-                 {/* Seletor de Localização + GPS */}
-                 <div className="flex items-center gap-2 w-full">
-                     <div className="flex-1 min-w-0 flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                         <div className="flex items-center gap-2">
-                             <MapPin size={16} className="text-nuit dark:text-blue-400"/>
-                             <span className="text-xs font-bold text-gray-800 dark:text-white">Estado</span>
-                         </div>
-                         <select 
-                            value={userLocation}
-                            onChange={(e) => { actions.updateUserLocation(e.target.value); setShowAccessMenu(false); }}
-                            className="bg-transparent text-gray-700 dark:text-gray-200 text-xs font-bold outline-none border-none cursor-pointer text-right w-14 max-w-[4rem] truncate"
-                         >
-                            <option value="">BR</option>
-                            {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                         </select>
+                     <div>
+                         <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Configurações</span>
+                         <p className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Aparência, leitura e ajuda da plataforma.</p>
                      </div>
-                     <button 
-                                onClick={() => { actions.detectLocation(); setShowAccessMenu(false); }}
-                        disabled={isLocating}
-                        className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                        title="Detectar localização atual"
-                     >
-                        {isLocating ? <Loader2 size={16} className="animate-spin"/> : <LocateFixed size={16}/>}
-                     </button>
                  </div>
 
                  {/* Controle de Fonte Melhorado */}

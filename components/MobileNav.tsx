@@ -1,12 +1,11 @@
 
 import React, { useMemo, useState } from 'react';
-import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
+import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
-import { ESTADOS_BRASIL } from '../constants';
 
 const MobileNav: React.FC = () => {
   const { state, actions } = useAppContext();
-  const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
+  const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const tabs = useMemo(() => [
@@ -34,7 +33,7 @@ const MobileNav: React.FC = () => {
         >
             <div className="p-6 space-y-6">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Ajustes & Acessibilidade</h3>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Configurações</h3>
                     <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-100/50 dark:bg-white/10 rounded-full text-gray-500 dark:text-gray-300 backdrop-blur-md">
                         <X size={20} />
                     </button>
@@ -44,31 +43,6 @@ const MobileNav: React.FC = () => {
 
                 {/* Settings Grid */}
                 <div className="grid grid-cols-2 gap-3">
-                    {/* Location Selector + GPS */}
-                    <div className="col-span-2 flex items-center gap-2">
-                        <div className="flex-1 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={20} className="text-blue-500" />
-                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Meu Estado</span>
-                            </div>
-                            <select 
-                                value={userLocation}
-                                onChange={(e) => actions.updateUserLocation(e.target.value)}
-                                className="bg-transparent text-xs font-black text-blue-600 dark:text-blue-400 outline-none text-right"
-                            >
-                                <option value="">BR</option>
-                                {ESTADOS_BRASIL.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                            </select>
-                        </div>
-                        <button 
-                            onClick={() => actions.detectLocation()}
-                            disabled={isLocating}
-                            className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg active:scale-95 flex items-center justify-center aspect-square"
-                        >
-                            {isLocating ? <Loader2 size={20} className="animate-spin"/> : <LocateFixed size={20}/>}
-                        </button>
-                    </div>
-
                     <button 
                         onClick={actions.toggleDarkMode}
                         className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
@@ -175,11 +149,6 @@ const MobileNav: React.FC = () => {
                 aria-label={isMenuOpen ? "Fechar Menu" : "Abrir Menu"}
                 aria-expanded={isMenuOpen}
             >
-                {userLocation && !isMenuOpen && (
-                    <span className="absolute -top-1 right-3 rounded-full bg-blue-600 px-1.5 py-0.5 text-[8px] font-black leading-none text-white shadow-sm">
-                        {userLocation}
-                    </span>
-                )}
                 {isMenuOpen ? (
                     <X size={20} strokeWidth={2.5} />
                 ) : (

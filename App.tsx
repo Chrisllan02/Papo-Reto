@@ -210,7 +210,7 @@ function App() {
             </div>
         )}
 
-           <aside className="hidden md:flex w-[88px] xl:w-[240px] flex-col h-[95%] my-auto ml-4 glass-surface rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300">
+           <aside className="hidden md:flex w-[88px] xl:w-[264px] flex-col h-[95%] my-auto ml-4 glass-surface rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300">
              <Sidebar />
         </aside>
 
