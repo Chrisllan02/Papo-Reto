@@ -89,14 +89,14 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
     const visibleWithoutWomen = isExpanded ? stats.withoutWomen : stats.withoutWomen.slice(0, 8);
 
     return (
-        <div className="glass-panel rounded-[3rem] p-6 md:p-10 flex flex-col lg:flex-row items-center gap-8 h-full w-full relative overflow-hidden group hover:shadow-2xl transition-shadow min-h-[360px]">
+        <div className="glass-panel rounded-[3rem] p-6 md:p-10 xl:p-12 flex flex-col lg:flex-row items-center gap-8 xl:gap-12 h-full w-full relative overflow-hidden group hover:shadow-2xl transition-shadow min-h-[360px]">
             
             {/* Background Decor */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             {/* Left: Chart & Main Stat */}
             <div className="flex flex-col items-center justify-center shrink-0 relative">
-                <div className="relative w-52 h-52 md:w-60 md:h-60 flex items-center justify-center">
+                <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
                     <svg className="w-full h-full overflow-visible transform -rotate-90 drop-shadow-xl" viewBox="0 0 100 100">
                         {/* Track */}
                         <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200 dark:text-gray-700/50" />
@@ -113,13 +113,13 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mulheres</span>
+                        <span className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
+                        <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Mulheres</span>
                     </div>
                 </div>
                 <div className="mt-2 text-center">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total: {stats.womenCount}</p>
-                    <p className="mt-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Total: {stats.womenCount}</p>
+                    <p className="mt-1 text-xs font-bold text-gray-400 uppercase tracking-wide">
                         Base: {stats.knownTotal}/{stats.total} confirmados
                     </p>
                 </div>
@@ -129,64 +129,64 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
             <div className="flex-1 w-full flex flex-col gap-3 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-lg backdrop-blur-sm">
-                            <Users size={14} />
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-xl backdrop-blur-sm">
+                            <Users size={18} />
                         </div>
-                        <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-tight">Representatividade</h4>
+                        <h4 className="text-lg md:text-xl font-black text-gray-800 dark:text-white uppercase tracking-tight">Representatividade</h4>
                     </div>
                     <div className="flex items-center gap-2">
                         {stats.unknownSexCount > 0 && (
-                            <span className="hidden sm:inline-flex rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                            <span className="hidden sm:inline-flex rounded-full bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
                                 atualizando {stats.unknownSexCount}
                             </span>
                         )}
                         <button 
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
                         >
                             {isExpanded ? 'Ver menos' : 'Ver todos'}
-                            {isExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                         </button>
                     </div>
                 </div>
                 {stats.unknownSexCount > 0 && (
-                    <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2">
                         O gráfico está usando apenas parlamentares com sexo confirmado enquanto a base completa é atualizada em segundo plano.
                     </p>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 xl:gap-8">
                     {/* Column 1: Parties WITH Women */}
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[9px] font-black text-green-600 dark:text-green-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-1">
+                    <div className="flex flex-col gap-3">
+                        <p className="text-sm font-black text-green-600 dark:text-green-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-2">
                             Com Mulheres ({stats.withWomen.length})
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2">
                             {visibleWithWomen.map(([party, count]) => (
-                                <div key={party} className="flex items-center gap-1 bg-orange-50/50 dark:bg-white/5 border border-orange-100 dark:border-white/10 px-2 py-1 rounded-md backdrop-blur-sm">
-                                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">{party}</span>
-                                    <span className="text-[9px] font-black text-orange-600 bg-white dark:bg-gray-800 px-1.5 rounded-full shadow-sm">{count}</span>
+                                <div key={party} className="flex min-h-9 items-center gap-2 bg-orange-50/70 dark:bg-white/5 border border-orange-100 dark:border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm">
+                                    <span className="text-sm font-black text-gray-700 dark:text-gray-200">{party}</span>
+                                    <span className="text-xs font-black text-orange-600 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full shadow-sm">{count}</span>
                                 </div>
                             ))}
                             {!isExpanded && stats.withWomen.length > 6 && (
-                                <span className="text-[9px] font-bold text-gray-400 self-center">+{stats.withWomen.length - 6}</span>
+                                <span className="text-sm font-bold text-gray-400 self-center">+{stats.withWomen.length - 6}</span>
                             )}
                         </div>
                     </div>
 
                     {/* Column 2: Parties WITHOUT Women */}
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[9px] font-black text-gray-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-1">
+                    <div className="flex flex-col gap-3">
+                        <p className="text-sm font-black text-gray-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-2">
                             Sem Mulheres ({stats.withoutWomen.length})
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2">
                             {visibleWithoutWomen.map((party) => (
-                                <span key={party} className="text-[9px] font-bold text-gray-400 bg-gray-100/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 px-2 py-1 rounded-md opacity-70 backdrop-blur-sm">
+                                <span key={party} className="min-h-9 text-sm font-black text-gray-400 bg-gray-100/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 px-3 py-2 rounded-xl opacity-80 backdrop-blur-sm">
                                     {party}
                                 </span>
                             ))}
                              {!isExpanded && stats.withoutWomen.length > 8 && (
-                                <span className="text-[9px] font-bold text-gray-400 self-center">+{stats.withoutWomen.length - 8}</span>
+                                <span className="text-sm font-bold text-gray-400 self-center">+{stats.withoutWomen.length - 8}</span>
                             )}
                         </div>
                     </div>
