@@ -462,13 +462,13 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             </div>
 
             {/* Content List */}
-            <div className="flex-1 p-3 md:p-8 pb-24 md:pb-16 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-visible">
+            <div className="flex-1 min-h-0 p-3 md:p-8 pb-24 md:pb-16 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-hidden">
                 <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
                     {viewMode === 'parties' && !selectedParty && (
                         <div 
                             ref={partiesListRef}
-                            className="space-y-8"
+                            className="h-full overflow-y-auto overscroll-contain pr-2 md:pr-3 pb-12 space-y-8"
                         >
                             {partySections.map((section) => {
                                 const theme = getIdeologyTheme(section.ideology);
