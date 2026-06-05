@@ -32,6 +32,12 @@ const formatUpdateLabel = (date?: string) => {
     return `Atualizado em ${parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
 };
 
+const formatShortDate = (date?: string) => {
+    const parsed = parseFeedDate(date);
+    if (!parsed) return '';
+    return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+};
+
 const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCandidate, onSeeMore, onGoToExplore }) => {
     const { state: appState, actions } = useAppContext();
     const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItem | null>(null);
@@ -63,29 +69,37 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
         return feedItems.filter(item => (item.category || 'activity') === selectedCategory);
     }, [feedItems, selectedCategory]);
     const muralSummary = useMemo(() => {
-        const latestItem = [...feedItems]
-            .sort((a, b) => (parseFeedDate(b.date)?.getTime() || 0) - (parseFeedDate(a.date)?.getTime() || 0))[0];
-        const topCategory = categoryOptions[0];
+        const byDateDesc = [...feedItems]
+            .sort((a, b) => (parseFeedDate(b.date)?.getTime() || 0) - (parseFeedDate(a.date)?.getTime() || 0));
+        const latestItem = byDateDesc[0];
+        const topCategory = categoryOptions.find(option => option.id !== 'activity') || categoryOptions[0];
+        const priorityItem = [...feedItems]
+            .sort((a, b) => (b.priority || 0) - (a.priority || 0) || (parseFeedDate(b.date)?.getTime() || 0) - (parseFeedDate(a.date)?.getTime() || 0))[0];
         const localPoliticians = userLocation
             ? politicians.filter(pol => pol.state === userLocation)
             : [];
-        const localActivityCount = userLocation
-            ? feedItems.filter(item => {
-                if (!item.candidateId) return false;
-                const politician = politicians.find(pol => pol.id === item.candidateId);
-                return politician?.state === userLocation;
-            }).length
-            : 0;
+        const politicianById = new Map(politicians.map(pol => [pol.id, pol]));
+        const localFeedItems = userLocation
+            ? feedItems.filter(item => item.candidateId && politicianById.get(item.candidateId)?.state === userLocation)
+            : [];
         const eventsCount = feedItems.filter(item => item.type === 'evento').length;
         const votesCount = feedItems.filter(item => item.type === 'voto').length;
+        const officialSourceCount = feedItems.filter(item => item.sourceUrl).length;
+        const datedCount = feedItems.filter(item => Boolean(parseFeedDate(item.date))).length;
 
         return {
             latestLabel: formatUpdateLabel(latestItem?.date),
+            latestDate: latestItem?.date,
             topCategory,
+            priorityItem,
+            priorityDateLabel: formatShortDate(priorityItem?.date),
             localPoliticiansCount: localPoliticians.length,
-            localActivityCount,
+            localActivityCount: localFeedItems.length,
+            localSample: localFeedItems[0],
             eventsCount,
             votesCount,
+            officialSourceCount,
+            datedCount,
         };
     }, [categoryOptions, feedItems, politicians, userLocation]);
 
@@ -133,16 +147,24 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                 <NewsTicker />
 
                 <section className="mb-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4" aria-label="Resumo do Mural">
-                    <div className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10">
+                    <button
+                        type="button"
+                        onClick={() => muralSummary.priorityItem ? setSelectedFeedItem(muralSummary.priorityItem) : onSeeMore()}
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                    >
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-3">
                             <CalendarClock size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Resumo</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Acompanhar agora</span>
                         </div>
-                        <p className="text-2xl font-black text-midnight dark:text-white leading-none">{feedItems.length}</p>
-                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                            {muralSummary.eventsCount} eventos e {muralSummary.votesCount} movimentações para acompanhar.
+                        <p className="text-lg font-black text-midnight dark:text-white leading-tight line-clamp-2">
+                            {muralSummary.priorityItem?.title || 'Sem pauta prioritária'}
                         </p>
-                    </div>
+                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
+                            {muralSummary.priorityDateLabel
+                                ? `${muralSummary.priorityDateLabel} · ${muralSummary.priorityItem?.type === 'evento' ? 'agenda pública' : 'tramitação'}`
+                                : `${muralSummary.eventsCount} eventos e ${muralSummary.votesCount} movimentações no radar.`}
+                        </p>
+                    </button>
 
                     <button
                         type="button"
@@ -151,13 +173,15 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     >
                         <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 mb-3">
                             <TrendingUp size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Tema em alta</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Tema concreto</span>
                         </div>
                         <p className="text-xl font-black text-midnight dark:text-white leading-tight">
                             {muralSummary.topCategory?.meta.label || 'Congresso'}
                         </p>
                         <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                            {muralSummary.topCategory?.count || 0} registros recentes neste tema.
+                            {muralSummary.topCategory?.id === 'activity'
+                                ? 'Sem tema específico dominante. Veja o histórico para separar pauta genérica de pauta substantiva.'
+                                : `${muralSummary.topCategory?.count || 0} registros com tema identificável. Clique para filtrar.`}
                         </p>
                     </button>
 
@@ -174,22 +198,28 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                             {userLocation ? `Bancada de ${userLocation}` : 'Definir estado'}
                         </p>
                         <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                            {userLocation
-                                ? `${muralSummary.localPoliticiansCount} parlamentares e ${muralSummary.localActivityCount} atividades ligadas ao seu estado.`
+                            {userLocation && muralSummary.localActivityCount > 0
+                                ? `${muralSummary.localActivityCount} atividades nominais. Exemplo: ${muralSummary.localSample?.title || 'atividade recente'}.`
+                                : userLocation
+                                    ? `${muralSummary.localPoliticiansCount} parlamentares. Nenhuma atividade nominal recente vinculada; abra a bancada para fiscalizar nomes.`
                                 : 'Use sua localização para priorizar sua bancada.'}
                         </p>
                     </button>
 
-                    <div className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10">
+                    <button
+                        type="button"
+                        onClick={onSeeMore}
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                    >
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 mb-3">
                             <DatabaseZap size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Dados</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Confiabilidade</span>
                         </div>
                         <p className="text-lg font-black text-midnight dark:text-white leading-tight">{muralSummary.latestLabel}</p>
                         <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                            Se a API pública oscilar, o app mantém o último dado confiável.
+                            {muralSummary.officialSourceCount}/{feedItems.length} itens com fonte oficial e {muralSummary.datedCount} com data validada. Ver histórico.
                         </p>
-                    </div>
+                    </button>
                 </section>
 
                 {/* State Spotlight */}
