@@ -161,12 +161,14 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     const deferredSearch = useDeferredValue(search);
     
     const [selectedUF, setSelectedUF] = useState(preselectedState || "");
+    const [isStateSelectorOpen, setIsStateSelectorOpen] = useState(false);
     const [selectedIdeology, setSelectedIdeology] = useState<IdeologyFilter>('Todos');
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('parties');
 
     // Refs para Persistência de Scroll
     const partiesListRef = useRef<HTMLDivElement>(null);
+    const stateSelectorRef = useRef<HTMLDivElement>(null);
     const scrollPositionRef = useRef(0);
 
     useEffect(() => {
@@ -175,6 +177,28 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
             setViewMode('candidates');
         }
     }, [preselectedState]);
+
+    useEffect(() => {
+        if (!isStateSelectorOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!stateSelectorRef.current) return;
+            if (!stateSelectorRef.current.contains(event.target as Node)) {
+                setIsStateSelectorOpen(false);
+            }
+        };
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setIsStateSelectorOpen(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [isStateSelectorOpen]);
 
     // Restaura o scroll quando volta para a lista de partidos
     useLayoutEffect(() => {
@@ -444,23 +468,65 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 </div>
 
                                 {/* Inline state selector */}
-                                <div className="relative shrink-0 snap-start">
-                                    <label className="relative flex h-full items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-8 text-xs font-black uppercase text-blue-900 transition-colors hover:bg-blue-100 focus-within:ring-2 focus-within:ring-blue-500 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40">
-                                        <MapPin size={16} aria-hidden="true" />
-                                        <span className="sr-only">Filtrar por estado</span>
-                                        <select
-                                            value={selectedUF}
-                                            onChange={(event) => setSelectedUF(event.target.value)}
-                                            className="min-w-[4.5rem] cursor-pointer appearance-none bg-transparent pr-1 font-black uppercase outline-none"
-                                            aria-label="Filtrar por estado"
-                                        >
-                                            <option value="">Brasil</option>
-                                            {ESTADOS_BRASIL.map(uf => (
-                                                <option key={uf} value={uf}>{uf}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="pointer-events-none absolute right-3 opacity-50" aria-hidden="true" />
-                                    </label>
+                                <div className="relative shrink-0 snap-start" ref={stateSelectorRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsStateSelectorOpen(prev => !prev)}
+                                        aria-haspopup="listbox"
+                                        aria-expanded={isStateSelectorOpen}
+                                        aria-label="Filtrar por estado"
+                                        className="flex h-full min-w-[7.25rem] items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-2 text-xs font-black uppercase text-blue-900 shadow-sm transition-colors hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <MapPin size={16} aria-hidden="true" />
+                                            {selectedUF || 'Brasil'}
+                                        </span>
+                                        <ChevronDown size={14} className={`opacity-60 transition-transform ${isStateSelectorOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                    </button>
+
+                                    {isStateSelectorOpen && (
+                                        <div className="absolute left-0 top-full z-50 mt-2 w-[18.5rem] rounded-2xl border border-blue-100 bg-white/95 p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-midnight/95">
+                                            <div className="mb-2 flex items-center justify-between px-1">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</span>
+                                                {selectedUF && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedUF('');
+                                                            setIsStateSelectorOpen(false);
+                                                        }}
+                                                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 dark:text-blue-300"
+                                                    >
+                                                        Brasil
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-6 gap-1.5" role="listbox" aria-label="Estados do Brasil">
+                                                {ESTADOS_BRASIL.map(uf => {
+                                                    const active = selectedUF === uf;
+                                                    return (
+                                                        <button
+                                                            key={uf}
+                                                            type="button"
+                                                            role="option"
+                                                            aria-selected={active}
+                                                            onClick={() => {
+                                                                setSelectedUF(uf);
+                                                                setIsStateSelectorOpen(false);
+                                                            }}
+                                                            className={`rounded-xl px-2 py-2 text-xs font-black transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                                                active
+                                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                                                                    : 'bg-blue-50 text-blue-900 hover:bg-blue-100 dark:bg-white/5 dark:text-blue-100 dark:hover:bg-white/10'
+                                                            }`}
+                                                        >
+                                                            {uf}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
