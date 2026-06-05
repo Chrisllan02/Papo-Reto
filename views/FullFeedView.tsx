@@ -101,28 +101,35 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
   }, [feedItems, searchTerm, startDate, endDate, activeFilter, sortBy]);
 
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 font-sans overflow-y-auto pb-24 md:pb-12 animate-in slide-in-from-right duration-300">
+    <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-300">
         
         {/* HEADER FIXO */}
-        <div className="sticky top-0 z-30 glass-surface p-4 shadow-sm">
-             <div className="max-w-7xl mx-auto">
+        <div className="sticky top-0 z-30 px-4 pt-4 md:px-8 md:pt-6">
+             <div className="mx-auto max-w-[1800px] glass-panel rounded-[2.5rem] border border-white/60 dark:border-white/10 p-4 md:p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
                  {/* Linha Superior: Voltar e Título */}
-                 <div className="flex items-center gap-4 mb-4">
-                     <button onClick={onBack} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors active:scale-95">
+                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                   <div className="flex items-center gap-4">
+                     <button onClick={onBack} className="p-2.5 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-blue-100/70 dark:border-white/10 shadow-sm" aria-label="Voltar para o mural">
                         <ChevronLeft className="text-gray-700 dark:text-white" size={24}/>
                      </button>
                      <div>
-                         <h1 className="text-xl font-black text-gray-900 dark:text-white leading-none">Histórico Completo</h1>
-                         <p className="text-xs text-gray-500 font-bold uppercase mt-1">{filteredItems.length} registros encontrados</p>
+                         <h1 className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-none tracking-tight">Histórico Completo</h1>
+                         <p className="text-xs text-slate-500 dark:text-slate-300 font-black uppercase tracking-widest mt-1">{filteredItems.length} registros encontrados</p>
                      </div>
+                   </div>
+
+                   <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-blue-50/70 dark:bg-blue-900/20 px-4 py-3 text-xs font-bold text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30">
+                     <Filter size={16} />
+                     Use filtros para cruzar data, tipo e termo.
+                   </div>
                  </div>
 
                  {/* Linha de Controles */}
-                 <div className="flex flex-col xl:flex-row gap-3">
+                 <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,1fr)_auto]">
                      
                      {/* Busca */}
                      <div className="relative flex-1">
-                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                          <input 
                             type="text" 
                             placeholder="Pesquisar por palavras-chave..." 
@@ -131,46 +138,46 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                                 setSearchTerm(e.target.value);
                                 if (e.target.value && sortBy === 'date_desc') setSortBy('relevance'); // Auto-switch to relevance on search
                             }}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-medium text-gray-900 dark:text-white border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-0 transition-all"
+                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-950/40 rounded-2xl text-sm font-bold text-gray-900 dark:text-white border border-blue-100 dark:border-white/10 placeholder-slate-400 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-4 focus:ring-blue-500/15 transition-all shadow-sm"
                          />
                          {searchTerm && (
-                             <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                             <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
                                  <X size={14}/>
                              </button>
                          )}
                      </div>
 
-                     <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                     <div className="flex flex-wrap gap-3 xl:flex-nowrap xl:justify-end">
                         {/* Datas */}
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Calendar size={14}/></div>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14}/></div>
                                 <input 
                                     type="date" 
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
                                 />
                             </div>
-                            <div className="flex items-center text-gray-400 font-bold">-</div>
+                            <div className="flex items-center text-slate-400 font-bold">-</div>
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Calendar size={14}/></div>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14}/></div>
                                 <input 
                                     type="date" 
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 uppercase h-full border-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
                                 />
                             </div>
                         </div>
 
                         {/* Ordenação */}
                         <div className="relative shrink-0">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><ArrowDownUp size={14}/></div>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ArrowDownUp size={14}/></div>
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as any)}
-                                className="pl-9 pr-8 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 uppercase h-full appearance-none cursor-pointer border-none focus:ring-2 focus:ring-blue-500/50"
+                                className="h-full min-w-[180px] appearance-none rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-8 text-xs font-black uppercase text-slate-700 dark:text-slate-100 cursor-pointer focus:ring-4 focus:ring-blue-500/15"
                             >
                                 <option value="relevance">Relevância</option>
                                 <option value="date_desc">Mais Recentes</option>
@@ -180,12 +187,12 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                         </div>
 
                         {/* Tabs Tipo */}
-                        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl shrink-0">
+                        <div className="flex shrink-0 rounded-2xl border border-blue-100 dark:border-white/10 bg-white/70 dark:bg-slate-950/40 p-1 shadow-sm">
                             {(['todos', 'voto', 'despesa'] as const).map(type => (
                                 <button
                                     key={type}
                                     onClick={() => setActiveFilter(type)}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${activeFilter === type ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black capitalize transition-all ${activeFilter === type ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:text-blue-700'}`}
                                 >
                                     {type}
                                 </button>
@@ -197,59 +204,59 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         </div>
 
         {/* GRID DE CONTEÚDO */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredItems.map((item, idx) => {
                     const candidate = item.candidateId ? politicians.find(p => p.id === item.candidateId) : null;
                     const isVote = item.type === 'voto';
                     const isExpense = item.type === 'despesa';
 
                     return (
-                        <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
+                        <div key={idx} className="group flex h-full min-h-[250px] flex-col rounded-[2rem] border border-white/70 dark:border-white/10 bg-white/82 dark:bg-white/[0.05] p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.14)]">
                             <div className="flex justify-between items-start mb-3">
                                 <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 ${
                                     isVote ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
                                     isExpense ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
-                                    'bg-gray-100 text-gray-600'
+                                    'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
                                 }`}>
                                     {isVote ? <Landmark size={10}/> : isExpense ? <Banknote size={10}/> : <Info size={10}/>}
                                     {item.type}
                                 </span>
-                                <span className="text-[10px] font-bold text-gray-400">{item.date}</span>
+                                <span className="text-[10px] font-black text-slate-400">{item.date}</span>
                             </div>
 
-                            <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight mb-2 line-clamp-3 group-hover:text-blue-600 transition-colors">
+                            <h3 className="font-black text-midnight dark:text-white text-lg leading-tight mb-3 line-clamp-3 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                                 {item.title}
                             </h3>
 
                              {isExpense && item.amount && (
                                 <div className="mb-2">
-                                    <p className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">{item.amount}</p>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold truncate">{item.provider}</p>
+                                    <p className="text-xl font-black text-midnight dark:text-white tracking-tighter">{item.amount}</p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold truncate">{item.provider}</p>
                                 </div>
                             )}
 
                             {item.description && !isExpense && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed line-clamp-3 mb-4">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed line-clamp-3 mb-4">
                                     {item.description}
                                 </p>
                             )}
 
-                            <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => candidate && onSelectCandidate(candidate)}>
                                     {candidate ? (
                                         <>
                                             <img src={candidate.photo} className="w-6 h-6 rounded-full bg-gray-200 object-cover" alt=""/>
                                             <div className="truncate max-w-[100px]">
-                                                <p className="text-[10px] font-bold text-gray-900 dark:text-white truncate">{candidate.name}</p>
+                                                <p className="text-[10px] font-bold text-midnight dark:text-white truncate">{candidate.name}</p>
                                             </div>
                                         </>
                                     ) : (
-                                        <span className="text-[10px] font-bold text-gray-400">Institucional</span>
+                                        <span className="text-[10px] font-black text-slate-400">Institucional</span>
                                     )}
                                 </div>
                                 {item.sourceUrl && (
-                                    <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-500 transition-colors">
+                                    <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-500 transition-colors" aria-label="Abrir fonte oficial">
                                         <ExternalLink size={14}/>
                                     </a>
                                 )}
@@ -260,9 +267,9 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
             </div>
             
             {filteredItems.length === 0 && (
-                <div className="text-center py-20 opacity-50">
+                <div className="text-center py-20 opacity-70">
                     <Filter className="mx-auto h-12 w-12 text-gray-300 mb-4"/>
-                    <p className="font-bold text-gray-500">Nenhum item encontrado com esses filtros.</p>
+                    <p className="font-bold text-slate-500">Nenhum item encontrado com esses filtros.</p>
                 </div>
             )}
         </div>
