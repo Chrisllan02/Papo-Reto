@@ -4,6 +4,7 @@ import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
 import AudioPlayer from './AudioPlayer';
 import { getCategoryIcon, formatCardTitle, getDidacticContext } from '../utils/legislativeTranslator';
+import { buildActivityAudioScript } from '../utils/audioNarration';
 
 interface FeedCardProps {
     item: FeedItem;
@@ -31,6 +32,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     
     // Contexto Didático para uso no Card
     const didactic = getDidacticContext(item.title, item.description, item.type);
+    const audioScript = buildActivityAudioScript(item, didactic.text, politician);
     // Show snippet only if meaningful text exists and isn't just repetition
     const showSnippet = didactic.text && didactic.text.length > 10 && !didactic.text.startsWith(item.title.substring(0,20));
     const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -161,7 +163,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                     </div>
                     {/* Audio Button on Card */}
                     <div onClick={(e) => e.stopPropagation()}>
-                        <AudioPlayer text={`${item.title}. ${didactic.text}`} isDarkText={false} compact={true} />
+                        <AudioPlayer text={audioScript} isDarkText={false} compact={true} />
                     </div>
                 </div>
             ) : (
@@ -183,7 +185,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                     </div>
                     {/* Audio Button on Card */}
                     <div onClick={(e) => e.stopPropagation()}>
-                        <AudioPlayer text={`${item.title}. ${didactic.text}`} isDarkText={false} compact={true} />
+                        <AudioPlayer text={audioScript} isDarkText={false} compact={true} />
                     </div>
                 </div>
             )}

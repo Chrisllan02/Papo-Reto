@@ -5,6 +5,7 @@ import { FeedItem, Politician } from '../types';
 import AudioPlayer from './AudioPlayer';
 import { getDidacticContext, renderWithGlossary } from '../utils/legislativeTranslator';
 import { fetchProposicaoDetails, fetchEventDetails } from '../services/camaraApi';
+import { buildActivityAudioScript } from '../utils/audioNarration';
 
 interface FeedDetailModalProps {
     item: FeedItem;
@@ -30,6 +31,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
 
     const didacticContent = useMemo(() => getDidacticContext(item.title, item.description, item.type), [item]);
     const glossaryContent = useMemo(() => renderWithGlossary(didacticContent.text), [didacticContent.text]);
+    const audioScript = useMemo(() => buildActivityAudioScript(item, didacticContent.text, politician), [item, didacticContent.text, politician]);
 
     useEffect(() => {
         requestAnimationFrame(() => setVisible(true));
@@ -125,7 +127,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                 
                 <div className={`h-24 md:h-32 shrink-0 relative flex items-start justify-end p-6 ${isVote ? 'bg-nuit' : isExpense ? 'bg-orange-600' : isEvent ? 'bg-purple-600' : 'bg-spring'} backdrop-blur-md transition-colors`}>
                     <div className="absolute top-6 left-6 z-50 flex gap-2">
-                        <AudioPlayer text={`${item.title}. ${didacticContent.text}`} isDarkText={isLightBg && !isEvent} />
+                        <AudioPlayer text={audioScript} isDarkText={isLightBg && !isEvent} />
                     </div>
                     <button 
                         ref={closeBtnRef}

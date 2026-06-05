@@ -264,7 +264,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!text) return jsonResponse(res, 400, { error: 'Missing text.' });
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash-preview-tts',
-          contents: [{ parts: [{ text: `Diga de forma clara e profissional: ${text}` }] }],
+          contents: [{
+            parts: [{
+              text: [
+                'Leia como uma locução curta de jornalismo cívico para o app PapoReto.',
+                'Use ritmo natural, tom claro e conversado, sem soletrar palavras.',
+                'Faça pausas leves entre frases e leia siglas legislativas pelo significado quando o texto já vier expandido.',
+                `Roteiro: ${text}`
+              ].join(' ')
+            }]
+          }],
           config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
