@@ -253,9 +253,6 @@ const LoadingScreen: React.FC = () => {
             <span className="text-ghost">CARREGANDO...</span>
             <span className="text-visible">CARREGANDO...</span>
         </div>
-        <p className="loading-subtitle">
-            Sincronizando dados legislativos, cache e fontes oficiais.
-        </p>
       </div>
     </div>
   );
