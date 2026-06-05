@@ -628,7 +628,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                  <div className="flex gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10 backdrop-blur-sm">
                      <span className="flex items-center gap-1.5 text-rose-600"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
                      <span className="flex items-center gap-1.5 text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
-                     <span className="flex items-center gap-1.5 text-indigo-600"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> Dir.</span>
+                     <span className="flex items-center gap-1.5 text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-600"></span> Dir.</span>
                  </div>
             </div>
 

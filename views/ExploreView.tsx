@@ -402,7 +402,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                             value={search}
                             onChange={handleSearch}
                             placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, estado..." : "Buscar partido ou político..."}
-                            className="block w-full pl-11 pr-10 py-3.5 bg-gray-50/80 dark:bg-black/20 border border-blue-200 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-800 transition-all shadow-inner"
+                            className="block w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm"
                         />
                         {search && (
                           <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">

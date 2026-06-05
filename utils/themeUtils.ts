@@ -21,18 +21,18 @@ export const getIdeologyTheme = (ideology: string) => {
     
     if (ideo === 'direita') {
         return {
-            bg: 'bg-indigo-50/90 dark:bg-indigo-900/35',
-            border: 'border-indigo-200 dark:border-indigo-900/30',
-            iconBg: 'bg-[#2E3192]', // Azul Marinho Conservador
-            text: 'text-indigo-950 dark:text-indigo-100', // Escurecido para contraste
-            badgeBg: 'bg-indigo-100 dark:bg-indigo-900/40',
-            badgeText: 'text-indigo-900 dark:text-indigo-300',
+            bg: 'bg-emerald-50/90 dark:bg-emerald-900/35',
+            border: 'border-emerald-200 dark:border-emerald-900/30',
+            iconBg: 'bg-[#15803D]',
+            text: 'text-emerald-950 dark:text-emerald-100',
+            badgeBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+            badgeText: 'text-emerald-900 dark:text-emerald-300',
             label: 'DIR',
-            baseColor: '#4F46E5', // Indigo 600
-            activeClass: 'bg-indigo-700 text-white shadow-md shadow-indigo-700/20', // Mais escuro
-            trackBg: 'bg-indigo-100/50 dark:bg-indigo-900/20',
-            fillColorClass: 'bg-indigo-600',
-            textColorClass: 'text-indigo-800 dark:text-indigo-400'
+            baseColor: '#16A34A',
+            activeClass: 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20',
+            trackBg: 'bg-emerald-100/50 dark:bg-emerald-900/20',
+            fillColorClass: 'bg-emerald-600',
+            textColorClass: 'text-emerald-800 dark:text-emerald-400'
         };
     }
     

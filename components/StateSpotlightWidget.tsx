@@ -68,7 +68,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
     const getIdeologyStyle = (party: string) => {
         const ideology = getIdeology(party);
         if (ideology === 'Esquerda') return 'bg-rose-50/80 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800';
-        if (ideology === 'Direita') return 'bg-indigo-50/80 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800';
+        if (ideology === 'Direita') return 'bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
         return 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
     };
 
@@ -131,8 +131,8 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                                 indicatorBorder = 'border-l-rose-500';
                                 dotColor = 'bg-rose-500';
                             } else if (ideology === 'Direita') {
-                                indicatorBorder = 'border-l-indigo-500';
-                                dotColor = 'bg-indigo-500';
+                                indicatorBorder = 'border-l-emerald-500';
+                                dotColor = 'bg-emerald-500';
                             }
                             
                             return (
