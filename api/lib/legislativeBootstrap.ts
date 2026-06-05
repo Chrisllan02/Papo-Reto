@@ -2,6 +2,7 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
+const CAMARA_PROXY_BASE_URL = 'https://papo-reto-beige.vercel.app/api/camara';
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
 const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
 const UPSTREAM_TIMEOUT_MS = 15000;
@@ -355,7 +356,17 @@ export const withGeneratedEducationalArticles = (data: LegislativeBootstrap): Le
   };
 };
 
-const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1): Promise<T | null> => {
+const getCamaraProxyUrl = (url: string) => {
+  try {
+    const target = new URL(url);
+    if (target.hostname !== 'dadosabertos.camara.leg.br') return null;
+    return `${CAMARA_PROXY_BASE_URL}?url=${encodeURIComponent(target.toString())}`;
+  } catch {
+    return null;
+  }
+};
+
+const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1, allowProxyFallback = true): Promise<T | null> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -368,15 +379,19 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retrie
     });
     if (!res.ok) {
       if (retries > 0 && (res.status >= 500 || res.status === 429)) {
-        return fetchJson<T>(url, timeoutMs, retries - 1);
+        return fetchJson<T>(url, timeoutMs, retries - 1, allowProxyFallback);
       }
+      const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
+      if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
       return null;
     }
     return await res.json() as T;
   } catch {
     if (retries > 0) {
-      return fetchJson<T>(url, timeoutMs, retries - 1);
+      return fetchJson<T>(url, timeoutMs, retries - 1, allowProxyFallback);
     }
+    const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
+    if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
     return null;
   } finally {
     clearTimeout(timeoutId);
