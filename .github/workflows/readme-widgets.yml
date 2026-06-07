@@ -37,15 +37,23 @@ jobs:
         env:
           README_APP_URL: https://papo-reto-beige.vercel.app
 
-      - name: Commit updated widgets
+      - name: Install preview browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture production preview
+        run: npm run readme:preview
+        env:
+          README_APP_URL: https://papo-reto-beige.vercel.app
+
+      - name: Commit updated README assets
         run: |
           if git diff --quiet -- docs/readme; then
-            echo "No README widget changes."
+            echo "No README asset changes."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/readme/*.svg docs/readme/metrics.json
-          git commit -m "Update README dynamic widgets"
+          git add docs/readme
+          git commit -m "Update README dynamic assets"
           git push

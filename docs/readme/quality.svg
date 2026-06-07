@@ -30,7 +30,7 @@
       <g transform="translate(24 136)">
         <circle cx="7" cy="7" r="5" fill="#8b5cf6" opacity="0.95" />
         <text x="22" y="11" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#e5e7eb">Dependências</text>
-        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">8 prod / 19 dev</text>
+        <text x="314" y="11" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#ffffff">8 prod / 20 dev</text>
         <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">Audit de produção no CI</text>
       </g>
     
@@ -41,5 +41,5 @@
         <text x="22" y="29" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#94a3b8">GitHub Actions</text>
       </g>
     
-  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 06/06/2026, 11:13</text>
+  <text x="24" y="228" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" fill="#64748b">Atualizado em 07/06/2026, 01:15</text>
 </svg>
