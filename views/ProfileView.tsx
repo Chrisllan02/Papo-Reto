@@ -490,7 +490,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               />
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
               <BioCard candidate={candidate} isLoading={isLoadingDetails} />
               <StatsCard displayStats={displayStats} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availableYears={availableYears} commissionGroups={commissionGroups} isLoading={isLoadingDetails} mandateInfo={mandateInfo} loadingStatus={loadingStatus} />
           </div>

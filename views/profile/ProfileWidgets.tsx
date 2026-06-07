@@ -457,7 +457,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
   };
 
   return (
-    <div className="glass-panel rounded-[2.5rem] p-6 h-full flex flex-col">
+    <div className="glass-panel rounded-[2.5rem] p-6 flex flex-col">
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
         <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
           <Contact size={20} />
@@ -465,14 +465,14 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Ficha Parlamentar</h3>
       </div>
 
-      <div className="space-y-6 flex-1 relative">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 relative">
         {isLoading && !candidate.email && (
           <div className="absolute inset-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
             <Loader2 className="animate-spin text-blue-500" size={24} />
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 xl:col-span-2">
           <div>
             <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Calendar size={10} /> Idade</p>
             <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
@@ -505,14 +505,14 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         </div>
 
         {candidate.bio && (
-          <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:border-t-0 xl:border-l xl:pl-6">
             <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center gap-2"><ScrollText size={12} /> Biografia</p>
             <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{candidate.bio}</p>
           </div>
         )}
 
         {matchScore !== null && (
-          <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:border-t-0 xl:border-l xl:pl-6">
             <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 flex items-center gap-2"><Award size={12} /> Compatibilidade</p>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
@@ -523,7 +523,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
           </div>
         )}
 
-        <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+        <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:border-t-0 xl:border-l xl:pl-6">
           <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3">Contatos Oficiais</p>
           <div className="space-y-3">
             {candidate.email && (
@@ -567,7 +567,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         )}
 
         {candidate.staff && candidate.staff.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-white/5 pt-4">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:col-span-2">
             <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2">
               <Users size={12} /> Gabinete Digital
             </p>
@@ -609,7 +609,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         )}
 
         {candidate.socials && candidate.socials.length > 0 && (
-          <div className="pt-2">
+          <div className="pt-2 xl:self-end">
             <div className="flex flex-wrap gap-2">
               {candidate.socials.map((url, i) => <SocialIcon key={i} url={url} />)}
             </div>
@@ -626,7 +626,7 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
   const fidelity = displayStats.partyFidelity || 0;
 
   return (
-    <div className="glass-panel rounded-[2.5rem] p-6 h-full flex flex-col relative overflow-hidden">
+    <div className="glass-panel rounded-[2.5rem] p-6 flex flex-col relative overflow-hidden">
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
         <div className="p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400">
           <BarChart3 size={20} />
@@ -662,8 +662,8 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
           </div>
         </div>
       ) : (
-        <div className="space-y-8 flex-1 animate-in fade-in duration-500">
-          <div className="bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-white/40 dark:border-white/5 shadow-inner">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 animate-in fade-in duration-500">
+          <div className="bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-white/40 dark:border-white/5 shadow-inner xl:col-span-2">
             <div className="flex justify-between items-center mb-6">
               <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                 <Clock size={12} /> Linha do Tempo
@@ -736,7 +736,7 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+          <div className="pt-4 border-t border-gray-100 dark:border-white/5 xl:col-span-2">
             <div className="bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:border-blue-200 transition-colors">
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide group-hover:text-blue-500 transition-colors">Gastos de Gabinete ({selectedYear === 'total' ? 'Total' : selectedYear})</p>

@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2, Building2, Landmark, ArrowDown } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
 import { getIdeologyTheme } from '../utils/themeUtils';
@@ -868,6 +868,116 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
     );
 };
 
+const GovernmentStructureFlow = () => {
+    const powers = [
+        {
+            title: 'Poder Executivo',
+            lead: 'Presidente e ministérios',
+            description: 'Administra o governo, executa as leis e conduz políticas públicas.',
+            icon: Building2,
+            accent: 'text-blue-700 dark:text-blue-300',
+            iconStyle: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+            borderStyle: 'border-blue-200/80 dark:border-blue-500/20',
+        },
+        {
+            title: 'Poder Legislativo',
+            lead: 'Câmara e Senado',
+            description: 'Cria leis, aprova o orçamento e fiscaliza as ações do Executivo.',
+            icon: Landmark,
+            accent: 'text-emerald-700 dark:text-emerald-300',
+            iconStyle: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+            borderStyle: 'border-emerald-200/80 dark:border-emerald-500/20',
+        },
+        {
+            title: 'Poder Judiciário',
+            lead: 'Tribunais e STF',
+            description: 'Aplica as leis, resolve conflitos e protege a Constituição.',
+            icon: Scale,
+            accent: 'text-slate-700 dark:text-slate-200',
+            iconStyle: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200',
+            borderStyle: 'border-slate-200/80 dark:border-white/10',
+        },
+    ];
+
+    return (
+        <section className="glass-panel rounded-[2.5rem] p-6 md:p-8 overflow-hidden" aria-labelledby="government-structure-title">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300 mb-2">Mapa do Estado brasileiro</p>
+                    <h2 id="government-structure-title" className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
+                        Como o Brasil funciona
+                    </h2>
+                    <p className="mt-2 text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-300">
+                        O poder político parte do povo e é exercido por instituições com responsabilidades diferentes.
+                    </p>
+                </div>
+                <div className="flex max-w-md items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-xs font-bold leading-relaxed text-blue-900 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-100">
+                    <Info size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>O presidente lidera o Executivo, mas não é chefe dos outros poderes.</span>
+                </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center">
+                <div className="flex min-w-[220px] items-center justify-center gap-3 rounded-2xl bg-blue-700 px-6 py-4 text-white shadow-lg shadow-blue-900/15 dark:bg-blue-600">
+                    <Users size={22} aria-hidden="true" />
+                    <div>
+                        <p className="text-base font-black leading-none">Povo</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-100">Origem do poder político</p>
+                    </div>
+                </div>
+
+                <div className="flex h-14 flex-col items-center justify-center text-blue-400 dark:text-blue-300" aria-hidden="true">
+                    <div className="h-7 w-px bg-blue-300 dark:bg-blue-500/50" />
+                    <ArrowDown size={18} strokeWidth={2.5} />
+                </div>
+
+                <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-3">
+                    {powers.map(({ title, lead, description, icon: Icon, accent, iconStyle, borderStyle }) => (
+                        <article key={title} className={`rounded-2xl border bg-white/70 p-5 shadow-sm dark:bg-white/5 ${borderStyle}`}>
+                            <div className="flex items-start gap-4">
+                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
+                                    <Icon size={21} aria-hidden="true" />
+                                </div>
+                                <div>
+                                    <h3 className={`text-sm font-black ${accent}`}>{title}</h3>
+                                    <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{lead}</p>
+                                    <p className="mt-2 text-xs font-medium leading-relaxed text-gray-600 dark:text-gray-300">{description}</p>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+
+                <div className="mt-5 flex w-full items-start gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-emerald-950 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-100">
+                    <ShieldCheck size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <p className="text-xs font-bold leading-relaxed">
+                        Os três poderes são independentes e se fiscalizam por meio de freios e contrapesos.
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-6 border-t border-gray-200/70 pt-5 dark:border-white/10">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-300">
+                    <Globe size={15} aria-hidden="true" />
+                    Onde as decisões chegam
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {[
+                        ['União', 'Questões nacionais'],
+                        ['Estados e DF', 'Questões regionais'],
+                        ['Municípios', 'Serviços locais'],
+                    ].map(([title, description]) => (
+                        <div key={title} className="rounded-xl bg-gray-100/80 px-4 py-3 dark:bg-white/5">
+                            <p className="text-xs font-black text-gray-900 dark:text-white">{title}</p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{description}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+
 const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
 
@@ -935,6 +1045,8 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                 <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
                 <p className="text-[10px] md:text-sm font-bold text-gray-500 uppercase tracking-widest mt-1.5">Raio-X das Forças do Congresso Nacional</p>
             </div>
+
+            <GovernmentStructureFlow />
 
             <div className="grid grid-cols-1 gap-4">
                 <FemaleRepresentationWidget politicians={politicians} />
