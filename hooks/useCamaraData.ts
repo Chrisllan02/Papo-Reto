@@ -379,7 +379,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                 || (initialCandidate.votingHistory && initialCandidate.votingHistory.length > 0)
                 || (initialCandidate.fronts && initialCandidate.fronts.length > 0);
 
-            const cacheKey = `paporeto_cache_v7_complete_pol_full_v2_${initialCandidate.id}`;
+            const cacheKey = `paporeto_cache_v8_official_pol_full_v2_${initialCandidate.id}`;
             let staleLocalProfile: Politician | null = null;
             try {
                 const cached = localStorage.getItem(cacheKey);

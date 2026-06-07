@@ -48,6 +48,8 @@ describe('/api/bootstrap', () => {
             uri: 'https://dadosabertos.camara.leg.br/api/v2/votacoes/123',
             dataHoraRegistro: '2026-05-20T10:00:00',
             descricao: 'Votacao sobre saude publica',
+            aprovacao: 1,
+            uriEvento: 'https://dadosabertos.camara.leg.br/api/v2/eventos/77',
           }],
         });
       }
@@ -70,6 +72,21 @@ describe('/api/bootstrap', () => {
               <UfParlamentar>RJ</UfParlamentar>
               <SexoParlamentar>M</SexoParlamentar>
               <UrlFotoParlamentar>https://example.com/joao.jpg</UrlFotoParlamentar>
+              <NomeCompletoParlamentar>JOAO DA SILVA</NomeCompletoParlamentar>
+              <EmailParlamentar>joao@senado.leg.br</EmailParlamentar>
+              <NumeroTelefone>3303-0000</NumeroTelefone>
+              <UrlPaginaParlamentar>https://www25.senado.leg.br/web/senadores/senador/-/perfil/99</UrlPaginaParlamentar>
+              <NomeBloco>BLOCO TESTE</NomeBloco>
+              <MembroMesa>Sim</MembroMesa>
+              <Mandato>
+                <DescricaoParticipacao>Titular</DescricaoParticipacao>
+                <DataInicio>2023-02-01</DataInicio>
+                <DataFim>2031-01-31</DataFim>
+                <Suplente>
+                  <DescricaoParticipacao>1º Suplente</DescricaoParticipacao>
+                  <NomeParlamentar>SUPLENTE TESTE</NomeParlamentar>
+                </Suplente>
+              </Mandato>
             </Parlamentar>
           </ListaParlamentarEmExercicio>
         `);
@@ -99,6 +116,13 @@ describe('/api/bootstrap', () => {
     expect(payload.data.feedItems[0].category).toBe('health');
     expect(payload.data.feedItems[0].summary).toContain('Movimentação de votação');
     expect(payload.data.feedItems[0].whyItMatters).toContain('andamento real da pauta');
+    expect(payload.data.feedItems[0].approval).toBe(1);
+    expect(payload.data.feedItems[0].eventUrl).toContain('/eventos/77');
+    const senator = payload.data.politicians.find((politician) => politician.id === 99);
+    expect(senator.email).toBe('joao@senado.leg.br');
+    expect(senator.parliamentaryBlock).toBe('BLOCO TESTE');
+    expect(senator.isBoardMember).toBe(true);
+    expect(senator.suplentes).toEqual(['1º Suplente - SUPLENTE TESTE']);
     expect(payload.data.parties).toHaveLength(1);
     expect(payload.data.articles.length).toBeGreaterThan(0);
     expect(payload.data.articles[0].id).toBeGreaterThanOrEqual(1000);
@@ -149,6 +173,8 @@ describe('/api/bootstrap', () => {
               situacao: 'Convocada',
               orgaos: [{ sigla: 'CASP' }],
               localCamara: { nome: 'Plenário 08' },
+              urlDocumentoPauta: 'https://example.com/pauta.pdf',
+              urlRegistro: 'https://example.com/evento/101',
             },
           ],
         });
@@ -183,6 +209,9 @@ describe('/api/bootstrap', () => {
     expect(payload.data.feedItems[0].summary).toContain('Audiência Pública');
     expect(payload.data.feedItems[0].whyItMatters).toContain('pressão política');
     expect(payload.data.feedItems[0].nextStep).toContain('Acompanhar');
+    expect(payload.data.feedItems[0].agendaDocumentUrl).toBe('https://example.com/pauta.pdf');
+    expect(payload.data.feedItems[0].eventUrl).toBe('https://example.com/evento/101');
+    expect(payload.data.feedItems[0].eventOrgans).toEqual(['CASP']);
     expect(payload.data.articles.some(article => article.sourceTitle.includes('Instituto Nacional do Câncer'))).toBe(true);
   });
 

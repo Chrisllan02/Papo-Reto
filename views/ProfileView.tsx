@@ -293,9 +293,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const profileSummary = useMemo(() => {
       const activitiesCount = (candidate.bills?.length || 0) + (candidate.votingHistory?.length || 0) + (candidate.reportedBills?.length || 0) + (candidate.speeches?.length || 0);
       const attendance = Math.round(displayStats.attendancePct || displayStats.plenary?.percentage || 0);
+      const hasAttendance = Boolean(displayStats.plenary?.total || displayStats.totalSessions);
       const frontsCount = candidate.fronts?.length || 0;
       const spending = displayStats.spending || 0;
-      return { activitiesCount, attendance, frontsCount, spending };
+      return { activitiesCount, attendance, hasAttendance, frontsCount, spending };
   }, [candidate, displayStats]);
 
   const QuickMetric = ({ icon: Icon, label, value, hint, tone }: { icon: any; label: string; value: string; hint: string; tone: string }) => (
@@ -463,8 +464,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               <QuickMetric
                   icon={CheckCircle2}
                   label="Presença"
-                  value={`${profileSummary.attendance}%`}
-                  hint={profileSummary.attendance > 0 ? 'Base oficial do mandato' : 'Aguardando dados detalhados'}
+                  value={profileSummary.hasAttendance ? `${profileSummary.attendance}%` : 'Não disponível'}
+                  hint={profileSummary.hasAttendance ? 'Base oficial do mandato' : 'A fonte oficial não informa presença consolidada'}
                   tone="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
               />
               <QuickMetric
@@ -580,7 +581,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                     <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-blue-500 group-hover:text-blue-500 transition-colors"><Briefcase size={18} className="text-gray-400 group-hover:text-blue-500"/></div>
                                                     <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
                                                         <h4 className="font-black text-gray-900 dark:text-white text-sm">{job.title}</h4>
-                                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{job.entity} {job.state ? `- ${job.state}` : ''}</p>
+                                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{job.entity} {job.state ? `- ${job.state}` : job.country ? `- ${job.country}` : ''}</p>
                                                         <div className="mt-2 flex items-center gap-2"><span className="text-[10px] font-bold bg-gray-200 dark:bg-white/10 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300">{job.startYear} {job.endYear ? `- ${job.endYear}` : '- Atual'}</span></div>
                                                     </div>
                                                 </div>
@@ -635,30 +636,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && <DailyExpensesChart expenses={candidate.detailedExpenses} />}
 
-                             {/* --- ASSETS / PATRIMÔNIO (PLACEHOLDER) --- */}
-                             <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
+                             {candidate.assets && candidate.assets.length > 0 && <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
                                 <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3">
                                     <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 dark:text-yellow-400"><BadgeCheck size={20} /></div>
                                     <div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Patrimônio Declarado</h4><p className="text-[10px] text-gray-500 font-medium">Bens informados ao TSE</p></div>
                                 </div>
-                                {candidate.assets && candidate.assets.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {candidate.assets.map((asset, i) => (
-                                            <div key={i} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                                <div>
-                                                    <p className="text-xs font-bold text-gray-800 dark:text-white">{asset.type}</p>
-                                                    <p className="text-[9px] text-gray-500 uppercase">{asset.description}</p>
-                                                </div>
-                                                <span className="text-sm font-black text-gray-900 dark:text-white">{asset.value}</span>
+                                <div className="space-y-4">
+                                    {candidate.assets.map((asset, i) => (
+                                        <div key={i} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                            <div>
+                                                <p className="text-xs font-bold text-gray-800 dark:text-white">{asset.type}</p>
+                                                <p className="text-[9px] text-gray-500 uppercase">{asset.description}</p>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Informações patrimoniais não disponíveis</p>
-                                    </div>
-                                )}
-                             </section>
+                                            <span className="text-sm font-black text-gray-900 dark:text-white">{asset.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                             </section>}
 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && (
                                 <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
@@ -673,7 +667,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                             <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
                                                 <div className="flex items-start gap-4 mb-3 md:mb-0">
                                                     <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{expense.date.length > 7 ? new Date(expense.date).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'}).replace('.', '') : expense.date}</span><FileText size={14} className="text-gray-300 mt-0.5"/></div>
-                                                    <div><p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide line-clamp-1 group-hover:text-blue-600 transition-colors">{expense.provider}</p><div className="flex items-center gap-2 mt-0.5">{expense.cnpjCpf && (<span className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500">{maskDoc(expense.cnpjCpf)}</span>)}<span className="text-[9px] font-medium text-gray-400 truncate max-w-[150px]">{expense.type}</span></div></div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide line-clamp-1 group-hover:text-blue-600 transition-colors">{expense.provider}</p>
+                                                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                                            {expense.cnpjCpf && (<span className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500">{maskDoc(expense.cnpjCpf)}</span>)}
+                                                            <span className="text-[9px] font-medium text-gray-400">{expense.type}</span>
+                                                            {expense.documentType && <span className="text-[9px] font-medium text-gray-400">{expense.documentType}{expense.documentNumber ? ` ${expense.documentNumber}` : ''}</span>}
+                                                            {expense.installment && expense.installment > 0 && <span className="text-[9px] font-medium text-gray-400">Parcela {expense.installment}</span>}
+                                                            {expense.reimbursementNumber && <span className="text-[9px] font-medium text-gray-400">Ressarcimento {expense.reimbursementNumber}</span>}
+                                                        </div>
+                                                        {Boolean(expense.documentValue || expense.disallowedValue) && (
+                                                            <p className="mt-1 text-[9px] font-medium text-gray-400">
+                                                                {expense.documentValue ? `Documento: ${expense.documentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
+                                                                {expense.disallowedValue ? ` • Glosa: ${expense.disallowedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center justify-between md:justify-end gap-4 pl-16 md:pl-0">
                                                     <p className="text-sm font-black text-gray-900 dark:text-white">R$ {expense.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>

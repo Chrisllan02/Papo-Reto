@@ -1,12 +1,12 @@
 
-import { Politician, FeedItem, Party, ExpenseCategory, YearStats, Speech, ExpenseItem, LegislativeVote, LegislativeEvent, Remuneration } from '../types';
+import { Politician, FeedItem, Party, ExpenseCategory, Speech, ExpenseItem, LegislativeEvent } from '../types';
 import { PARTY_METADATA } from '../constants';
 import { detectCategory } from '../utils/legislativeTranslator';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 // FORCE CACHE INVALIDATION TO GET NEW SPEECH DATA
-const CACHE_PREFIX = 'paporeto_cache_v7_complete_'; 
+const CACHE_PREFIX = 'paporeto_cache_v8_official_';
 export const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
 export const PROFILE_DETAIL_FRESH_TTL = 1000 * 60 * 60 * 24; // 24 horas
 export const PROFILE_DETAIL_STALE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 dias
@@ -254,7 +254,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
                 commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
                 projects: 0,
                 spending: 0,
-                partyFidelity: 0
+                partyFidelity: undefined
             },
             mandate: { start: '2023-02-01', end: '2027-01-31' },
             hasApiIntegration: true,
@@ -287,6 +287,18 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                 const state = getText('SiglaUfParlamentar') || getText('UfParlamentar');
                 const photo = getText('UrlFotoParlamentar');
                 const sex = normalizeSex(getText('SexoParlamentar'));
+                const mandateStart = getText('DataInicio');
+                const mandateEndDates = Array.from(parlamentar.getElementsByTagName('DataFim'))
+                    .map(el => el.textContent?.trim() || '')
+                    .filter(Boolean)
+                    .sort();
+                const suplentes = Array.from(parlamentar.getElementsByTagName('Suplente'))
+                    .map(suplente => {
+                        const participation = suplente.getElementsByTagName('DescricaoParticipacao')[0]?.textContent?.trim();
+                        const suplenteName = suplente.getElementsByTagName('NomeParlamentar')[0]?.textContent?.trim();
+                        return [participation, suplenteName].filter(Boolean).join(' - ');
+                    })
+                    .filter(Boolean);
 
                 return {
                     id,
@@ -297,6 +309,19 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                     photo,
                     role: sex === 'F' ? 'Senadora' : 'Senador',
                     sex,
+                    civilName: formatText(getText('NomeCompletoParlamentar')),
+                    email: getText('EmailParlamentar'),
+                    cabinet: { phone: getText('NumeroTelefone') },
+                    officialPage: getText('UrlPaginaParlamentar'),
+                    website: getText('UrlPaginaParticular'),
+                    parliamentaryBlock: getText('NomeBloco'),
+                    isBoardMember: getText('MembroMesa').toLowerCase() === 'sim',
+                    isLeader: getText('MembroLideranca').toLowerCase() === 'sim',
+                    participation: getText('DescricaoParticipacao'),
+                    exerciseStart: getText('DataInicio'),
+                    exerciseEnd: getText('DataFim'),
+                    condition: getText('DescricaoParticipacao'),
+                    suplentes,
                     matchScore: 0,
                     bio: '',
                     stats: {
@@ -308,9 +333,9 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                         commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
                         projects: 0,
                         spending: 0,
-                        partyFidelity: 0
+                        partyFidelity: undefined
                     },
-                    mandate: { start: '2023-02-01', end: '2031-01-31' },
+                    mandate: { start: mandateStart || '2023-02-01', end: mandateEndDates.at(-1) || '2031-01-31' },
                     hasApiIntegration: false,
                     votes: {}
                 } as Politician;
@@ -383,6 +408,8 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 birthCity: d.municipioNascimento,
                 birthState: d.ufNascimento,
                 profession: 'Parlamentar', // Placeholder, API não retorna direto aqui, enriquecido depois
+                education: d.escolaridade,
+                website: d.urlWebsite,
                 cabinet: {
                     room: d.ultimoStatus?.gabinete?.sala,
                     floor: d.ultimoStatus?.gabinete?.andar,
@@ -410,6 +437,8 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 birthDate: enriched.birthDate,
                 birthCity: enriched.birthCity,
                 birthState: enriched.birthState,
+                education: enriched.education,
+                website: enriched.website,
                 email: enriched.email,
                 cabinet: enriched.cabinet,
                 socials: enriched.socials,
@@ -478,12 +507,11 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         const today = new Date().toISOString().split('T')[0];
 
         // Busca paralela expandida
-        const [expensesData, frentesData, ocupacoesData, discursosData, votacoesData, agendaData] = await Promise.all([
+        const [expensesData, frentesData, ocupacoesData, discursosData, agendaData] = await Promise.all([
             safeFetch(`${BASE_URL_CAMARA}/deputados/${pol.id}/despesas?ordem=DESC&ordenarPor=mes&itens=100`),
             safeFetch(`${BASE_URL_CAMARA}/deputados/${pol.id}/frentes`),
             safeFetch(`${BASE_URL_CAMARA}/deputados/${pol.id}/ocupacoes`),
             safeFetch(`${BASE_URL_CAMARA}/deputados/${pol.id}/discursos?ordem=DESC&ordenarPor=dataHoraInicio&itens=20`),
-            safeFetch(`${BASE_URL_CAMARA}/deputados/${pol.id}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&itens=20`),
             safeFetch(`${BASE_URL_CAMARA}/eventos?ordem=ASC&ordenarPor=dataHoraInicio&dataInicio=${today}&deputadoId=${pol.id}&itens=5`)
         ]);
         
@@ -513,7 +541,14 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
                     provider: e.nomeFornecedor,
                     cnpjCpf: e.cnpjCpfFornecedor,
                     value: Number(e.valorLiquido ?? e.valorDocumento ?? 0),
+                    documentValue: Number(e.valorDocumento ?? 0),
+                    disallowedValue: Number(e.valorGlosa ?? 0),
                     type: e.tipoDespesa,
+                    documentType: e.tipoDocumento,
+                    documentNumber: e.numDocumento,
+                    reimbursementNumber: e.numRessarcimento,
+                    installment: e.parcela,
+                    batchCode: e.codLote,
                     urlDocumento: e.urlDocumento
                 };
             }).filter((item: any) => Number.isFinite(item.value));
@@ -535,112 +570,34 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             description: e.descricao || e.situacao,
             location: e.localCamara?.nome || 'Câmara dos Deputados',
             status: e.situacao,
-            type: 'Sessão'
+            type: e.descricaoTipo || 'Sessão',
+            sourceUrl: e.urlRegistro,
+            agendaDocumentUrl: e.urlDocumentoPauta,
+            organs: (e.orgaos || []).map((orgao: any) => orgao.sigla || orgao.nomeResumido || orgao.nome).filter(Boolean)
         })) : [];
 
-        // --- Processamento de Remuneração (Simulado/Estruturado) ---
-        // A API de remuneração requer ID específico de legislatura ou busca complexa.
-        // Vamos simular a estrutura baseada nos dados públicos padrão de um deputado (aprox R$ 44k bruto em 2024)
-        const remuneration: Remuneration = {
-            gross: 44008.52,
-            net: 32500.00, // Estimativa pós IR/INSS
-            tax: 11508.52,
-            housingAllowance: 4253.00, // Auxilio Moradia padrão
-            otherBenefits: 0,
-            month: new Date().getMonth() + 1,
-            year: new Date().getFullYear()
-        };
-
-        // --- Processamento de Votações ---
-        let votingHistory: LegislativeVote[] = [];
-        let loyalVotes = 0;
-        let totalValidVotes = 0;
-
-        if (votacoesData && votacoesData.dados) {
-            votingHistory = votacoesData.dados.map((v: any) => {
-                const vote = v.voto || 'Art. 17';
-                let orientation = vote;
-                let isRebel = false;
-
-                if (Math.random() > 0.9 && (vote === 'Sim' || vote === 'Não')) {
-                    orientation = vote === 'Sim' ? 'Não' : 'Sim';
-                    isRebel = true;
-                }
-
-                if (vote !== 'Art. 17' && vote !== 'Obstrução') {
-                    totalValidVotes++;
-                    if (!isRebel) loyalVotes++;
-                }
-
-                return {
-                    id: v.id,
-                    date: v.dataRegistro,
-                    description: formatText(v.proposicaoObjeto || v.descricao),
-                    vote: vote,
-                    partyOrientation: orientation,
-                    isRebel: isRebel,
-                    propositionId: v.uriProposicaoObjeto ? v.uriProposicaoObjeto.split('/').pop() : undefined
-                };
-            });
-        }
-
-        const fidelityRate = totalValidVotes > 0 ? Math.round((loyalVotes / totalValidVotes) * 100) : 100;
-
-        // --- Atualiza Stats Gerais ---
+        // Apenas métricas diretamente calculadas de dados oficiais.
         const updatedStats = {
             ...pol.stats,
             spending: totalSpending,
-            attendancePct: Math.floor(Math.random() * 20) + 80, 
-            partyFidelity: fidelityRate,
-            plenary: { total: 100, present: 90, justified: 5, unjustified: 5, percentage: 90 },
-            commissions: { total: 50, present: 45, justified: 2, unjustified: 3, percentage: 90 }
+            partyFidelity: undefined
         };
 
-        // Geração de Histórico Anual
-        const currentYear = new Date().getFullYear();
-        const startYear = 2023; 
-        const yearlyStats: Record<number, YearStats> = {};
-
-        for (let y = startYear; y <= currentYear; y++) {
-            const isCurrent = y === currentYear;
-            const variation = isCurrent ? 1 : (0.8 + Math.random() * 0.4); 
-
-            yearlyStats[y] = {
-                year: y,
-                attendancePct: Math.min(100, Math.floor(updatedStats.attendancePct * variation)),
-                totalSessions: isCurrent ? 100 : 120,
-                presentSessions: isCurrent ? 90 : Math.floor(120 * (updatedStats.attendancePct/100) * variation),
-                absentSessions: isCurrent ? 10 : Math.floor(120 * (1 - updatedStats.attendancePct/100)),
-                projects: Math.floor((Math.random() * 10) + 2),
-                spending: isCurrent ? totalSpending : (totalSpending * variation),
-                plenary: updatedStats.plenary, 
-                commissions: updatedStats.commissions
-            };
-        }
-
         // Processamento de Frentes e Ocupações
-        const fronts = frentesData && frentesData.dados ? frentesData.dados.map((f: any) => {
-            let role = 'Membro';
-            if (f.titulo && (f.titulo.includes('Mista') || f.id % 20 === 0)) { 
-                role = 'Presidente';
-            }
-            if (f.id % 15 === 0 && role !== 'Presidente') {
-                role = 'Coordenador';
-            }
-            return { 
-                id: f.id, 
-                title: f.titulo,
-                role: role
-            };
-        }) : [];
+        const fronts = frentesData && frentesData.dados ? frentesData.dados.map((f: any) => ({
+            id: f.id,
+            title: f.titulo,
+            externalLink: f.uri
+        })) : [];
 
         const occupations = ocupacoesData && ocupacoesData.dados ? ocupacoesData.dados.map((o: any) => ({ 
             title: o.titulo, 
             entity: o.entidade, 
-            state: o.ufEntidade, 
+            state: o.entidadeUF,
+            country: o.entidadePais,
             startYear: o.anoInicio, 
             endYear: o.anoFim 
-        })) : [];
+        })).filter((o: any) => o.title || o.entity) : [];
 
         // Definir profissão principal baseada no histórico ou padrão
         let profession = pol.profession;
@@ -668,39 +625,16 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             externalLink: s.urlTexto 
         })) : [];
 
-        // Mock de Staff (Estrutura pronta para receber dados se a API liberar endpoint direto)
-        // Atualmente a API V2 não lista secretários publicamente por endpoint simples.
-        const staff = [
-            { name: "Chefia de Gabinete", role: "Secretário Parlamentar", group: "SP25", start: "2023-02-01" },
-            { name: "Assessoria de Imprensa", role: "Secretário Parlamentar", group: "SP20", start: "2023-03-15" }
-        ];
-
-        // Mock de Suplentes (Estrutura)
-        const suplentes = pol.condition === 'Titular' ? ['1º Suplente da Coligação', '2º Suplente da Coligação'] : [];
-
-        // Mock de Patrimônio (Estrutura para TSE)
-        const assets = [
-            { type: 'Imóvel Residencial', description: 'Apartamento na cidade natal', value: 'R$ 450.000,00' },
-            { type: 'Veículo Automotor', description: 'Carro Sedan', value: 'R$ 85.000,00' },
-            { type: 'Aplicação Financeira', description: 'Renda Fixa', value: 'R$ 120.000,00' }
-        ];
-
         const result = {
             ...pol,
             profession: formatText(profession || "Político"),
             stats: updatedStats,
             expensesBreakdown: expenses.slice(0, 5), 
             detailedExpenses: detailedExpenses, 
-            yearlyStats: yearlyStats, 
-            votingHistory: votingHistory, 
             fronts: fronts, 
             occupations: occupations, 
             speeches: speeches,
-            agenda: agenda,
-            remuneration: remuneration,
-            staff: staff,
-            assets: assets,
-            suplentes: suplentes
+            agenda: agenda
         };
 
         if (staleLocalProfile && getProfileDataScore(result) < getProfileDataScore(staleLocalProfile)) {
@@ -713,16 +647,10 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             stats: updatedStats,
             expensesBreakdown: expenses.slice(0, 6),
             detailedExpenses: detailedExpenses.slice(0, 200),
-            yearlyStats,
-            votingHistory: votingHistory.slice(0, 50),
             fronts: fronts.slice(0, 50),
             occupations: occupations.slice(0, 50),
             speeches: speeches.slice(0, 25),
-            agenda: agenda.slice(0, 10),
-            remuneration,
-            staff: staff.slice(0, 10),
-            assets: assets.slice(0, 10),
-            suplentes: suplentes.slice(0, 5)
+            agenda: agenda.slice(0, 10)
         });
 
         localStorage.setItem(fullCacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
@@ -775,7 +703,20 @@ export const prefetchPoliticianProfile = async (pol: Politician) => {
 };
 
 // --- NEW FUNCTION: DETALHES DE PROPOSIÇÃO (ON DEMAND) ---
-export const fetchProposicaoDetails = async (id: number): Promise<{ authors: string[], fullTextUrl?: string, progress: number, label: string }> => {
+export const fetchProposicaoDetails = async (id: number): Promise<{
+    authors: string[];
+    fullTextUrl?: string;
+    progress: number;
+    label: string;
+    detailedSummary?: string;
+    justification?: string;
+    keywords?: string[];
+    statusDescription?: string;
+    dispatch?: string;
+    responsibleBody?: string;
+    finalUrn?: string;
+    relatedPropositions?: string[];
+}> => {
     try {
         const cacheKey = `prop_details_${id}`;
         return (await fetchWithCache(cacheKey, async () => {
@@ -789,12 +730,24 @@ export const fetchProposicaoDetails = async (id: number): Promise<{ authors: str
             
             const authors = authorsData.dados ? authorsData.dados.map((a: any) => a.nome) : [];
             const fullTextUrl = d.urlInteiroTeor || null;
+            const relatedPropositions = [d.uriPropPrincipal, d.uriPropAnterior, d.uriPropPosterior]
+                .filter(Boolean)
+                .map((uri: string) => uri.split('/').pop())
+                .filter((value: string | undefined): value is string => Boolean(value));
 
             return {
                 authors,
                 fullTextUrl,
                 progress,
-                label
+                label,
+                detailedSummary: d.ementaDetalhada,
+                justification: d.justificativa,
+                keywords: String(d.keywords || '').split(',').map((keyword: string) => keyword.trim()).filter(Boolean),
+                statusDescription: d.statusProposicao?.descricaoSituacao,
+                dispatch: d.statusProposicao?.despacho,
+                responsibleBody: d.statusProposicao?.siglaOrgao,
+                finalUrn: d.urnFinal,
+                relatedPropositions
             };
         }, TTL_STATIC)) || { authors: [], progress: 0, label: 'Desconhecido' };
     } catch (e) {
@@ -804,28 +757,65 @@ export const fetchProposicaoDetails = async (id: number): Promise<{ authors: str
 };
 
 // --- NOVO: DETALHES DE EVENTO (CONVIDADOS) ---
-export const fetchEventDetails = async (id: number): Promise<{ guests: string[] }> => {
+export const fetchEventDetails = async (id: number): Promise<{
+    guests: string[];
+    participants: string[];
+    requests: string[];
+    phases: string[];
+    organs: string[];
+    agendaDocumentUrl?: string;
+    eventUrl?: string;
+}> => {
     try {
         const cacheKey = `event_details_${id}`;
         return (await fetchWithCache(cacheKey, async () => {
             const eventData = await fetchAPI(`${BASE_URL_CAMARA}/eventos/${id}`);
             let guests: string[] = [];
+            let participants: string[] = [];
             
             if (eventData && eventData.dados) {
-                const desc = eventData.dados.descricao || "";
+                const event = eventData.dados;
+                const desc = event.descricao || "";
                 if (desc) {
                     const parts = desc.split(/Convidados?:|Palestrantes?:/i);
                     if (parts.length > 1) {
                         guests = parts[1].split(/,|;| e /).map((s: string) => s.trim()).filter((s: string) => s.length > 3 && s.length < 50);
                     }
                 }
+                const [guestData, participantData] = await Promise.all([
+                    event.uriConvidados ? fetchAPI(event.uriConvidados).catch(() => null) : null,
+                    event.uriDeputados ? fetchAPI(event.uriDeputados).catch(() => null) : null
+                ]);
+                const officialGuests = guestData?.dados?.map((guest: any) =>
+                    guest.nome || guest.nomeConvidado || guest.nomeCivil || guest.titulo
+                ).filter(Boolean) || [];
+                participants = participantData?.dados?.map((participant: any) =>
+                    participant.nome || participant.nomeEleitoral || participant.nomeCivil
+                ).filter(Boolean) || [];
+                guests = [...officialGuests, ...guests];
+
+                return {
+                    guests: [...new Set(guests)].slice(0, 50),
+                    participants: [...new Set(participants)].slice(0, 100),
+                    requests: (event.requerimentos || []).map((request: any) =>
+                        request.titulo || request.ementa || request.descricao || request.uri
+                    ).filter(Boolean),
+                    phases: (event.fases || []).map((phase: any) =>
+                        phase.titulo || phase.descricao || phase.situacao
+                    ).filter(Boolean),
+                    organs: (event.orgaos || []).map((organ: any) =>
+                        organ.sigla || organ.nomeResumido || organ.nome
+                    ).filter(Boolean),
+                    agendaDocumentUrl: event.urlDocumentoPauta,
+                    eventUrl: event.urlRegistro
+                };
             }
 
-            return { guests: [...new Set(guests)].slice(0, 10) }; 
-        }, TTL_STATIC)) || { guests: [] };
+            return { guests: [], participants: [], requests: [], phases: [], organs: [] };
+        }, TTL_STATIC)) || { guests: [], participants: [], requests: [], phases: [], organs: [] };
     } catch (e) {
         console.warn("Error fetching event details", e);
-        return { guests: [] };
+        return { guests: [], participants: [], requests: [], phases: [], organs: [] };
     }
 };
 
@@ -868,7 +858,9 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                     status: 'Concluído',
                     sourceUrl: sourceUrl,
                     category: detectCategory(v.descricao + ' ' + v.siglaOrgao),
-                    candidateId: propId ? parseInt(propId) : undefined 
+                    candidateId: propId ? parseInt(propId) : undefined,
+                    approval: v.aprovacao,
+                    eventUrl: v.uriEvento
                 };
             });
         }
@@ -898,6 +890,9 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                 status: e.situacao || 'Realizado',
                 sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${e.id}`,
                 category: detectCategory(e.descricao || ''),
+                eventUrl: e.urlRegistro,
+                agendaDocumentUrl: e.urlDocumentoPauta,
+                eventOrgans: (e.orgaos || []).map((organ: any) => organ.sigla || organ.nomeResumido || organ.nome).filter(Boolean),
             }));
             feed = [...feed, ...eventsFeed];
         }

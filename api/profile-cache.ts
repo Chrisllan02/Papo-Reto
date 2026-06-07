@@ -183,7 +183,9 @@ async function buildOfficialPoliticianCache(id: string) {
     birthDate: data.dataNascimento,
     birthCity: data.municipioNascimento,
     birthState: data.ufNascimento,
+    education: data.escolaridade,
     email: data.ultimoStatus?.gabinete?.email,
+    website: data.urlWebsite,
     cabinet: {
       room: data.ultimoStatus?.gabinete?.sala,
       floor: data.ultimoStatus?.gabinete?.andar,

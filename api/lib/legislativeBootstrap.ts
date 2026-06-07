@@ -155,6 +155,9 @@ const buildEventItem = (event: any): FeedItem | null => {
     category: detectCategory(`${topic} ${originalDescription}`),
     organ,
     location,
+    eventUrl: event.urlRegistro,
+    agendaDocumentUrl: event.urlDocumentoPauta,
+    eventOrgans: (event.orgaos || []).map((item: any) => item.sigla || item.nomeResumido || item.nome).filter(Boolean),
     priority,
   } as FeedItem;
 };
@@ -434,6 +437,9 @@ const getXmlTag = (source: string, tag: string) => {
   return match?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
 };
 
+const getXmlBlocks = (source: string, tag: string) =>
+  source.match(new RegExp(`<${tag}>[\\s\\S]*?<\\/${tag}>`, 'gi')) || [];
+
 const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   const data = await fetchJson<{ dados?: { sexo?: string | null } }>(
     `${BASE_URL_CAMARA}/deputados/${id}`,
@@ -522,7 +528,7 @@ const fetchDeputados = async (): Promise<Politician[]> => {
         commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
         projects: 0,
         spending: 0,
-        partyFidelity: 0,
+        partyFidelity: undefined,
       },
       mandate: { start: '2023-02-01', end: '2027-01-31' },
       hasApiIntegration: true,
@@ -544,6 +550,14 @@ const fetchSenadores = async (): Promise<Politician[]> => {
     const party = getXmlTag(block, 'SiglaPartidoParlamentar');
     const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
     const sex = normalizeSex(getXmlTag(block, 'SexoParlamentar'));
+    const mandateBlock = getXmlBlocks(block, 'Mandato')[0] || '';
+    const mandateStarts = getXmlBlocks(mandateBlock, 'DataInicio').map(item => getXmlTag(item, 'DataInicio')).filter(Boolean).sort();
+    const mandateEnds = getXmlBlocks(mandateBlock, 'DataFim').map(item => getXmlTag(item, 'DataFim')).filter(Boolean).sort();
+    const suplentes = getXmlBlocks(mandateBlock, 'Suplente').map((item) => {
+      const participation = getXmlTag(item, 'DescricaoParticipacao');
+      const suplenteName = getXmlTag(item, 'NomeParlamentar');
+      return [participation, suplenteName].filter(Boolean).join(' - ');
+    }).filter(Boolean);
 
     return {
       id,
@@ -554,6 +568,19 @@ const fetchSenadores = async (): Promise<Politician[]> => {
       photo: getXmlTag(block, 'UrlFotoParlamentar'),
       role: sex === 'F' ? 'Senadora' : 'Senador',
       sex,
+      civilName: formatText(getXmlTag(block, 'NomeCompletoParlamentar')),
+      email: getXmlTag(block, 'EmailParlamentar'),
+      cabinet: { phone: getXmlTag(block, 'NumeroTelefone') },
+      officialPage: getXmlTag(block, 'UrlPaginaParlamentar'),
+      website: getXmlTag(block, 'UrlPaginaParticular'),
+      parliamentaryBlock: getXmlTag(block, 'NomeBloco'),
+      isBoardMember: getXmlTag(block, 'MembroMesa').toLowerCase() === 'sim',
+      isLeader: getXmlTag(block, 'MembroLideranca').toLowerCase() === 'sim',
+      participation: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
+      exerciseStart: getXmlTag(block, 'DataInicio'),
+      exerciseEnd: getXmlTag(block, 'DataFim'),
+      condition: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
+      suplentes,
       matchScore: 0,
       bio: '',
       stats: {
@@ -565,9 +592,9 @@ const fetchSenadores = async (): Promise<Politician[]> => {
         commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
         projects: 0,
         spending: 0,
-        partyFidelity: 0,
+        partyFidelity: undefined,
       },
-      mandate: { start: '2023-02-01', end: '2031-01-31' },
+      mandate: { start: mandateStarts[0] || '2023-02-01', end: mandateEnds.at(-1) || '2031-01-31' },
       hasApiIntegration: false,
       votes: {},
     } as Politician;
@@ -632,6 +659,8 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
       category: insight.category,
       candidateId: propId ? parseInt(propId, 10) : undefined,
       organ: v.siglaOrgao,
+      approval: v.aprovacao,
+      eventUrl: v.uriEvento,
       priority: 40 + (propId ? 10 : 0),
     } as FeedItem;
   });

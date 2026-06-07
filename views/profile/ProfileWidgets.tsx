@@ -19,6 +19,7 @@ import {
   Globe,
   GraduationCap,
   Instagram,
+  Landmark,
   Linkedin,
   Mail,
   Facebook,
@@ -253,6 +254,25 @@ export const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
               {event.type && <span className="flex items-center gap-1"><Tag size={10} /> {event.type}</span>}
               {event.endTime && <span className="flex items-center gap-1"><Clock size={10} /> Até {new Date(event.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
             </div>
+            {event.organs && event.organs.length > 0 && (
+              <p className="mt-2 text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                Órgãos: {event.organs.join(', ')}
+              </p>
+            )}
+            {(event.agendaDocumentUrl || event.sourceUrl) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {event.agendaDocumentUrl && (
+                  <a href={event.agendaDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300">
+                    <FileText size={11} /> Pauta oficial
+                  </a>
+                )}
+                {event.sourceUrl && (
+                  <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-300">
+                    <ExternalLink size={11} /> Registro do evento
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -566,6 +586,29 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
           </div>
         )}
 
+        {(candidate.parliamentaryBlock || candidate.isBoardMember || candidate.isLeader || candidate.participation || candidate.exerciseStart || candidate.exerciseEnd || candidate.website || candidate.officialPage) && (
+          <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:col-span-2">
+            <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2"><Landmark size={12} /> Vínculos oficiais</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {candidate.parliamentaryBlock && <p className="text-xs font-bold text-gray-700 dark:text-gray-300"><span className="text-gray-400">Bloco:</span> {candidate.parliamentaryBlock}</p>}
+              {candidate.participation && <p className="text-xs font-bold text-gray-700 dark:text-gray-300"><span className="text-gray-400">Participação:</span> {candidate.participation}</p>}
+              {(candidate.exerciseStart || candidate.exerciseEnd) && <p className="text-xs font-bold text-gray-700 dark:text-gray-300"><span className="text-gray-400">Exercício:</span> {candidate.exerciseStart || 'N/A'} a {candidate.exerciseEnd || 'atual'}</p>}
+              {(candidate.isBoardMember || candidate.isLeader) && (
+                <div className="flex flex-wrap gap-2">
+                  {candidate.isBoardMember && <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">Mesa diretora</span>}
+                  {candidate.isLeader && <span className="rounded-lg bg-green-50 px-2 py-1 text-[10px] font-black uppercase text-green-700 dark:bg-green-900/20 dark:text-green-300">Liderança</span>}
+                </div>
+              )}
+            </div>
+            {(candidate.website || candidate.officialPage) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {candidate.officialPage && <a href={candidate.officialPage} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"><ExternalLink size={11} /> Página oficial</a>}
+                {candidate.website && <a href={candidate.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 dark:bg-white/10 dark:text-gray-300"><Globe size={11} /> Site</a>}
+              </div>
+            )}
+          </div>
+        )}
+
         {candidate.staff && candidate.staff.length > 0 && (
           <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:col-span-2">
             <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2">
@@ -623,7 +666,9 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
 export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo, loadingStatus }: StatsCardProps) => {
   const sortedYears = [...availableYears].sort((a, b) => a - b);
   const currentYear = new Date().getFullYear();
-  const fidelity = displayStats.partyFidelity || 0;
+  const fidelity = displayStats.partyFidelity;
+  const hasPresence = Boolean(displayStats.plenary?.total);
+  const hasFidelity = typeof fidelity === 'number';
 
   return (
     <div className="glass-panel rounded-[2.5rem] p-6 flex flex-col relative overflow-hidden">
@@ -706,35 +751,41 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
             </div>
           </div>
 
-          <PresenceBar
-            label={`Presença em Plenário (${selectedYear === 'total' ? 'Total' : selectedYear})`}
-            present={displayStats.plenary?.present || 0}
-            justified={displayStats.plenary?.justified || 0}
-            unjustified={displayStats.plenary?.unjustified || 0}
-            total={displayStats.plenary?.total || 0}
-          />
+          {hasPresence && <PresenceBar
+              label={`Presença em Plenário (${selectedYear === 'total' ? 'Total' : selectedYear})`}
+              present={displayStats.plenary?.present || 0}
+              justified={displayStats.plenary?.justified || 0}
+              unjustified={displayStats.plenary?.unjustified || 0}
+              total={displayStats.plenary?.total || 0}
+            />}
 
-          <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 mt-2">
+          {hasFidelity && <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 mt-2">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
                 <Scale size={14} /> Fidelidade Partidária
               </span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-md uppercase ${
-                fidelity >= 90 ? 'bg-green-100 text-green-700' :
-                fidelity >= 60 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                fidelity! >= 90 ? 'bg-green-100 text-green-700' :
+                fidelity! >= 60 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
               }`}>
-                {fidelity >= 90 ? 'Fiel à Bancada' : fidelity >= 60 ? 'Independente' : 'Rebelde'}
+                {fidelity! >= 90 ? 'Fiel à Bancada' : fidelity! >= 60 ? 'Independente' : 'Rebelde'}
               </span>
             </div>
             <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
               <div
                 className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${
-                  fidelity >= 90 ? 'bg-green-500' : fidelity >= 60 ? 'bg-blue-500' : 'bg-red-500'
+                  fidelity! >= 90 ? 'bg-green-500' : fidelity! >= 60 ? 'bg-blue-500' : 'bg-red-500'
                 }`}
                 style={{ width: `${fidelity}%` }}
               />
             </div>
-          </div>
+          </div>}
+
+          {!hasPresence && !hasFidelity && (
+            <div className="xl:col-span-2 rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 text-sm font-bold text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+              Presença consolidada e orientação partidária não estão disponíveis na fonte oficial consultada.
+            </div>
+          )}
 
           <div className="pt-4 border-t border-gray-100 dark:border-white/5 xl:col-span-2">
             <div className="bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:border-blue-200 transition-colors">

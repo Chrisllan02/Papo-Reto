@@ -26,7 +26,27 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
     const closeBtnRef = useRef<HTMLButtonElement>(null);
 
     // Estado para detalhes profundos (fetch on demand)
-    const [extraDetails, setExtraDetails] = useState<{ authors: string[], fullTextUrl?: string, progress: number, label: string, guests?: string[] } | null>(null);
+    const [extraDetails, setExtraDetails] = useState<{
+        authors: string[];
+        fullTextUrl?: string;
+        progress: number;
+        label: string;
+        guests?: string[];
+        participants?: string[];
+        requests?: string[];
+        phases?: string[];
+        organs?: string[];
+        agendaDocumentUrl?: string;
+        eventUrl?: string;
+        detailedSummary?: string;
+        justification?: string;
+        keywords?: string[];
+        statusDescription?: string;
+        dispatch?: string;
+        responsibleBody?: string;
+        finalUrn?: string;
+        relatedPropositions?: string[];
+    } | null>(null);
     const [loadingExtras, setLoadingExtras] = useState(false);
 
     const didacticContent = useMemo(() => getDidacticContext(item.title, item.description, item.type), [item]);
@@ -44,6 +64,12 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
             fetchEventDetails(item.id).then(data => {
                 setExtraDetails({ 
                     guests: data.guests,
+                    participants: data.participants,
+                    requests: data.requests,
+                    phases: data.phases,
+                    organs: data.organs,
+                    agendaDocumentUrl: data.agendaDocumentUrl,
+                    eventUrl: data.eventUrl,
                     authors: [], 
                     progress: 0, 
                     label: '' 
@@ -221,6 +247,40 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                     </p>
                                 )}
                             </div>
+                            {extraDetails && (
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {extraDetails.organs && extraDetails.organs.length > 0 && (
+                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Órgãos responsáveis</p>
+                                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.organs.join(', ')}</p>
+                                        </div>
+                                    )}
+                                    {extraDetails.participants && extraDetails.participants.length > 0 && (
+                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Parlamentares participantes</p>
+                                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.participants.slice(0, 12).join(', ')}{extraDetails.participants.length > 12 ? ` e mais ${extraDetails.participants.length - 12}` : ''}</p>
+                                        </div>
+                                    )}
+                                    {extraDetails.requests && extraDetails.requests.length > 0 && (
+                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Requerimentos</p>
+                                            <ul className="space-y-1 text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.requests.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
+                                        </div>
+                                    )}
+                                    {extraDetails.phases && extraDetails.phases.length > 0 && (
+                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Fases do evento</p>
+                                            <ul className="space-y-1 text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.phases.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {(extraDetails?.agendaDocumentUrl || extraDetails?.eventUrl) && (
+                                <div className="flex flex-wrap gap-2">
+                                    {extraDetails.agendaDocumentUrl && <a href={extraDetails.agendaDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-xs font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"><FileText size={14} /> Pauta oficial</a>}
+                                    {extraDetails.eventUrl && <a href={extraDetails.eventUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase text-gray-700 dark:bg-white/10 dark:text-gray-300"><ExternalLink size={14} /> Registro oficial</a>}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -293,6 +353,26 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                     )}
                                 </div>
                             </div>
+                            {item.approval !== undefined && (
+                                <div className={`rounded-2xl border p-4 text-sm font-black ${Number(item.approval) === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'}`}>
+                                    Resultado oficial: {Number(item.approval) === 1 ? 'aprovação registrada' : 'aprovação não registrada'}
+                                </div>
+                            )}
+                            {extraDetails && (extraDetails.detailedSummary || extraDetails.justification || extraDetails.statusDescription || extraDetails.dispatch || extraDetails.keywords?.length || extraDetails.relatedPropositions?.length || extraDetails.finalUrn) && (
+                                <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
+                                    <p className="mb-4 text-xs font-black uppercase tracking-widest text-gray-400">Dados oficiais da proposição</p>
+                                    <div className="space-y-3 text-sm text-gray-800 dark:text-gray-200">
+                                        {extraDetails.statusDescription && <p><strong>Situação:</strong> {extraDetails.statusDescription}</p>}
+                                        {extraDetails.responsibleBody && <p><strong>Órgão responsável:</strong> {extraDetails.responsibleBody}</p>}
+                                        {extraDetails.detailedSummary && <p><strong>Ementa detalhada:</strong> {extraDetails.detailedSummary}</p>}
+                                        {extraDetails.justification && <p><strong>Justificativa:</strong> {extraDetails.justification}</p>}
+                                        {extraDetails.dispatch && <p><strong>Último despacho:</strong> {extraDetails.dispatch}</p>}
+                                        {extraDetails.keywords && extraDetails.keywords.length > 0 && <p><strong>Palavras-chave:</strong> {extraDetails.keywords.join(', ')}</p>}
+                                        {extraDetails.relatedPropositions && extraDetails.relatedPropositions.length > 0 && <p><strong>Proposições relacionadas:</strong> {extraDetails.relatedPropositions.join(', ')}</p>}
+                                        {extraDetails.finalUrn && <p><strong>URN final:</strong> {extraDetails.finalUrn}</p>}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -33,7 +33,14 @@ export interface ExpenseItem {
   provider: string; // Nome do fornecedor
   cnpjCpf?: string; // Documento mascarado ou real
   value: number;
+  documentValue?: number;
+  disallowedValue?: number;
   type: string;
+  documentType?: string;
+  documentNumber?: string;
+  reimbursementNumber?: string;
+  installment?: number;
+  batchCode?: number;
   urlDocumento?: string; // Link para o PDF da Nota Fiscal
 }
 
@@ -124,6 +131,7 @@ export interface Occupation {
   title: string;
   entity?: string;
   state?: string;
+  country?: string;
   startYear?: number;
   endYear?: number;
 }
@@ -226,6 +234,14 @@ export interface Politician {
   birthState?: string;      
   education?: string;     
   profession?: string;    
+  website?: string;
+  officialPage?: string;
+  parliamentaryBlock?: string;
+  isBoardMember?: boolean;
+  isLeader?: boolean;
+  participation?: string;
+  exerciseStart?: string;
+  exerciseEnd?: string;
   role: string;
   state: string;
   party: string;
@@ -330,6 +346,20 @@ export interface FeedItem {
   organ?: string;
   location?: string;
   priority?: number;
+  approval?: number;
+  eventUrl?: string;
+  agendaDocumentUrl?: string;
+  eventOrgans?: string[];
+  propositionDetails?: {
+    detailedSummary?: string;
+    justification?: string;
+    keywords?: string[];
+    statusDescription?: string;
+    dispatch?: string;
+    responsibleBody?: string;
+    finalUrn?: string;
+    relatedPropositions?: string[];
+  };
 }
 
 export interface Alert {
@@ -349,6 +379,9 @@ export interface LegislativeEvent {
   location: string;
   status: string; // Em andamento, Encerrada, Convocada
   type: string;
+  sourceUrl?: string;
+  agendaDocumentUrl?: string;
+  organs?: string[];
 }
 
 export interface EducationalArticle {
