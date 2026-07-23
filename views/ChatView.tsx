@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Image as ImageIcon, Sparkles, Zap, MapPin, Search, BrainCircuit, X, Loader2, ChevronDown, StopCircle } from 'lucide-react';
+import { Send, Mic, Image as ImageIcon, Sparkles, Zap, MapPin, Search, BrainCircuit, X, Loader2, StopCircle } from 'lucide-react';
 import { chatWithGemini, generateCampaignImage, transcribeAudio } from '../services/ai';
 import { ChatMessage, ChatMode } from '../types';
 
@@ -15,7 +15,21 @@ interface ModeButtonProps {
     color: string;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
+const ModeButton: React.FC<ModeButtonProps & { mode: string; onSelect: (m: ChatMode) => void }> = ({ m, icon: Icon, label, color, mode, onSelect }) => (
+    <button 
+        onClick={() => onSelect(m)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+            mode === m 
+            ? `bg-white dark:bg-gray-800 border-${color}-500 text-${color}-600 shadow-sm scale-105` 
+            : 'border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+        }`}
+    >
+        <Icon size={12} className={mode === m ? `text-${color}-500` : ''} strokeWidth={2.5} />
+        {label}
+    </button>
+);
+
+const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([
         { 
             id: 'welcome', 
@@ -174,20 +188,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
         setIsLoading(false);
     };
 
-    const ModeButton: React.FC<ModeButtonProps> = ({ m, icon: Icon, label, color }) => (
-        <button 
-            onClick={() => setMode(m)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
-                mode === m 
-                ? `bg-white dark:bg-gray-800 border-${color}-500 text-${color}-600 shadow-sm scale-105` 
-                : 'border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-        >
-            <Icon size={12} className={mode === m ? `text-${color}-500` : ''} strokeWidth={2.5} />
-            {label}
-        </button>
-    );
-
     return (
         <div className="flex flex-col h-full bg-transparent relative">
             
@@ -195,11 +195,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
             <div className="absolute top-0 left-0 right-0 z-20 p-2">
                 <div className="glass-panel p-2 rounded-[2rem] shadow-sm max-w-2xl mx-auto">
                     <div className="flex gap-1 overflow-x-auto scrollbar-hide justify-between sm:justify-center">
-                        <ModeButton m="fast" icon={Zap} label="Rápido" color="yellow" />
-                        <ModeButton m="standard" icon={Sparkles} label="Padrão" color="blue" />
-                        <ModeButton m="search" icon={Search} label="Web" color="green" />
-                        <ModeButton m="location" icon={MapPin} label="Local" color="red" />
-                        <ModeButton m="thinking" icon={BrainCircuit} label="Pro" color="purple" />
+                        <ModeButton m="fast" icon={Zap} label="Rápido" color="yellow" mode={mode} onSelect={setMode} />
+                        <ModeButton m="standard" icon={Sparkles} label="Padrão" color="blue" mode={mode} onSelect={setMode} />
+                        <ModeButton m="search" icon={Search} label="Web" color="green" mode={mode} onSelect={setMode} />
+                        <ModeButton m="location" icon={MapPin} label="Local" color="red" mode={mode} onSelect={setMode} />
+                        <ModeButton m="thinking" icon={BrainCircuit} label="Pro" color="purple" mode={mode} onSelect={setMode} />
                     </div>
                 </div>
             </div>

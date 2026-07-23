@@ -76,8 +76,44 @@ const getClientBucket = (req: VercelRequest) => {
   return String(ip).split(',')[0].trim() || 'unknown';
 };
 
+const isProductionRuntime = () => process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
+// Aceita apenas chamadas de navegador vindas do próprio app (ou de origens
+// explicitamente liberadas via ALLOWED_ORIGINS). Sem isso, a rota é um proxy
+// aberto para os modelos pagos do Gemini.
+const isTrustedBrowserOrigin = (req: VercelRequest) => {
+  const host = String(req.headers?.host || '');
+  if (!host) return false;
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const matches = (value: string) => {
+    try {
+      const url = new URL(value);
+      return url.host === host || allowedOrigins.includes(url.origin);
+    } catch {
+      return false;
+    }
+  };
+
+  const origin = String(req.headers?.origin || '');
+  if (origin) return matches(origin);
+  const referer = String(req.headers?.referer || '');
+  if (referer) return matches(referer);
+  return false;
+};
+
 const isRateLimited = (bucket: string) => {
   const now = Date.now();
+
+  if (rateLimitStore.size > 1000) {
+    for (const [key, entry] of rateLimitStore) {
+      if (entry.resetAt <= now) rateLimitStore.delete(key);
+    }
+  }
+
   const current = rateLimitStore.get(bucket);
 
   if (!current || current.resetAt <= now) {
@@ -156,6 +192,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = (req.method || 'POST').toUpperCase();
   if (method !== 'POST') {
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
+  }
+
+  if (isProductionRuntime() && !isTrustedBrowserOrigin(req)) {
+    return jsonResponse(res, 403, { error: 'Forbidden.' });
   }
 
   if (isRateLimited(getClientBucket(req))) {
@@ -288,7 +328,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!query) return jsonResponse(res, 400, { error: 'Missing query.' });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Pesquise sobre: "${query}"...`,
+          contents: `Pesquise informações atuais e verificáveis sobre: "${query}". Contexto: política brasileira e atividade legislativa do Congresso Nacional. Responda em português do Brasil, em linguagem simples e direta, resumindo os fatos principais em até 120 palavras e priorizando fontes oficiais.`,
           config: { tools: [{ googleSearch: {} }] }
         });
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];

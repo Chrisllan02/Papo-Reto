@@ -1,8 +1,12 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { useInitialData } from '../hooks/useCamaraData';
 import { normalizeLocationUF, reverseGeocodeToUF } from '../utils/location';
+import { buildAppPath, parseAppPath } from '../utils/routing';
+import { cleanupLegacyStorage } from '../utils/storageCleanup';
+
+cleanupLegacyStorage();
 
 // --- Types ---
 interface AppState {
@@ -28,7 +32,8 @@ interface AppState {
   showDataModal: boolean;
   showOnboarding: boolean;
   readArticleIds: number[];
-  
+  followedIds: number[];
+
   // Location
   userLocation: string; // UF
   isLocating: boolean; // Status do GPS
@@ -52,6 +57,7 @@ interface AppActions {
   setShowOnboarding: (show: boolean) => void;
   
   updatePolitician: (updated: Politician) => void;
+  toggleFollow: (id: number) => void;
   updateUserLocation: (uf: string) => void;
   detectLocation: () => Promise<void>; // NOVO: Gatilho manual de GPS
   
@@ -67,7 +73,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Use Custom Hook for Data Loading
     const { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent } = useInitialData();
 
-  const [activeTab, setActiveTab] = useState('feed');
+  // Deep link: estado inicial de navegação derivado da URL.
+  const initialRoute = typeof window !== 'undefined' ? parseAppPath(window.location.pathname) : null;
+
+  const [activeTab, setActiveTab] = useState(initialRoute?.tab || 'feed');
   
   // Initialize from LocalStorage
   const [darkMode, setDarkMode] = useState(() => {
@@ -100,23 +109,83 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [selectedCandidate, setSelectedCandidate] = useState<Politician | null>(null);
-  const [selectedEducationId, setSelectedEducationId] = useState<number | null>(null);
-  const [isFullFeed, setIsFullFeed] = useState(false);
-  const [isNewsHistory, setIsNewsHistory] = useState(false);
+  const [selectedEducationId, setSelectedEducationId] = useState<number | null>(initialRoute?.educationId || null);
+  const [isFullFeed, setIsFullFeed] = useState(initialRoute?.fullFeed || false);
+  const [isNewsHistory, setIsNewsHistory] = useState(initialRoute?.newsHistory || false);
   const [explorePreselectedState, setExplorePreselectedState] = useState<string>('');
   const [showDataModal, setShowDataModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [readArticleIds, setReadArticleIds] = useState<number[]>([]);
+  const [followedIds, setFollowedIds] = useState<number[]>(() => {
+      try {
+          const raw = localStorage.getItem('paporeto_followed_v1');
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed.filter((id) => Number.isFinite(id)) : [];
+      } catch { return []; }
+  });
+  const pendingCandidateIdRef = useRef<number | null>(initialRoute?.candidateId || null);
   
   const [userLocation, setUserLocation] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
   const LOCATION_AUTO_PROMPT_KEY = 'paporeto_location_auto_prompted_at';
   const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
 
+  const politiciansRef = useRef(politicians);
+  useEffect(() => {
+      politiciansRef.current = politicians;
+  }, [politicians]);
+
+  // Resolve deep link /politico/:id assim que a lista de parlamentares carrega.
+  useEffect(() => {
+      const pendingId = pendingCandidateIdRef.current;
+      if (!pendingId || politicians.length === 0) return;
+      const found = politicians.find(pol => pol.id === pendingId);
+      pendingCandidateIdRef.current = null;
+      if (found) setSelectedCandidate(found);
+  }, [politicians]);
+
+  // Mantém a URL sincronizada com o estado de navegação (telas linkáveis).
+  useEffect(() => {
+      if (typeof window === 'undefined') return;
+      const path = buildAppPath({
+          tab: activeTab,
+          candidateId: selectedCandidate?.id || pendingCandidateIdRef.current,
+          educationId: selectedEducationId,
+          fullFeed: isFullFeed,
+          newsHistory: isNewsHistory,
+      });
+      if (window.location.pathname !== path) {
+          window.history.pushState({}, '', path);
+      }
+  }, [activeTab, selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory]);
+
+  // Botão voltar/avançar do navegador.
+  useEffect(() => {
+      const handlePopState = () => {
+          const route = parseAppPath(window.location.pathname);
+          setActiveTab(route.tab);
+          setSelectedEducationId(route.educationId);
+          setIsFullFeed(route.fullFeed);
+          setIsNewsHistory(route.newsHistory);
+          if (route.candidateId) {
+              const found = politiciansRef.current.find(pol => pol.id === route.candidateId);
+              if (found) {
+                  setSelectedCandidate(prev => (prev?.id === route.candidateId ? prev : found));
+              } else {
+                  pendingCandidateIdRef.current = route.candidateId;
+              }
+          } else {
+              setSelectedCandidate(null);
+          }
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Geo Logic Refactored for Reusability
   const detectLocation = async (silent = false) => {
       if (!navigator.geolocation) {
-          if (!silent) alert("Geolocalização não suportada neste dispositivo.");
+          if (!silent) console.warn("Geolocalização não suportada neste dispositivo.");
           return;
       }
 
@@ -252,26 +321,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const increaseFontSize = () => {
       setFontSizeLevel(prev => {
-          let next = prev;
-          if (prev >= 1.5) next = 1.5;
-          else if (prev >= 1.25) next = 1.5;
+          let next: number;
+          if (prev >= 1.25) next = 1.5;
           else if (prev >= 1.1) next = 1.25;
           else if (prev >= 1) next = 1.1;
           else next = 1;
-          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch { /* quota */ }
           return clampFontSize(next);
       });
   };
 
   const decreaseFontSize = () => {
       setFontSizeLevel(prev => {
-          let next = prev;
-          if (prev <= 0.9) next = 0.9;
-          else if (prev <= 1) next = 0.9;
+          let next: number;
+          if (prev <= 1) next = 0.9;
           else if (prev <= 1.1) next = 1;
           else if (prev <= 1.25) next = 1.1;
           else next = 1.25;
-          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch { /* quota */ }
           return clampFontSize(next);
       });
   };
@@ -289,6 +356,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (selectedCandidate?.id === updated.id) {
           setSelectedCandidate(updated);
       }
+  };
+
+  const toggleFollow = (id: number) => {
+      setFollowedIds(prev => {
+          const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
+          try { localStorage.setItem('paporeto_followed_v1', JSON.stringify(next)); } catch { /* quota */ }
+          return next;
+      });
   };
 
   const updateUserLocation = (uf: string) => {
@@ -330,7 +405,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab, politicians, feedItems, articles, parties, isLoading, error,
         darkMode, highContrast, fontSizeLevel,
         selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
-        showDataModal, showOnboarding, readArticleIds, 
+        showDataModal, showOnboarding, readArticleIds, followedIds,
         userLocation, isLocating
     },
     actions: {
@@ -349,6 +424,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowDataModal,
         setShowOnboarding,
         updatePolitician,
+        toggleFollow,
         updateUserLocation,
         detectLocation,
         resetNavigation,

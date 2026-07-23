@@ -35,9 +35,40 @@ const getClientBucket = (req: VercelRequest) => {
   return String(ip).split(',')[0].trim() || 'unknown';
 };
 
+const isTrustedBrowserOrigin = (req: VercelRequest) => {
+  const host = String(req.headers?.host || '');
+  if (!host) return false;
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const matches = (value: string) => {
+    try {
+      const url = new URL(value);
+      return url.host === host || allowedOrigins.includes(url.origin);
+    } catch {
+      return false;
+    }
+  };
+
+  const origin = String(req.headers?.origin || '');
+  if (origin) return matches(origin);
+  const referer = String(req.headers?.referer || '');
+  if (referer) return matches(referer);
+  return false;
+};
+
 const isRateLimited = (bucket: string, method: string) => {
   const key = `${bucket}:${method}`;
   const now = Date.now();
+
+  if (rateLimitStore.size > 1000) {
+    for (const [storeKey, entry] of rateLimitStore) {
+      if (entry.resetAt <= now) rateLimitStore.delete(storeKey);
+    }
+  }
+
   const limit = method === 'PUT' || method === 'POST' ? WRITE_LIMIT : READ_LIMIT;
   const current = rateLimitStore.get(key);
 
@@ -149,6 +180,133 @@ async function writeToBlob(pathname: string, payload: any) {
   return blob;
 }
 
+const fetchOfficialJson = async (url: string, timeoutMs = 10_000): Promise<any | null> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+// Enriquecimento detalhado feito no servidor: é o que torna o cache compartilhado
+// útil de fato — sem ele, cada visitante refaz as chamadas pesadas no navegador.
+async function buildDetailedPoliticianData(id: string) {
+  const today = new Date().toISOString().split('T')[0];
+  const [expensesData, frentesData, ocupacoesData, discursosData, agendaData] = await Promise.all([
+    fetchOfficialJson(`${BASE_URL_CAMARA}/deputados/${id}/despesas?ordem=DESC&ordenarPor=mes&itens=100`),
+    fetchOfficialJson(`${BASE_URL_CAMARA}/deputados/${id}/frentes`),
+    fetchOfficialJson(`${BASE_URL_CAMARA}/deputados/${id}/ocupacoes`),
+    fetchOfficialJson(`${BASE_URL_CAMARA}/deputados/${id}/discursos?ordem=DESC&ordenarPor=dataHoraInicio&itens=20`),
+    fetchOfficialJson(`${BASE_URL_CAMARA}/eventos?ordem=ASC&ordenarPor=dataHoraInicio&dataInicio=${today}&deputadoId=${id}&itens=5`),
+  ]);
+
+  const typeMap: Record<string, number> = {};
+  let totalSpending = 0;
+  const detailedExpenses = (expensesData?.dados || []).map((e: any, idx: number) => {
+    const value = Number(e.valorLiquido ?? e.valorDocumento ?? 0);
+    if (Number.isFinite(value)) {
+      totalSpending += value;
+      const type = e.tipoDespesa || 'Outros';
+      typeMap[type] = (typeMap[type] || 0) + value;
+    }
+    const month = e.mes ? String(e.mes).padStart(2, '0') : '';
+    const year = e.ano ? String(e.ano) : '';
+    return {
+      id: idx,
+      date: e.dataDocumento || (month && year ? `${month}/${year}` : undefined),
+      provider: e.nomeFornecedor,
+      cnpjCpf: e.cnpjCpfFornecedor,
+      value,
+      documentValue: Number(e.valorDocumento ?? 0),
+      disallowedValue: Number(e.valorGlosa ?? 0),
+      type: e.tipoDespesa,
+      documentType: e.tipoDocumento,
+      documentNumber: e.numDocumento,
+      urlDocumento: e.urlDocumento,
+    };
+  }).filter((item: any) => Number.isFinite(item.value));
+
+  const expensesBreakdown = Object.entries(typeMap)
+    .map(([type, value]) => ({ type, value, percent: totalSpending > 0 ? (value / totalSpending) * 100 : 0 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  const fronts = (frentesData?.dados || []).map((f: any) => ({
+    id: f.id,
+    title: f.titulo,
+    externalLink: f.uri,
+  })).slice(0, 50);
+
+  const occupations = (ocupacoesData?.dados || []).map((o: any) => ({
+    title: o.titulo,
+    entity: o.entidade,
+    state: o.entidadeUF,
+    country: o.entidadePais,
+    startYear: o.anoInicio,
+    endYear: o.anoFim,
+  })).filter((o: any) => o.title || o.entity).slice(0, 50);
+
+  const speeches = (discursosData?.dados || []).map((s: any) => ({
+    date: s.dataHoraInicio,
+    summary: s.sumario || (s.transcricao ? `${String(s.transcricao).substring(0, 150)}...` : 'Discurso em Plenário'),
+    type: s.tipoDiscurso,
+    phase: s.faseEvento ? s.faseEvento.descricao : 'Plenário',
+    keywords: s.keywords ? String(s.keywords).split(',').map((k: string) => k.trim()) : [],
+    urlAudio: s.urlAudio,
+    urlVideo: s.urlVideo,
+    externalLink: s.urlTexto,
+  })).slice(0, 25);
+
+  const agenda = (agendaData?.dados || []).map((e: any) => ({
+    id: e.id,
+    startTime: e.dataHoraInicio,
+    endTime: e.dataHoraFim,
+    title: e.descricaoTipo,
+    description: e.descricao || e.situacao,
+    location: e.localCamara?.nome || 'Câmara dos Deputados',
+    status: e.situacao,
+    type: e.descricaoTipo || 'Sessão',
+    sourceUrl: e.urlRegistro,
+    agendaDocumentUrl: e.urlDocumentoPauta,
+  })).slice(0, 10);
+
+  const hasDetails = detailedExpenses.length > 0 || fronts.length > 0 || occupations.length > 0
+    || speeches.length > 0 || agenda.length > 0;
+
+  return {
+    hasDetails,
+    detailedExpenses: detailedExpenses.slice(0, 200),
+    expensesBreakdown,
+    fronts,
+    occupations,
+    speeches,
+    agenda,
+    // Shape completo: o cliente substitui o objeto stats inteiro no merge.
+    stats: {
+      attendancePct: 0,
+      totalSessions: 0,
+      presentSessions: 0,
+      absentSessions: 0,
+      plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+      commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+      projects: 0,
+      spending: totalSpending,
+    },
+  };
+}
+
 async function buildOfficialPoliticianCache(id: string) {
   const response = await fetch(`${BASE_URL_CAMARA}/deputados/${id}`, {
     headers: {
@@ -170,8 +328,19 @@ async function buildOfficialPoliticianCache(id: string) {
     throw new RequestError(502, 'Invalid official profile response.');
   }
 
+  const details = await buildDetailedPoliticianData(id).catch(() => null);
+
   const sex = normalizeSex(data.sexo);
   return normalizePayload({
+    ...(details?.hasDetails ? {
+      detailedExpenses: details.detailedExpenses,
+      expensesBreakdown: details.expensesBreakdown,
+      fronts: details.fronts,
+      occupations: details.occupations,
+      speeches: details.speeches,
+      agenda: details.agenda,
+      stats: details.stats,
+    } : {}),
     id: Number(id),
     name: formatText(data.ultimoStatus?.nomeEleitoral || data.nomeCivil),
     party: data.ultimoStatus?.siglaPartido,
@@ -266,6 +435,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (method === 'POST') {
+    if (isProductionRuntime() && !isTrustedBrowserOrigin(req)) {
+      return jsonResponse(res, 403, { error: 'Forbidden.' });
+    }
+
     let payload: any;
     try {
       payload = await buildOfficialPoliticianCache(id as string);

@@ -7,12 +7,7 @@ interface BrazilMapProps {
   heatmapMode?: boolean;
 }
 
-const BrazilMap: React.FC<BrazilMapProps> = ({
-  data,
-  selectedState,
-  onSelectState,
-  heatmapMode = false,
-}) => {
+const BrazilMap: React.FC<BrazilMapProps> = () => {
   return (
     <div className="w-full h-full">
       <svg

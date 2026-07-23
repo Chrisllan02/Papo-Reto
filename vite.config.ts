@@ -22,7 +22,7 @@ export default defineConfig(() => {
             manualChunks: {
               react: ['react', 'react-dom'],
               charts: ['react-window', 'react-virtualized-auto-sizer'],
-              visuals: ['lucide-react', 'html2canvas'],
+              visuals: ['lucide-react'],
             }
           }
       }

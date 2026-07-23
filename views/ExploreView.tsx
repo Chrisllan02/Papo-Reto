@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayoutEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart, Filter, User } from 'lucide-react';
 import { Politician, Party } from '../types';
-import { formatPartyName, getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
+import { getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
 import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
 import * as ReactWindow from 'react-window';

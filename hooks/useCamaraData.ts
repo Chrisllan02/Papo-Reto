@@ -396,7 +396,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                         }
                     }
                 }
-            } catch {}
+            } catch { /* cache local corrompido é ignorado */ }
 
             try {
                 const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
@@ -410,8 +410,8 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                     setIsLoadingDetails(false);
                     return;
                 }
-            } catch {}
-            
+            } catch { /* cache remoto indisponível é ignorado */ }
+
             if (hasFullData || !initialCandidate.hasApiIntegration) {
                 if (cancelled) return;
                 setIsLoadingDetails(false);

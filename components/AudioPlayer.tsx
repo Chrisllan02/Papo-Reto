@@ -38,7 +38,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 try {
                     sourceNodeRef.current.stop();
                     sourceNodeRef.current.disconnect();
-                } catch (e) {
+                } catch {
                     // Ignora erro se o áudio já tiver parado
                 }
                 sourceNodeRef.current = null;
@@ -55,7 +55,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
 
         if (isPlaying) {
             if (sourceNodeRef.current) {
-                try { sourceNodeRef.current.stop(); } catch (e) {}
+                try { sourceNodeRef.current.stop(); } catch { /* áudio já parado */ }
                 sourceNodeRef.current = null;
             }
             if (utteranceRef.current && 'speechSynthesis' in window) {
