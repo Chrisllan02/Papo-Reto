@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-12T13:52:52.845Z",
+  "generatedAt": "2026-08-13T13:53:19.667Z",
   "appUrl": "https://papo-reto-beige.vercel.app",
   "health": {
     "ok": true,
     "service": "paporeto",
-    "timestamp": "2026-08-12T13:52:29.375Z",
+    "timestamp": "2026-08-13T13:52:56.238Z",
     "integrations": {
       "ai": false,
       "profileBlobCache": false,
