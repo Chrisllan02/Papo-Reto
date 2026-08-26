@@ -316,6 +316,7 @@ export interface FeedItem {
   type: 'voto' | 'despesa' | 'educacao' | 'evento';
   title: string;
   date?: string;
+  timestamp?: number; // epoch ms da data original, para ordenação precisa
   action?: string;
   candidateId?: number;
   description?: string;

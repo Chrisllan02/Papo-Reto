@@ -3,7 +3,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search, X, Sparkles, Share2, ImageOff, RefreshCw, Loader2, LayoutGrid, AlignLeft } from 'lucide-react';
 import { getNewsHistory, chatWithGemini } from '../services/ai';
 import { NewsArticle } from '../types';
-import html2canvas from 'html2canvas';
 
 interface NewsHistoryViewProps {
     onBack: () => void;
@@ -105,6 +104,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             }
 
             try {
+                const { default: html2canvas } = await import('html2canvas');
                 const canvas = await html2canvas(element, {
                     useCORS: true,
                     scale: 2, // Melhor qualidade
@@ -138,7 +138,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                 try {
                     await navigator.clipboard.writeText(`${sharingItem.title}\n${sharingItem.url}`);
                     alert("Link copiado para a área de transferência!");
-                } catch(e) {}
+                } catch { /* clipboard indisponível */ }
             } finally {
                 setIsSharing(false);
                 setSharingItem(null);
@@ -218,7 +218,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                     const [day, month, year] = datePart.split('/').map(Number);
                     if (!day || !month || !year) throw new Error("Data inválida");
                     itemDate = new Date(year, month - 1, day);
-                } catch (e) {
+                } catch {
                     groups['Antigos'].push(item);
                     return;
                 }
@@ -256,7 +256,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             
             const response = await chatWithGemini(prompt, 'fast');
             setSummaryResult(response.text);
-        } catch (e) {
+        } catch {
             setSummaryResult("Não foi possível gerar o resumo agora. Tente novamente.");
         } finally {
             setIsGeneratingSummary(false);

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, Video, VolumeX, MonitorOff, FileCheck, Calendar, Scale, AlertTriangle, Link, Crown, Star, MessageSquare, DollarSign, Award, ScrollText, BadgeCheck } from 'lucide-react';
-import { Politician, FeedItem, YearStats, ExpenseItem, Speech, Secretary, LegislativeEvent } from '../types';
-import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
+import { ChevronLeft, Clock, Banknote, Loader2, ExternalLink, Wallet, FileText, CheckCircle2, Briefcase, Flag, PieChart, Tag, Plane, FileCheck, Crown, Star, ScrollText, BadgeCheck } from 'lucide-react';
+import { Politician, FeedItem } from '../types';
+import { Skeleton, SkeletonFeedItem } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
 import {
   ActivityCard,
@@ -26,70 +26,6 @@ export interface ProfileViewProps {
   onToggleFollow?: () => void;
 }
 
-// ... (Other existing helper components: getStatusColor, SocialIcon, PresenceBar, getFrontCategoryStyle) ...
-const getStatusColor = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('aprovado')) return 'bg-blue-100/50 text-blue-900 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200'; 
-    if (s.includes('tramitação')) return 'bg-yellow-100/50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300';
-    return 'bg-gray-100/50 text-gray-600 border-gray-200 dark:bg-gray-700/50 dark:text-gray-300';
-};
-
-const SocialIcon: React.FC<{ url: string }> = ({ url }) => {
-    let Icon = Globe;
-    let label = 'Site';
-    let colorClass = 'text-gray-500 hover:text-blue-600';
-
-    if (url.includes('instagram.com')) { Icon = Instagram; label = 'Instagram'; colorClass = 'text-pink-600 hover:text-pink-700'; }
-    else if (url.includes('twitter.com') || url.includes('x.com')) { Icon = Twitter; label = 'Twitter'; colorClass = 'text-blue-400 hover:text-blue-500'; }
-    else if (url.includes('facebook.com')) { Icon = Facebook; label = 'Facebook'; colorClass = 'text-blue-700 hover:text-blue-800'; }
-    else if (url.includes('youtube.com')) { Icon = Youtube; label = 'YouTube'; colorClass = 'text-red-600 hover:text-red-700'; }
-    else if (url.includes('linkedin.com')) { Icon = Linkedin; label = 'LinkedIn'; colorClass = 'text-blue-800 hover:text-blue-900'; }
-
-    return (
-        <a href={url} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${colorClass}`} title={label}>
-            <Icon size={20} className="stroke-[1.5]" />
-        </a>
-    );
-};
-
-const PresenceBar = ({ label, present, justified, unjustified, total }: { label: string, present: number, justified: number, unjustified: number, total: number }) => {
-    if (total === 0) {
-        return (
-            <div className="w-full">
-                <div className="flex justify-between items-end mb-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                </div>
-                <div className="w-full h-10 bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-400">
-                    <FolderOpen size={14} />
-                    <span className="text-xs font-bold uppercase tracking-wide">Sem dados</span>
-                </div>
-            </div>
-        );
-    }
-    const pctPresent = total > 0 ? (present / total) * 100 : 0;
-    const pctJustified = total > 0 ? (justified / total) * 100 : 0;
-    const pctUnjustified = total > 0 ? (unjustified / total) * 100 : 0;
-
-    return (
-        <div className="w-full">
-            <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                <span className="text-sm font-black text-gray-900 dark:text-white">{Math.round(pctPresent)}% Presença</span>
-            </div>
-            <div className="w-full h-3 bg-gray-100/50 dark:bg-gray-700/50 rounded-full overflow-hidden flex shadow-inner">
-                <div style={{ width: `${pctPresent}%` }} className="bg-green-500 h-full shadow-[0_0_10px_rgba(34,197,94,0.4)]" title="Presenças"></div>
-                <div style={{ width: `${pctJustified}%` }} className="bg-yellow-400 h-full" title="Ausências Justificadas"></div>
-                <div style={{ width: `${pctUnjustified}%` }} className="bg-red-500 h-full" title="Ausências Não Justificadas"></div>
-            </div>
-            <div className="flex justify-between mt-1.5 text-xs font-bold text-gray-400 uppercase tracking-wide">
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> {present}</div>
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div> {justified} Justif.</div>
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> {unjustified} Falta</div>
-            </div>
-        </div>
-    );
-};
-
 const getFrontCategoryStyle = (title: string) => {
     const t = title.toLowerCase();
     
@@ -107,7 +43,57 @@ const getFrontCategoryStyle = (title: string) => {
 };
 
 // ... (ProfileView component with new integrated sections) ...
-const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
+type FrontCategory = { name: string; percent: number; strokeColor: string };
+
+const QuickMetric: React.FC<{ icon: any; label: string; value: string; hint: string; tone: string }> = ({ icon: Icon, label, value, hint, tone }) => (
+    <div className="glass-surface rounded-2xl p-4 md:p-5 border border-white/60 dark:border-white/10 min-w-0">
+        <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
+                <Icon size={18} />
+            </div>
+            <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
+                <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
+                <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
+            </div>
+        </div>
+    </div>
+);
+
+const DnaDonutChart: React.FC<{ frontCategories: FrontCategory[]; frontsCount: number }> = ({ frontCategories, frontsCount }) => {
+    const size = 220;
+    const strokeWidth = 35;
+    const center = size / 2;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const slices = frontCategories.slice(0, 6).reduce<{ items: Array<FrontCategory & { rotation: number }>; accumulatedPercent: number }>(
+        (acc, cat) => {
+            acc.items.push({ ...cat, rotation: (acc.accumulatedPercent / 100) * 360 });
+            acc.accumulatedPercent += cat.percent;
+            return acc;
+        },
+        { items: [], accumulatedPercent: 0 }
+    ).items;
+    return (
+        <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+                <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
+                {slices.map((cat) => {
+                    const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
+                    return (
+                        <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={0} strokeLinecap="round" transform={`rotate(${cat.rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
+                    );
+                })}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{frontsCount}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Frentes</span>
+            </div>
+        </div>
+    );
+};
+
+const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, isFollowing, onToggleFollow }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -299,53 +285,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { activitiesCount, attendance, hasAttendance, frontsCount, spending };
   }, [candidate, displayStats]);
 
-  const QuickMetric = ({ icon: Icon, label, value, hint, tone }: { icon: any; label: string; value: string; hint: string; tone: string }) => (
-      <div className="glass-surface rounded-2xl p-4 md:p-5 border border-white/60 dark:border-white/10 min-w-0">
-          <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
-                  <Icon size={18} />
-              </div>
-              <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
-                  <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
-                  <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
-              </div>
-          </div>
-      </div>
-  );
-
-  const DnaDonutChart = () => {
-        const size = 220; 
-        const strokeWidth = 35; 
-        const center = size / 2;
-        const radius = (size - strokeWidth) / 2;
-        const circumference = 2 * Math.PI * radius;
-        let accumulatedPercent = 0;
-        return (
-            <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-                    <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
-                    {frontCategories.slice(0, 6).map((cat, i) => {
-                        const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (accumulatedPercent / 100) * 360;
-                        const offset = 0; 
-                        accumulatedPercent += cat.percent;
-                        return (
-                            <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
-                        );
-                    })}
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{candidate.fronts?.length || 0}</span>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Frentes</span>
-                </div>
-            </div>
-        );
-  };
-
-  const getStatusDisplay = () => {
+  const statusDisplay = useMemo(() => {
       let statusText = "Em Exercício";
-      let statusColor = "bg-green-500/20 text-white"; 
+      let statusColor = "bg-green-500/20 text-white";
       let dotColor = "bg-green-400";
       if (candidate.situation) {
           const sit = candidate.situation.toLowerCase();
@@ -371,8 +313,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           }
       }
       return { text: statusText, bg: statusColor, dot: dotColor };
-  };
-  const statusDisplay = getStatusDisplay();
+  }, [candidate.situation, candidate.statusDescription]);
   const maskDoc = (doc: string) => {
       if (!doc) return "---";
       if (doc.length > 11) return `${doc.substring(0, 2)}.***.***/${doc.substring(8, 12)}-**`;
@@ -403,6 +344,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
               <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
                 <button onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg"><ChevronLeft size={24} aria-hidden="true" /></button>
+                {onToggleFollow && (
+                  <button
+                    onClick={onToggleFollow}
+                    aria-pressed={Boolean(isFollowing)}
+                    aria-label={isFollowing ? `Deixar de acompanhar ${candidate.name}` : `Acompanhar ${candidate.name}`}
+                    className={`flex items-center gap-2 px-4 py-2.5 md:px-5 md:py-3 rounded-full text-xs md:text-sm font-black uppercase tracking-wider transition-all active:scale-95 backdrop-blur-md border shadow-lg ${
+                      isFollowing
+                        ? 'bg-yellow-400 text-gray-900 border-yellow-300 hover:bg-yellow-300'
+                        : 'bg-white/10 text-white border-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    <Star size={16} aria-hidden="true" fill={isFollowing ? 'currentColor' : 'none'} />
+                    {isFollowing ? 'Acompanhando' : 'Acompanhar'}
+                  </button>
+                )}
               </div>
               <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
                   <div className="shrink-0 relative">
@@ -523,7 +479,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                         <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-[3rem] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
                                             <div className="flex flex-col items-center justify-center">
                                                 <div className="flex items-center gap-2 mb-6"><div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl"><PieChart size={18} /></div><h4 className="text-sm font-black uppercase text-gray-700 dark:text-gray-200 tracking-wide">DNA de Interesses</h4></div>
-                                                <DnaDonutChart />
+                                                <DnaDonutChart frontCategories={frontCategories} frontsCount={candidate.fronts?.length || 0} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
                                                 {frontCategories.slice(0, 4).map((cat) => (

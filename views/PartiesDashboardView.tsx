@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2, Building2, Landmark, ArrowDown } from 'lucide-react';
+import { Users, Compass, Trophy, UserCheck, Scale, MapPin, ShieldCheck, Info, TrendingUp, Globe, X, MousePointerClick, ChevronDown, ChevronUp, Building2, Landmark, ArrowDown } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
 import { getIdeologyTheme } from '../utils/themeUtils';
@@ -262,8 +262,15 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
     const center = size / 2;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
-    
-    let accumulatedPercent = 0;
+
+    const slices = data.reduce<{ items: Array<typeof data[number] & { rotation: number }>; accumulatedPercent: number }>(
+        (acc, item) => {
+            acc.items.push({ ...item, rotation: (acc.accumulatedPercent / 100) * 360 });
+            acc.accumulatedPercent += item.percent;
+            return acc;
+        },
+        { items: [], accumulatedPercent: 0 }
+    ).items;
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
@@ -271,12 +278,11 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
                 <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl">
                     {/* Fundo */}
                     <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
-                    
-                    {data.map((item, i) => {
+
+                    {slices.map((item) => {
                         const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (accumulatedPercent / 100) * 360;
-                        const offset = 0; 
-                        accumulatedPercent += item.percent;
+                        const rotation = item.rotation;
+                        const offset = 0;
 
                         return (
                             <circle
@@ -605,11 +611,24 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     const centerY = 200;
     const radius = 130; 
     const strokeWidth = 50; // Slightly thinner to show separation
-    const totalAngle = 180; 
-    let currentAngle = 0; 
+    const totalAngle = 180;
 
     // Handle interaction bridging
     const effectiveActive = hoveredParty || activeParty;
+
+    const slices = sortedParties.reduce<{
+        items: Array<{ party: typeof sortedParties[number]; start: number; end: number }>;
+        currentAngle: number;
+    }>((acc, party) => {
+        const seats = party.totalMembers;
+        const sliceDegrees = (seats / totalSeats) * totalAngle;
+        const gap = seats > 3 ? 1.5 : (seats > 1 ? 0.8 : 0.2);
+        const start = acc.currentAngle;
+        const end = acc.currentAngle + sliceDegrees - (sliceDegrees > gap ? gap : 0);
+        acc.items.push({ party, start, end });
+        acc.currentAngle += sliceDegrees;
+        return acc;
+    }, { items: [], currentAngle: 0 }).items;
 
     return (
         <section className="glass-panel rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-between relative overflow-hidden h-auto" aria-labelledby="hemicycle-title">
@@ -645,17 +664,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                         className="dark:stroke-white/5"
                     />
 
-                    {sortedParties.map((party) => {
+                    {slices.map(({ party, start, end }) => {
                         const seats = party.totalMembers;
-                        const sliceDegrees = (seats / totalSeats) * totalAngle;
-                        
-                        // Dynamic gap: smaller gap for small parties to prevent disappearance
-                        const gap = seats > 3 ? 1.5 : (seats > 1 ? 0.8 : 0.2);
-                        
-                        const start = currentAngle;
-                        const end = currentAngle + sliceDegrees - (sliceDegrees > gap ? gap : 0);
-                        const nextStart = currentAngle + sliceDegrees;
-                        currentAngle = nextStart;
 
                         if (seats === 0) return null;
 
@@ -978,7 +988,7 @@ const GovernmentStructureFlow = () => {
     );
 };
 
-const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
+const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
 
   const { partyStats, ideologyStats } = useMemo(() => {

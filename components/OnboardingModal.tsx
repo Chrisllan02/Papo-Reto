@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { ChevronRight, X, Sparkles, ScrollText, BrainCircuit, Check, ChevronLeft } from 'lucide-react';
+import React, { useState, useLayoutEffect } from 'react';
+import { ChevronRight, X, Check, ChevronLeft } from 'lucide-react';
 
 interface OnboardingModalProps {
   onFinish: () => void;
@@ -148,7 +148,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
   // Renderização do Spotlight (Tour Guiada)
   const isMobile = window.innerWidth < 768;
 
-  let tooltipStyle: React.CSSProperties = {};
+  let tooltipStyle: React.CSSProperties;
   
   if (isMobile) {
       // Mobile: Tooltip sempre acima do alvo (que é a navbar inferior)

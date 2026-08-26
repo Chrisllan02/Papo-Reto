@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'coverage', '.playwright-mcp'],
+    ignores: ['dist', 'node_modules', 'coverage', '.playwright-mcp', 'public/sw.js'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

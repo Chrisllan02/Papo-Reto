@@ -3,6 +3,35 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, ScrollText, Users, Sun, Moon, BarChart3, BookOpen, HelpCircle, Eye, Type, Settings, ChevronRight, X, MapPin, LocateFixed, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 
+const NavItem = ({ id, icon: Icon, label, activeTab, onSelect, colorClass = "bg-gradient-to-r from-nuit to-midnight" }: any) => (
+    <button 
+      data-tour={id}
+      onClick={() => onSelect(id)}
+      aria-current={activeTab === id ? 'page' : undefined}
+      aria-label={label}
+      className={`group relative flex items-center xl:justify-start justify-center gap-4 p-3.5 xl:px-6 rounded-full transition-all duration-300 ease-out outline-none w-full
+        ${activeTab === id 
+          ? 'text-white shadow-lg shadow-nuit/30 scale-105 backdrop-blur-md dark:shadow-[0_0_30px_rgba(30,72,143,0.6)]' 
+          : 'text-midnight dark:text-blue-200 hover:bg-white/40 dark:hover:bg-white/10 hover:backdrop-blur-sm active:scale-95'
+        } focus-visible:ring-4 focus-visible:ring-blue-500/30`}
+    >
+      {activeTab === id && (
+          <div className={`absolute inset-0 ${colorClass} rounded-full opacity-100 transition-opacity duration-500`}></div>
+      )}
+      <div className={`relative z-10 p-1 transition-transform duration-300 group-hover:scale-110 ${activeTab === id ? 'text-white' : ''}`}>
+         <Icon size={26} strokeWidth={activeTab === id ? 2.5 : 2} aria-hidden="true" />
+      </div>
+      <span className={`relative z-10 hidden xl:block text-lg tracking-tight ${activeTab === id ? 'font-bold' : 'font-medium'}`}>
+          {label}
+      </span>
+      
+      {/* Tooltip */}
+      <span className="absolute left-full ml-3 px-3 py-1.5 bg-midnight dark:bg-white text-white dark:text-midnight text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-xl xl:hidden whitespace-nowrap z-50 border border-white/10 scale-95 group-hover:scale-100 origin-left">
+          {label}
+      </span>
+    </button>
+);
+
 const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
   const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
@@ -28,35 +57,6 @@ const Sidebar: React.FC = () => {
       };
   }, [showAccessMenu]);
 
-  const NavItem = ({ id, icon: Icon, label, colorClass = "bg-gradient-to-r from-nuit to-midnight" }: any) => (
-      <button 
-        data-tour={id}
-        onClick={() => actions.setActiveTab(id)}
-        aria-current={activeTab === id ? 'page' : undefined}
-        aria-label={label}
-        className={`group relative flex items-center xl:justify-start justify-center gap-4 p-3.5 xl:px-6 rounded-full transition-all duration-300 ease-out outline-none w-full
-          ${activeTab === id 
-            ? 'text-white shadow-lg shadow-nuit/30 scale-105 backdrop-blur-md dark:shadow-[0_0_30px_rgba(30,72,143,0.6)]' 
-            : 'text-midnight dark:text-blue-200 hover:bg-white/40 dark:hover:bg-white/10 hover:backdrop-blur-sm active:scale-95'
-          } focus-visible:ring-4 focus-visible:ring-blue-500/30`}
-      >
-        {activeTab === id && (
-            <div className={`absolute inset-0 ${colorClass} rounded-full opacity-100 transition-opacity duration-500`}></div>
-        )}
-        <div className={`relative z-10 p-1 transition-transform duration-300 group-hover:scale-110 ${activeTab === id ? 'text-white' : ''}`}>
-           <Icon size={26} strokeWidth={activeTab === id ? 2.5 : 2} aria-hidden="true" />
-        </div>
-        <span className={`relative z-10 hidden xl:block text-lg tracking-tight ${activeTab === id ? 'font-bold' : 'font-medium'}`}>
-            {label}
-        </span>
-        
-        {/* Tooltip */}
-        <span className="absolute left-full ml-3 px-3 py-1.5 bg-midnight dark:bg-white text-white dark:text-midnight text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none shadow-xl xl:hidden whitespace-nowrap z-50 border border-white/10 scale-95 group-hover:scale-100 origin-left">
-            {label}
-        </span>
-      </button>
-  );
-
   return (
     <nav className="h-full flex flex-col" aria-label="Menu Principal">
       <div className="flex-1 space-y-6">
@@ -76,10 +76,10 @@ const Sidebar: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-3 items-center xl:items-start w-full">
-          <NavItem id="feed" icon={ScrollText} label="Mural" />
-          <NavItem id="explore" icon={Users} label="Políticos" />
-          <NavItem id="parties" icon={BarChart3} label="Gráficos" colorClass="bg-gradient-to-r from-blue-500 to-blue-600" />
-          <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" colorClass="bg-gradient-to-r from-picture to-green-900" />
+          <NavItem id="feed" icon={ScrollText} label="Mural" activeTab={activeTab} onSelect={actions.setActiveTab} />
+          <NavItem id="explore" icon={Users} label="Políticos" activeTab={activeTab} onSelect={actions.setActiveTab} />
+          <NavItem id="parties" icon={BarChart3} label="Gráficos" colorClass="bg-gradient-to-r from-blue-500 to-blue-600" activeTab={activeTab} onSelect={actions.setActiveTab} />
+          <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" colorClass="bg-gradient-to-r from-picture to-green-900" activeTab={activeTab} onSelect={actions.setActiveTab} />
         </div>
 
         <button

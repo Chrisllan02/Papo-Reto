@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText, ExternalLink, RefreshCw } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Scale, AlertCircle, Lightbulb, Banknote, ScrollText, ExternalLink, RefreshCw } from 'lucide-react';
 import { EducationalArticle } from '../types';
 
 interface EducationViewProps {

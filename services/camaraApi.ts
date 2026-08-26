@@ -114,7 +114,9 @@ export const getProfileDataScore = (profile?: Partial<Politician> | null) => {
     );
 };
 
-const saveCachedPolitician = async (id: number, _data: Partial<Politician>) => {
+// Dispara o rebuild do cache compartilhado no servidor, que busca os dados
+// oficiais (perfil + despesas + frentes + discursos + agenda) por conta própria.
+const saveCachedPolitician = async (id: number) => {
     const endpoint = getProfileCacheEndpoint();
     try {
         await fetch(`${endpoint}?type=politician&id=${id}`, {
@@ -189,6 +191,16 @@ export const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
 };
 
 // --- HELPERS ---
+
+// Hash determinístico (djb2) para gerar IDs numéricos estáveis quando a fonte
+// não fornece código — IDs aleatórios quebram cache, dedupe e keys do React.
+export const stableNumericId = (source: string, offset = 9_000_000): number => {
+    let hash = 5381;
+    for (let i = 0; i < source.length; i++) {
+        hash = ((hash << 5) + hash + source.charCodeAt(i)) | 0;
+    }
+    return offset + Math.abs(hash % 1_000_000);
+};
 
 export const getIdeology = (partySigla: string): 'Esquerda' | 'Centro' | 'Direita' => {
     const sigla = partySigla ? partySigla.trim().toUpperCase() : '';
@@ -281,8 +293,8 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                     return el?.textContent?.trim() || '';
                 };
 
-                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
                 const name = getText('NomeParlamentar') || getText('NomeCompletoParlamentar');
+                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar')) || stableNumericId(name);
                 const party = getText('SiglaPartidoParlamentar');
                 const state = getText('SiglaUfParlamentar') || getText('UfParlamentar');
                 const photo = getText('UrlFotoParlamentar');
@@ -376,8 +388,9 @@ export const fetchPartidos = async (): Promise<Party[]> => {
 export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
     // Detalhes básicos (bio, nascimento, identidade de gênero correta)
     const cacheKey = `pol_fast_${pol.id}`;
+    // Erros do fetcher propagam para o fetchWithCache, que não grava nada:
+    // uma oscilação da API não pode congelar o perfil sem enriquecimento por 24h.
     return (await fetchWithCache(cacheKey, async () => {
-        try {
             const cached = await fetchCachedPolitician(pol.id);
             if (cached && (cached.civilName || cached.birthDate || cached.cabinet || cached.socials)) {
                 return { ...pol, ...cached } as Politician;
@@ -385,7 +398,7 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
 
             const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`);
             const d = data.dados;
-            
+
             // Lógica Robusta de Gênero (Incluindo Trans)
             let finalRole = pol.role;
             let finalSex = d.sexo || pol.sex;
@@ -424,33 +437,9 @@ export const enrichPoliticianFast = async (pol: Politician): Promise<Politician>
                 statusDescription: d.ultimoStatus?.descricaoStatus // Motivo da licença
             } as Politician;
 
-            saveCachedPolitician(pol.id, {
-                id: enriched.id,
-                name: enriched.name,
-                party: enriched.party,
-                partyShort: enriched.partyShort,
-                state: enriched.state,
-                photo: enriched.photo,
-                role: enriched.role,
-                sex: enriched.sex,
-                civilName: enriched.civilName,
-                birthDate: enriched.birthDate,
-                birthCity: enriched.birthCity,
-                birthState: enriched.birthState,
-                education: enriched.education,
-                website: enriched.website,
-                email: enriched.email,
-                cabinet: enriched.cabinet,
-                socials: enriched.socials,
-                situation: enriched.situation,
-                condition: enriched.condition,
-                statusDescription: enriched.statusDescription
-            });
+            saveCachedPolitician(pol.id);
 
             return enriched;
-        } catch (e) {
-            return pol;
-        }
     }, TTL_STATIC)) || pol;
 };
 
@@ -638,22 +627,21 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         };
 
         if (staleLocalProfile && getProfileDataScore(result) < getProfileDataScore(staleLocalProfile)) {
-            localStorage.setItem(fullCacheKey, JSON.stringify({ data: staleLocalProfile, timestamp: Date.now() }));
+            try {
+                localStorage.setItem(fullCacheKey, JSON.stringify({ data: staleLocalProfile, timestamp: Date.now() }));
+            } catch {
+                // Quota cheia não deve descartar o dado já carregado.
+            }
             return staleLocalProfile;
         }
 
-        saveCachedPolitician(pol.id, {
-            id: pol.id,
-            stats: updatedStats,
-            expensesBreakdown: expenses.slice(0, 6),
-            detailedExpenses: detailedExpenses.slice(0, 200),
-            fronts: fronts.slice(0, 50),
-            occupations: occupations.slice(0, 50),
-            speeches: speeches.slice(0, 25),
-            agenda: agenda.slice(0, 10)
-        });
+        saveCachedPolitician(pol.id);
 
-        localStorage.setItem(fullCacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+        try {
+            localStorage.setItem(fullCacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+        } catch {
+            // Quota cheia não deve descartar o dado já carregado.
+        }
         return result;
 
     } catch (e) {
@@ -771,7 +759,7 @@ export const fetchEventDetails = async (id: number): Promise<{
         return (await fetchWithCache(cacheKey, async () => {
             const eventData = await fetchAPI(`${BASE_URL_CAMARA}/eventos/${id}`);
             let guests: string[] = [];
-            let participants: string[] = [];
+            let participants: string[];
             
             if (eventData && eventData.dados) {
                 const event = eventData.dados;
@@ -849,11 +837,15 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                     if (propId) sourceUrl = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
                 }
                 
+                const registeredAt = new Date(v.dataHoraRegistro);
                 return {
-                    id: parseInt(v.id) || Date.now() + Math.random(),
+                    // IDs de votação vêm no formato "2390874-43": parseInt colidiria
+                    // entre votações da mesma proposição.
+                    id: stableNumericId(String(v.id || v.uri || v.dataHoraRegistro), 100_000_000),
                     type: 'voto',
                     title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
-                    date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
+                    date: registeredAt.toLocaleDateString('pt-BR'),
+                    timestamp: registeredAt.getTime(),
                     description: formatText(v.descricao),
                     status: 'Concluído',
                     sourceUrl: sourceUrl,
@@ -868,9 +860,10 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
         if (propsData && propsData.dados) {
             const propsFeed = propsData.dados.map((p: any) => ({
                 id: p.id,
-                type: 'voto', 
+                type: 'voto',
                 title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
                 date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
+                timestamp: new Date(p.dataApresentacao || Date.now()).getTime(),
                 description: formatText(p.ementa),
                 status: 'Apresentado',
                 sourceUrl: `https://www.camara.leg.br/propostas-legislativas/${p.id}`,
@@ -886,6 +879,7 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                 type: 'evento',
                 title: e.descricaoTipo || 'Evento Legislativo',
                 date: new Date(e.dataHoraInicio).toLocaleDateString('pt-BR'),
+                timestamp: new Date(e.dataHoraInicio).getTime(),
                 description: formatText(e.descricao || e.localCamara?.nome || 'Audiência Pública'),
                 status: e.situacao || 'Realizado',
                 sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${e.id}`,
@@ -898,10 +892,10 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
         }
 
         return feed.sort((a, b) => {
-            const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0;
-            const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0;
+            const dateA = a.timestamp || (a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0);
+            const dateB = b.timestamp || (b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0);
             return dateB - dateA || (b.id - a.id);
-        }).slice(0, 30); 
+        }).slice(0, 30);
 
     }, TTL_DYNAMIC);
     return result || [];

@@ -112,7 +112,7 @@ export const getDidacticContext = (title: string, description: string | undefine
     }
 
     const text = description || title || "";
-    let didacticText = "";
+    let didacticText: string;
     let constitutionRef = null;
 
     let legislativeExplanation = "";
