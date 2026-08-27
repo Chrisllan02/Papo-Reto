@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-26T13:28:44.733Z",
+  "generatedAt": "2026-08-27T22:26:09.570Z",
   "appUrl": "https://papo-reto-beige.vercel.app",
   "health": {
     "ok": true,
     "service": "paporeto",
-    "timestamp": "2026-08-26T13:28:21.117Z",
+    "timestamp": "2026-08-27T22:25:45.789Z",
     "integrations": {
       "ai": false,
       "profileBlobCache": false,
@@ -12,9 +12,9 @@
     }
   },
   "counts": {
-    "politicians": 594,
-    "feedItems": 15,
-    "parties": 22,
+    "politicians": 81,
+    "feedItems": 0,
+    "parties": 0,
     "dependencies": 8,
     "devDependencies": 20
   }
