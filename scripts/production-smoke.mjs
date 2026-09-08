@@ -1,23 +1,36 @@
 import { URL } from 'node:url';
 
 const APP_URL = process.env.SMOKE_APP_URL || 'https://papo-reto-beige.vercel.app';
-const TIMEOUT_MS = 25000;
+const TIMEOUT_MS = 45000;
+const RETRIES = 2;
+const RETRY_DELAY_MS = 3000;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const fetchWithTimeout = async (path, options = {}) => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    return await fetch(new URL(path, APP_URL), {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        ...(options.headers || {}),
-      },
-    });
-  } finally {
-    clearTimeout(timeout);
+  let lastError;
+  for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      return await fetch(new URL(path, APP_URL), {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt < RETRIES) {
+        await delay(RETRY_DELAY_MS);
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  throw lastError;
 };
 
 const assert = (condition, message) => {
