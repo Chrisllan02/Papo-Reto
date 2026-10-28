@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://papo-reto-beige.vercel.app/sitemap.xml

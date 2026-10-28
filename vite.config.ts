@@ -21,7 +21,7 @@ export default defineConfig(() => {
           output: {
             manualChunks: {
               react: ['react', 'react-dom'],
-              charts: ['react-window', 'react-virtualized-auto-sizer'],
+              'virtual-list': ['react-window', 'react-virtualized-auto-sizer'],
               visuals: ['lucide-react', 'html2canvas'],
             }
           }

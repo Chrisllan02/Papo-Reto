@@ -1,4 +1,4 @@
-// Reference to vite/client removed to avoid type resolution errors
+/// <reference types="vite/client" />
 
 interface ImportMetaEnv {
   readonly VITE_BOOTSTRAP_ENDPOINT?: string;
@@ -13,7 +13,7 @@ interface ImportMeta {
 
 declare namespace NodeJS {
   interface ProcessEnv {
-    API_KEY: string;
+    API_KEY?: string;
     GOOGLE_API_KEY?: string;
     BLOB_READ_WRITE_TOKEN?: string;
     [key: string]: string | undefined;
