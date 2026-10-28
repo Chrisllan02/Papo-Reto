@@ -1,4 +1,5 @@
 import { ESTADOS_BRASIL } from '../constants';
+import { timeoutSignal } from './timeoutSignal';
 
 const STATE_NAME_TO_UF: Record<string, string> = {
   acre: 'AC',
@@ -55,6 +56,9 @@ const extractUFToken = (value?: string | null) => {
 export const extractBrazilianStateUF = (data: Record<string, any> | null | undefined) => {
   if (!data || typeof data !== 'object') return '';
 
+  const countryCode = typeof data.countryCode === 'string' ? data.countryCode.trim().toUpperCase() : '';
+  if (countryCode && countryCode !== 'BR') return '';
+
   const directCandidates = [
     data.principalSubdivisionCode,
     data.principalSubdivision,
@@ -89,15 +93,18 @@ export const extractBrazilianStateUF = (data: Record<string, any> | null | undef
   return '';
 };
 
+const GEOCODE_TIMEOUT_MS = 8000;
+
 export const reverseGeocodeToUF = async (latitude: number, longitude: number) => {
   const params = new URLSearchParams({
-    latitude: String(latitude),
-    longitude: String(longitude),
+    latitude: latitude.toFixed(1),
+    longitude: longitude.toFixed(1),
     localityLanguage: 'pt',
   });
 
   const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`, {
     headers: { Accept: 'application/json' },
+    signal: timeoutSignal(GEOCODE_TIMEOUT_MS),
   });
 
   if (!response.ok) return '';

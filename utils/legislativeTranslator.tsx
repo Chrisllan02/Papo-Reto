@@ -2,7 +2,7 @@ import React from 'react';
 import { GraduationCap, HeartPulse, Banknote, Shield, Briefcase, Leaf, Gavel, Activity } from 'lucide-react';
 import { Glossary, DICTIONARY } from '../components/Glossary';
 import { FeedCategory } from '../types';
-import { detectLegislativeCategory } from '../domain/legislative/classification';
+import { detectLegislativeCategory, normalizeForMatch } from '../domain/legislative/classification';
 
 // Dicionário Constitucional
 export const CONSTITUTION_TOPICS: Record<string, { art: string, text: string }> = {
@@ -27,6 +27,12 @@ export const CONSTITUTION_TOPICS: Record<string, { art: string, text: string }> 
     'internet': { art: 'Art. 5º', text: 'É livre a manifestação do pensamento, vedado o anonimato.' },
     'transporte': { art: 'Art. 6º', text: 'Transporte é um direito social constitucional.' }
 };
+
+const CONSTITUTION_MATCHERS = Object.entries(CONSTITUTION_TOPICS).map(([key, value]) => {
+    const term = normalizeForMatch(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = key.length <= 3 ? `\\b${term}\\b` : `\\b${term}[a-z0-9]*\\b`;
+    return { regex: new RegExp(pattern), value };
+});
 
 export const LEGISLATIVE_TYPES: Record<string, string> = {
     'PEC': 'Esta é uma Proposta de Emenda à Constituição. É a mudança mais difícil e poderosa das leis, exigindo 3/5 dos votos para passar. Altera a base do país.',
@@ -92,7 +98,7 @@ export const formatCardTitle = (title: string, type: string) => {
         .replace(/^Dispõe sobre a /i, '')
         .replace(/^Dispõe sobre o /i, '')
         .replace(/^Altera a Lei /i, 'Alteração na Lei ')
-        .replace(/n\.º? ?/gi, '')
+        .replace(/\bn[.º]{1,2}\s?(?=\d)/gi, '')
         .replace(/\/\d{4}/, '');
 
     clean = clean.charAt(0).toUpperCase() + clean.slice(1);
@@ -116,12 +122,17 @@ export const getDidacticContext = (title: string, description: string | undefine
     let constitutionRef = null;
 
     let legislativeExplanation = "";
-    if (text.includes('PEC') || title.includes('PEC')) legislativeExplanation = LEGISLATIVE_TYPES['PEC'];
-    else if (text.includes('MPV') || title.includes('MPV')) legislativeExplanation = LEGISLATIVE_TYPES['MPV'];
-    else if (text.includes('PLP') || title.includes('PLP')) legislativeExplanation = LEGISLATIVE_TYPES['PLP'];
-    else if (text.includes('PDL') || title.includes('PDL')) legislativeExplanation = LEGISLATIVE_TYPES['PDL'];
-    else if (text.includes('Projeto de Lei') || title.includes('PL')) legislativeExplanation = LEGISLATIVE_TYPES['PL'];
-    else if (text.includes('Requerimento') || title.includes('REQ')) legislativeExplanation = LEGISLATIVE_TYPES['REQ'];
+    const typeMatchers: Array<{ regex: RegExp, key: string }> = [
+        { regex: /\bPEC\b/, key: 'PEC' },
+        { regex: /\bMPV\b/, key: 'MPV' },
+        { regex: /\bPLP\b/, key: 'PLP' },
+        { regex: /\bPDL\b/, key: 'PDL' },
+        { regex: /\bPL\b|Projeto de Lei/, key: 'PL' },
+        { regex: /\bREQ\b|Requerimento/, key: 'REQ' }
+    ];
+    const typeSource = `${title} ${text}`;
+    const matchedType = typeMatchers.find(({ regex }) => regex.test(typeSource));
+    if (matchedType) legislativeExplanation = LEGISLATIVE_TYPES[matchedType.key];
 
     const dictionary = [
         { regex: /Retirado o Requerimento.*em raz[ãa]o do deferimento.*/i, replace: "Pedido cancelado pois um novo mais atual foi aceito." },
@@ -153,13 +164,9 @@ export const getDidacticContext = (title: string, description: string | undefine
         translatedStatus = text.replace(/Requerimento n\. \d+(\/\d+)?/gi, "o pedido").substring(0, 100) + (text.length > 100 ? "..." : "");
     }
 
-    const fullTextSearch = (title + " " + text).toLowerCase();
-    for (const key in CONSTITUTION_TOPICS) {
-        if (fullTextSearch.includes(key)) {
-            constitutionRef = CONSTITUTION_TOPICS[key];
-            break; 
-        }
-    }
+    const fullTextSearch = normalizeForMatch(`${title} ${text}`);
+    const constitutionMatch = CONSTITUTION_MATCHERS.find(({ regex }) => regex.test(fullTextSearch));
+    if (constitutionMatch) constitutionRef = constitutionMatch.value;
 
     didacticText = translatedStatus;
     if (legislativeExplanation) {
@@ -176,23 +183,32 @@ export const getDidacticContext = (title: string, description: string | undefine
 export const renderWithGlossary = (text: string) => {
     if (!text) return null;
     
-    // Escapa caracteres especiais para o Regex e ordena por tamanho (maior primeiro para match exato de frases longas)
     const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const terms = Object.keys(DICTIONARY).sort((a, b) => b.length - a.length).map(escapeRegExp);
-    
+    const keys = Object.keys(DICTIONARY);
+    const terms = [...keys].sort((a, b) => b.length - a.length).map(escapeRegExp);
+
     if (terms.length === 0) return text;
 
-    // Cria regex para capturar os termos
-    const regex = new RegExp(`(${terms.join('|')})`, 'gi');
-    const parts = text.split(regex);
+    const isWordChar = (char: string | undefined) => Boolean(char) && /[\p{L}\p{N}]/u.test(char as string);
+    const regex = new RegExp(`(${terms.join('|')})`, 'giu');
+
+    const parts: Array<string | { term: string, value: string }> = [];
+    let lastIndex = 0;
+    for (const match of text.matchAll(regex)) {
+        const index = match.index ?? 0;
+        const value = match[0];
+        const end = index + value.length;
+        if (isWordChar(text[index - 1]) || isWordChar(text[end])) continue;
+        const term = keys.find(t => t.toLowerCase() === value.toLowerCase());
+        if (!term) continue;
+        if (index > lastIndex) parts.push(text.slice(lastIndex, index));
+        parts.push({ term, value });
+        lastIndex = end;
+    }
+    if (lastIndex < text.length) parts.push(text.slice(lastIndex));
 
     return parts.map((part, i) => {
-        // Verifica se a parte é um termo do dicionário (case insensitive)
-        const match = Object.keys(DICTIONARY).find(t => t.toLowerCase() === part.toLowerCase());
-        
-        if (match) {
-            return <Glossary key={i} term={match}>{part}</Glossary>;
-        }
-        return part;
+        if (typeof part === 'string') return part;
+        return <Glossary key={i} term={part.term}>{part.value}</Glossary>;
     });
 };

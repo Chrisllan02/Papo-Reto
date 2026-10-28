@@ -2,11 +2,18 @@
 import { Politician, FeedItem, Party, ExpenseCategory, Speech, ExpenseItem, LegislativeEvent } from '../types';
 import { PARTY_METADATA } from '../constants';
 import { detectCategory } from '../utils/legislativeTranslator';
+import { timeoutSignal } from '../utils/timeoutSignal';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
+import { safeGetItem, safeSetItem, safeSetItemWithEviction, purgeStaleKeys } from './storage';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
-// FORCE CACHE INVALIDATION TO GET NEW SPEECH DATA
-const CACHE_PREFIX = 'paporeto_cache_v8_official_';
+export const CACHE_PREFIX = 'paporeto_cache_v8_official_';
+const PREFETCH_MARK_KEY = 'paporeto_prefetched_profiles_v1';
+
+purgeStaleKeys(/^paporeto_cache_v\d+_/, key => key.startsWith(CACHE_PREFIX));
+purgeStaleKeys(/^paporeto_prefetched_profiles_v\d+$/, key => key === PREFETCH_MARK_KEY);
+
+export const getFullProfileCacheKey = (id: number) => `${CACHE_PREFIX}pol_full_v2_${id}`;
 export const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
 export const PROFILE_DETAIL_FRESH_TTL = 1000 * 60 * 60 * 24; // 24 horas
 export const PROFILE_DETAIL_STALE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 dias
@@ -17,7 +24,7 @@ const inFlightCacheRequests = new Map<string, Promise<any>>();
 export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T | null> => {
     const cacheKey = `${CACHE_PREFIX}${key}`;
     try {
-        const cached = localStorage.getItem(cacheKey);
+        const cached = safeGetItem(cacheKey);
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < ttl) {
@@ -36,10 +43,8 @@ export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, 
     const request = (async () => {
     try {
         const data = await fetcher();
-        try {
-            localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
-        } catch (e) {
-            console.warn('Cache write error (quota?)', e);
+        if (!safeSetItemWithEviction(cacheKey, JSON.stringify({ data, timestamp: Date.now() }), CACHE_PREFIX)) {
+            console.warn('Cache write error (quota?)', key);
         }
         return data;
     } catch (e) {
@@ -65,15 +70,31 @@ const getProfileCacheEndpoint = () => {
     }
 };
 
-const fetchCachedPolitician = async (id: number): Promise<Partial<Politician> | null> => {
+const PROFILE_CACHE_MEMO_TTL = 1000 * 30;
+const profileCacheMemo = new Map<number, { promise: Promise<Partial<Politician> | null>; at: number }>();
+
+const requestCachedPolitician = async (id: number): Promise<Partial<Politician> | null> => {
     const endpoint = getProfileCacheEndpoint();
     try {
-        const res = await fetch(`${endpoint}?type=politician&id=${id}`);
+        const res = await fetch(`${endpoint}?type=politician&id=${id}`, { signal: timeoutSignal(10000) });
         if (!res.ok) return null;
         return await res.json();
     } catch {
         return null;
     }
+};
+
+// Abrir um perfil consulta /api/profile-cache em três etapas; a janela curta evita repetir o GET.
+const fetchCachedPolitician = (id: number): Promise<Partial<Politician> | null> => {
+    const memo = profileCacheMemo.get(id);
+    if (memo && Date.now() - memo.at < PROFILE_CACHE_MEMO_TTL) return memo.promise;
+
+    const promise = requestCachedPolitician(id);
+    profileCacheMemo.set(id, { promise, at: Date.now() });
+    promise.then(result => {
+        if (!result && profileCacheMemo.get(id)?.promise === promise) profileCacheMemo.delete(id);
+    });
+    return promise;
 };
 
 export const fetchCachedPoliticianProfile = async (id: number): Promise<Partial<Politician> | null> => {
@@ -116,6 +137,7 @@ export const getProfileDataScore = (profile?: Partial<Politician> | null) => {
 
 const saveCachedPolitician = async (id: number, _data: Partial<Politician>) => {
     const endpoint = getProfileCacheEndpoint();
+    profileCacheMemo.delete(id);
     try {
         await fetch(`${endpoint}?type=politician&id=${id}`, {
             method: 'POST'
@@ -126,11 +148,10 @@ const saveCachedPolitician = async (id: number, _data: Partial<Politician>) => {
 };
 
 const prefetchInFlight = new Set<number>();
-const PREFETCH_MARK_KEY = 'paporeto_prefetched_profiles_v1';
 
 const readPrefetchMarks = (): Record<string, number> => {
     try {
-        const raw = localStorage.getItem(PREFETCH_MARK_KEY);
+        const raw = safeGetItem(PREFETCH_MARK_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === 'object' ? parsed : {};
@@ -140,11 +161,7 @@ const readPrefetchMarks = (): Record<string, number> => {
 };
 
 const writePrefetchMarks = (marks: Record<string, number>) => {
-    try {
-        localStorage.setItem(PREFETCH_MARK_KEY, JSON.stringify(marks));
-    } catch {
-        // Ignore storage quota issues.
-    }
+    safeSetItem(PREFETCH_MARK_KEY, JSON.stringify(marks));
 };
 
 export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000): Promise<any> => {
@@ -212,16 +229,50 @@ export const getStaticParties = (): Party[] => {
     }));
 };
 
+// --- HELPER: DATAS (FUSO DE BRASÍLIA) ---
+const BRAZIL_DATE_FORMAT = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+});
+
+export const getBrazilDateString = (daysAgo = 0, now: Date = new Date()): string =>
+    BRAZIL_DATE_FORMAT.format(new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000));
+
+export const formatBrazilianDate = (value?: string | null, options?: { withYear?: boolean }): string | undefined => {
+    if (!value) return undefined;
+    const withYear = options?.withYear !== false;
+    const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (iso) return withYear ? `${iso[3]}/${iso[2]}/${iso[1]}` : `${iso[3]}/${iso[2]}`;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return undefined;
+    return date.toLocaleDateString('pt-BR', withYear ? undefined : { day: '2-digit', month: '2-digit' });
+};
+
+// Id numérico estável e negativo para votações (ids como "2367475-47" colidiam com ids de proposições).
+const stableNegativeId = (value: string): number => {
+    let hash = 5381;
+    for (let i = 0; i < value.length; i++) {
+        hash = ((hash * 33) ^ value.charCodeAt(i)) >>> 0;
+    }
+    return -(hash + 1);
+};
+
 // --- HELPER: TRAMITÔMETRO (STATUS CALCULATOR) ---
-const calculateProgress = (statusDescription: string): { progress: number, label: string } => {
-    const s = statusDescription.toLowerCase();
-    
-    if (s.includes('apresentação') || s.includes('protocolo')) return { progress: 10, label: 'Apresentação' };
-    if (s.includes('aguardando parecer') || s.includes('comissão') || s.includes('ccjc')) return { progress: 30, label: 'Comissões' };
-    if (s.includes('pronta para pauta') || s.includes('plenário') || s.includes('ordem do dia')) return { progress: 60, label: 'Plenário' };
-    if (s.includes('remessa ao senado') || s.includes('senado')) return { progress: 80, label: 'Senado Federal' };
-    if (s.includes('sanção') || s.includes('veto') || s.includes('transformado em lei')) return { progress: 100, label: 'Sanção/Lei' };
-    
+export const calculateProgress = (statusDescription: string): { progress: number, label: string } => {
+    const s = (statusDescription || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    if (!s.trim()) return { progress: 0, label: 'Situação não informada' };
+
+    if (/\barquivad/.test(s)) return { progress: 0, label: 'Arquivada' };
+    if (/\btransformad\w* em (norma juridica|lei)|\btransformad\w* na lei/.test(s)) return { progress: 100, label: 'Transformado em Norma Jurídica' };
+    if (/\bsancao\b|\bveto\b|\bvetad/.test(s)) return { progress: 90, label: 'Sanção/Veto' };
+    if (/\bsenado\b/.test(s)) return { progress: 80, label: 'Senado Federal' };
+    if (/\bplenario\b|\bordem do dia\b|\bpronta para pauta\b/.test(s)) return { progress: 60, label: 'Plenário' };
+    if (/\bcomiss(ao|oes)\b|\bccjc\b|\brelator|\bparecer\b/.test(s)) return { progress: 30, label: 'Comissões' };
+    if (/\bapresentacao\b|\bprotocolo\b/.test(s)) return { progress: 10, label: 'Apresentação' };
+
     return { progress: 20, label: 'Tramitando' };
 };
 
@@ -231,7 +282,7 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
     const result = await fetchWithCache('deputados_list', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?ordem=ASC&ordenarPor=nome`);
         
-        if (!data || !data.dados) {
+        if (!data || !Array.isArray(data.dados) || data.dados.length === 0) {
             throw new Error("Invalid data format from API");
         }
 
@@ -275,13 +326,14 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
             if (xml.getElementsByTagName('parsererror').length > 0) return [];
 
             const parlamentares = Array.from(xml.getElementsByTagName('Parlamentar'));
-            return parlamentares.map((parlamentar) => {
+            return parlamentares.flatMap((parlamentar): Politician[] => {
                 const getText = (tag: string) => {
                     const el = parlamentar.getElementsByTagName(tag)[0];
                     return el?.textContent?.trim() || '';
                 };
 
-                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
+                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar'));
+                if (!Number.isFinite(id) || id <= 0) return [];
                 const name = getText('NomeParlamentar') || getText('NomeCompletoParlamentar');
                 const party = getText('SiglaPartidoParlamentar');
                 const state = getText('SiglaUfParlamentar') || getText('UfParlamentar');
@@ -300,7 +352,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                     })
                     .filter(Boolean);
 
-                return {
+                const senator = {
                     id,
                     name: formatText(name),
                     party,
@@ -335,11 +387,12 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
                         spending: 0,
                         partyFidelity: undefined
                     },
-                    mandate: { start: mandateStart || '2023-02-01', end: mandateEndDates.at(-1) || '2031-01-31' },
+                    mandate: { start: mandateStart, end: mandateEndDates.at(-1) || '' },
                     hasApiIntegration: false,
                     votes: {}
                 } as Politician;
-            }).filter(p => p.name && p.party && p.state);
+                return senator.name && senator.party && senator.state ? [senator] : [];
+            });
         } catch {
             return [];
         }
@@ -348,7 +401,9 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
     const result = await fetchWithCache('senadores_list', async () => {
         const res = await fetchAPI(SENADO_URL, 2, false, 1000, 15000);
         const xmlText = await (res as Response).text();
-        return parseXmlText(xmlText);
+        const senators = parseXmlText(xmlText);
+        if (senators.length === 0) throw new Error('Lista de senadores vazia');
+        return senators;
     }, TTL_STATIC);
 
     return result || [];
@@ -357,8 +412,10 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
 export const fetchPartidos = async (): Promise<Party[]> => {
     const result = await fetchWithCache('partidos_list', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/partidos?ordem=ASC&ordenarPor=sigla&itens=100`);
-        if (!data || !data.dados) return [];
-        
+        if (!data || !Array.isArray(data.dados) || data.dados.length === 0) {
+            throw new Error("Lista de partidos vazia");
+        }
+
         return data.dados.map((p: any) => ({
             id: p.id,
             sigla: p.sigla,
@@ -376,93 +433,90 @@ export const fetchPartidos = async (): Promise<Party[]> => {
 export const enrichPoliticianFast = async (pol: Politician): Promise<Politician> => {
     // Detalhes básicos (bio, nascimento, identidade de gênero correta)
     const cacheKey = `pol_fast_${pol.id}`;
+    // Em erro o fetcher lança: fetchWithCache não grava o perfil não enriquecido e devolvemos `pol`.
     return (await fetchWithCache(cacheKey, async () => {
-        try {
-            const cached = await fetchCachedPolitician(pol.id);
-            if (cached && (cached.civilName || cached.birthDate || cached.cabinet || cached.socials)) {
-                return { ...pol, ...cached } as Politician;
-            }
-
-            const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`);
-            const d = data.dados;
-            
-            // Lógica Robusta de Gênero (Incluindo Trans)
-            let finalRole = pol.role;
-            let finalSex = d.sexo || pol.sex;
-            if (d.sexo === 'F') {
-                finalRole = 'Deputada Federal';
-                finalSex = 'F';
-            }
-            // Override de Segurança para Identidade de Gênero (Erika Hilton, Duda Salabert) caso a API falhe/demore
-            if ([220560, 220608].includes(pol.id)) {
-                finalRole = 'Deputada Federal';
-                finalSex = 'F';
-            }
-
-            const enriched = {
-                ...pol,
-                role: finalRole,
-                sex: finalSex,
-                civilName: formatText(d.nomeCivil),
-                birthDate: d.dataNascimento, // YYYY-MM-DD
-                birthCity: d.municipioNascimento,
-                birthState: d.ufNascimento,
-                profession: 'Parlamentar', // Placeholder, API não retorna direto aqui, enriquecido depois
-                education: d.escolaridade,
-                website: d.urlWebsite,
-                cabinet: {
-                    room: d.ultimoStatus?.gabinete?.sala,
-                    floor: d.ultimoStatus?.gabinete?.andar,
-                    building: d.ultimoStatus?.gabinete?.predio,
-                    phone: d.ultimoStatus?.gabinete?.telefone,
-                    email: d.ultimoStatus?.gabinete?.email,
-                },
-                socials: d.redeSocial || [],
-                // Status Detalhado
-                situation: d.ultimoStatus?.situacao, // "Em Exercício", "Licença"
-                condition: d.ultimoStatus?.condicaoEleitoral, // "Titular", "Suplente"
-                statusDescription: d.ultimoStatus?.descricaoStatus // Motivo da licença
-            } as Politician;
-
-            saveCachedPolitician(pol.id, {
-                id: enriched.id,
-                name: enriched.name,
-                party: enriched.party,
-                partyShort: enriched.partyShort,
-                state: enriched.state,
-                photo: enriched.photo,
-                role: enriched.role,
-                sex: enriched.sex,
-                civilName: enriched.civilName,
-                birthDate: enriched.birthDate,
-                birthCity: enriched.birthCity,
-                birthState: enriched.birthState,
-                education: enriched.education,
-                website: enriched.website,
-                email: enriched.email,
-                cabinet: enriched.cabinet,
-                socials: enriched.socials,
-                situation: enriched.situation,
-                condition: enriched.condition,
-                statusDescription: enriched.statusDescription
-            });
-
-            return enriched;
-        } catch (e) {
-            return pol;
+        const cached = await fetchCachedPolitician(pol.id);
+        if (cached && (cached.civilName || cached.birthDate || cached.cabinet || cached.socials)) {
+            return { ...pol, ...cached } as Politician;
         }
+
+        const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`);
+        const d = data.dados;
+
+        const apiSex = normalizeSex(d.sexo);
+        const finalSex = apiSex || pol.sex;
+        const finalRole = apiSex === 'F' ? 'Deputada Federal' : pol.role;
+
+        const enriched = {
+            ...pol,
+            role: finalRole,
+            sex: finalSex,
+            civilName: formatText(d.nomeCivil),
+            birthDate: d.dataNascimento, // YYYY-MM-DD
+            birthCity: d.municipioNascimento,
+            birthState: d.ufNascimento,
+            education: d.escolaridade,
+            website: d.urlWebsite,
+            cabinet: {
+                room: d.ultimoStatus?.gabinete?.sala,
+                floor: d.ultimoStatus?.gabinete?.andar,
+                building: d.ultimoStatus?.gabinete?.predio,
+                phone: d.ultimoStatus?.gabinete?.telefone,
+                email: d.ultimoStatus?.gabinete?.email,
+            },
+            socials: d.redeSocial || [],
+            // Status Detalhado
+            situation: d.ultimoStatus?.situacao, // "Em Exercício", "Licença"
+            condition: d.ultimoStatus?.condicaoEleitoral, // "Titular", "Suplente"
+            statusDescription: d.ultimoStatus?.descricaoStatus // Motivo da licença
+        } as Politician;
+
+        saveCachedPolitician(pol.id, {
+            id: enriched.id,
+            name: enriched.name,
+            party: enriched.party,
+            partyShort: enriched.partyShort,
+            state: enriched.state,
+            photo: enriched.photo,
+            role: enriched.role,
+            sex: enriched.sex,
+            civilName: enriched.civilName,
+            birthDate: enriched.birthDate,
+            birthCity: enriched.birthCity,
+            birthState: enriched.birthState,
+            education: enriched.education,
+            website: enriched.website,
+            email: enriched.email,
+            cabinet: enriched.cabinet,
+            socials: enriched.socials,
+            situation: enriched.situation,
+            condition: enriched.condition,
+            statusDescription: enriched.statusDescription
+        });
+
+        return enriched;
     }, TTL_STATIC)) || pol;
 };
 
+// Transcrição integral de discursos é grande demais para o localStorage: fica só em memória.
+const persistFullProfile = (key: string, profile: Politician) => {
+    const slim = {
+        ...profile,
+        speeches: profile.speeches?.map(({ transcription: _transcription, ...speech }) => speech)
+    };
+    if (!safeSetItemWithEviction(key, JSON.stringify({ data: slim, timestamp: Date.now() }), CACHE_PREFIX)) {
+        console.warn('Não foi possível gravar o perfil no cache local (cota?).');
+    }
+};
+
 export const enrichPoliticianData = async (pol: Politician, onProgress?: (status: string) => void): Promise<Politician> => {
-    const cacheKey = `pol_full_v2_${pol.id}`;
-    const fullCacheKey = `${CACHE_PREFIX}${cacheKey}`;
+    const fullCacheKey = getFullProfileCacheKey(pol.id);
     let staleLocalProfile: Politician | null = null;
     
     // Tenta cache local primeiro. Perfil parlamentar é dado lento: se já temos um dado bom,
     // ele continua sendo exibido mesmo quando a API pública oscila.
     try {
-        const cached = localStorage.getItem(fullCacheKey);
+        const cached = safeGetItem(fullCacheKey);
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             const age = Date.now() - Number(timestamp || 0);
@@ -480,7 +534,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         if (hasProfileCacheData(cachedGithub)) {
             const merged = { ...(staleLocalProfile || pol), ...cachedGithub } as Politician;
             if (!staleLocalProfile || getProfileDataScore(merged) >= getProfileDataScore(staleLocalProfile)) {
-                localStorage.setItem(fullCacheKey, JSON.stringify({ data: merged, timestamp: Date.now() }));
+                persistFullProfile(fullCacheKey, merged);
                 return merged;
             }
         }
@@ -504,7 +558,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             }
         };
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = getBrazilDateString();
 
         // Busca paralela expandida
         const [expensesData, frentesData, ocupacoesData, discursosData, agendaData] = await Promise.all([
@@ -558,7 +612,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             expenses.push({ type, value, percent: 0 }); 
         });
         
-        expenses.forEach(e => e.percent = (e.value / totalSpending) * 100);
+        expenses.forEach(e => e.percent = totalSpending > 0 ? (e.value / totalSpending) * 100 : 0);
         expenses.sort((a,b) => b.value - a.value);
 
         // --- Processamento de Agenda (Eventos) ---
@@ -627,7 +681,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
 
         const result = {
             ...pol,
-            profession: formatText(profession || "Político"),
+            profession: profession ? formatText(profession) : undefined,
             stats: updatedStats,
             expensesBreakdown: expenses.slice(0, 5), 
             detailedExpenses: detailedExpenses, 
@@ -638,7 +692,6 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
         };
 
         if (staleLocalProfile && getProfileDataScore(result) < getProfileDataScore(staleLocalProfile)) {
-            localStorage.setItem(fullCacheKey, JSON.stringify({ data: staleLocalProfile, timestamp: Date.now() }));
             return staleLocalProfile;
         }
 
@@ -653,7 +706,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
             agenda: agenda.slice(0, 10)
         });
 
-        localStorage.setItem(fullCacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+        persistFullProfile(fullCacheKey, result);
         return result;
 
     } catch (e) {
@@ -673,8 +726,7 @@ export const prefetchPoliticianProfile = async (pol: Politician) => {
     prefetchInFlight.add(pol.id);
 
     try {
-        const cacheKey = `pol_full_v2_${pol.id}`;
-        const cached = localStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
+        const cached = safeGetItem(getFullProfileCacheKey(pol.id));
         if (cached) {
             const { timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < PROFILE_DETAIL_FRESH_TTL) {
@@ -823,19 +875,18 @@ export const fetchEventDetails = async (id: number): Promise<{
 
 export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
     const result = await fetchWithCache('global_feed_hybrid_v2', async () => {
-        const dateVotes = new Date();
-        dateVotes.setDate(dateVotes.getDate() - 30);
-        const dateStrVotes = dateVotes.toISOString().split('T')[0];
+        const dateStrVotes = getBrazilDateString(30);
+        const dateStr = getBrazilDateString(7);
 
-        const votesData = await fetchAPI(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=10`, 2, true);
-        
-        const dateLimit = new Date();
-        dateLimit.setDate(dateLimit.getDate() - 7); 
-        const dateStr = dateLimit.toISOString().split('T')[0];
-        
-        const propsData = await fetchAPI(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`, 2, true);
+        const [votesResult, propsResult, eventsResult] = await Promise.allSettled([
+            fetchAPI(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=10`, 2, true),
+            fetchAPI(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`, 2, true),
+            fetchAPI(`${BASE_URL_CAMARA}/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=10`, 2, true)
+        ]);
 
-        const eventsData = await fetchAPI(`${BASE_URL_CAMARA}/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=10`, 2, true);
+        const votesData = votesResult.status === 'fulfilled' ? votesResult.value : null;
+        const propsData = propsResult.status === 'fulfilled' ? propsResult.value : null;
+        const eventsData = eventsResult.status === 'fulfilled' ? eventsResult.value : null;
 
         let feed: FeedItem[] = [];
 
@@ -848,14 +899,16 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                     propId = v.uriProposicaoObjeto.split('/').pop();
                     if (propId) sourceUrl = `https://www.camara.leg.br/propostas-legislativas/${propId}`;
                 }
-                
+
+                const status: FeedItem['status'] = v.aprovacao === 1 ? 'Aprovado' : v.aprovacao === 0 ? 'Rejeitado' : undefined;
+
                 return {
-                    id: parseInt(v.id) || Date.now() + Math.random(),
+                    id: stableNegativeId(String(v.id)),
                     type: 'voto',
                     title: v.siglaOrgao + ' ' + (v.uri ? v.uri.split('/').pop() : ''),
-                    date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
+                    date: formatBrazilianDate(v.dataHoraRegistro),
                     description: formatText(v.descricao),
-                    status: 'Concluído',
+                    status,
                     sourceUrl: sourceUrl,
                     category: detectCategory(v.descricao + ' ' + v.siglaOrgao),
                     candidateId: propId ? parseInt(propId) : undefined,
@@ -870,9 +923,9 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                 id: p.id,
                 type: 'voto', 
                 title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
-                date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
+                date: formatBrazilianDate(p.dataApresentacao),
                 description: formatText(p.ementa),
-                status: 'Apresentado',
+                status: 'Tramitação',
                 sourceUrl: `https://www.camara.leg.br/propostas-legislativas/${p.id}`,
                 category: detectCategory(p.ementa),
                 fullTextUrl: p.urlInteiroTeor
@@ -885,9 +938,9 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
                 id: e.id,
                 type: 'evento',
                 title: e.descricaoTipo || 'Evento Legislativo',
-                date: new Date(e.dataHoraInicio).toLocaleDateString('pt-BR'),
-                description: formatText(e.descricao || e.localCamara?.nome || 'Audiência Pública'),
-                status: e.situacao || 'Realizado',
+                date: formatBrazilianDate(e.dataHoraInicio),
+                description: formatText(e.descricao || e.localCamara?.nome || e.descricaoTipo || ''),
+                status: e.situacao || undefined,
                 sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${e.id}`,
                 category: detectCategory(e.descricao || ''),
                 eventUrl: e.urlRegistro,
@@ -897,11 +950,13 @@ export const fetchGlobalVotacoes = async (): Promise<FeedItem[]> => {
             feed = [...feed, ...eventsFeed];
         }
 
-        return feed.sort((a, b) => {
-            const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0;
-            const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0;
-            return dateB - dateA || (b.id - a.id);
-        }).slice(0, 30); 
+        if (feed.length === 0) {
+            throw new Error('Feed legislativo indisponível');
+        }
+
+        const dateValue = (date?: string) => date ? new Date(date.split('/').reverse().join('-')).getTime() || 0 : 0;
+
+        return feed.sort((a, b) => dateValue(b.date) - dateValue(a.date) || (b.id - a.id)).slice(0, 30);
 
     }, TTL_DYNAMIC);
     return result || [];

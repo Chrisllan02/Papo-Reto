@@ -16,9 +16,12 @@ import {
     hasProfileCacheData,
     getProfileDataScore,
     PROFILE_DETAIL_FRESH_TTL,
-    PROFILE_DETAIL_STALE_TTL
+    PROFILE_DETAIL_STALE_TTL,
+    getFullProfileCacheKey
 } from '../services/camaraApi';
-import { POLITICIANS_DB, FEED_ITEMS, EDUCATION_CAROUSEL } from '../constants';
+import { safeGetItem, safeSetItem, safeRemoveItem, purgeStaleKeys } from '../services/storage';
+import { timeoutSignal } from '../utils/timeoutSignal';
+import { POLITICIANS_DB, EDUCATION_CAROUSEL } from '../constants';
 
 type LegislativeBootstrap = {
     politicians: Politician[];
@@ -31,13 +34,24 @@ type LegislativeBootstrap = {
 };
 
 type SexCode = 'F' | 'M';
+type BootstrapCacheData = {
+    politicians?: Politician[];
+    feedItems?: FeedItem[];
+    parties?: Party[];
+    articles?: EducationalArticle[];
+};
+
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
-const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v5';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v6';
 const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
+const BOOTSTRAP_FETCH_TIMEOUT_MS = 20000;
+
+purgeStaleKeys(/^paporeto_bootstrap_v\d+$/, key => key === BOOTSTRAP_CACHE_KEY);
+purgeStaleKeys(/^paporeto_sex_cache_v\d+$/, key => key === SEX_CACHE_KEY);
 
 const readSexCache = (): Record<string, SexCode> => {
     try {
-        const raw = localStorage.getItem(SEX_CACHE_KEY);
+        const raw = safeGetItem(SEX_CACHE_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === 'object' ? parsed : {};
@@ -47,30 +61,21 @@ const readSexCache = (): Record<string, SexCode> => {
 };
 
 const writeSexCache = (cache: Record<string, SexCode>) => {
-    try {
-        localStorage.setItem(SEX_CACHE_KEY, JSON.stringify(cache));
-    } catch {
-        // Ignore storage quota issues.
-    }
+    safeSetItem(SEX_CACHE_KEY, JSON.stringify(cache));
 };
 
-const readBootstrapCache = () => {
+const readBootstrapCache = (): BootstrapCacheData | null => {
     try {
-        const raw = localStorage.getItem(BOOTSTRAP_CACHE_KEY);
+        const raw = safeGetItem(BOOTSTRAP_CACHE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return null;
         if (Date.now() - Number(parsed.timestamp || 0) > BOOTSTRAP_CACHE_TTL) return null;
         if (!Array.isArray(parsed.data?.politicians) || parsed.data.politicians.length === 0) {
-            localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+            safeRemoveItem(BOOTSTRAP_CACHE_KEY);
             return null;
         }
-        return parsed.data as {
-            politicians?: Politician[];
-            feedItems?: FeedItem[];
-            parties?: Party[];
-            articles?: EducationalArticle[];
-        };
+        return parsed.data as BootstrapCacheData;
     } catch {
         return null;
     }
@@ -82,10 +87,19 @@ const writeBootstrapCache = (data: {
     parties: Party[];
     articles: EducationalArticle[];
 }) => {
+    safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+};
+
+// Atualiza só os artigos do cache existente, preservando o timestamp (não renova o TTL do bootstrap).
+const updateBootstrapCacheArticles = (articles: EducationalArticle[]) => {
     try {
-        localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        const raw = safeGetItem(BOOTSTRAP_CACHE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.data || typeof parsed.timestamp !== 'number') return;
+        safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data: { ...parsed.data, articles }, timestamp: parsed.timestamp }));
     } catch {
-        // Ignore storage quota issues.
+        // Cache ilegível: será refeito no próximo bootstrap.
     }
 };
 
@@ -99,7 +113,7 @@ const fetchServerBootstrap = async (): Promise<LegislativeBootstrap | null> => {
     const endpoint = import.meta.env?.VITE_BOOTSTRAP_ENDPOINT || '/api/bootstrap';
 
     try {
-        const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+        const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, signal: timeoutSignal(BOOTSTRAP_FETCH_TIMEOUT_MS) });
         if (!response.ok) return null;
         const json = await response.json();
         const data = json?.data as LegislativeBootstrap | undefined;
@@ -112,65 +126,62 @@ const fetchServerBootstrap = async (): Promise<LegislativeBootstrap | null> => {
     }
 };
 
+// O servidor já hidrata o sexo; aqui só completamos quem ainda falta, com um único setState no final.
 const hydrateMissingSexMetadata = async (
     politicians: Politician[],
-    setPoliticians: Dispatch<SetStateAction<Politician[]>>
+    setPoliticians: Dispatch<SetStateAction<Politician[]>>,
+    isCancelled: () => boolean
 ) => {
-    const cache = readSexCache();
     const missing = politicians.filter(pol => !normalizeSex(pol.sex) && pol.hasApiIntegration !== false);
-
     if (missing.length === 0) return;
 
-    const applyUpdates = (updates: Array<{ id: number; sex: SexCode }>) => {
-        if (updates.length === 0) return;
+    const cache = readSexCache();
+    const found = new Map<number, SexCode>();
+    const toFetch: Politician[] = [];
 
-        setPoliticians(prev => prev.map(pol => {
-            const found = updates.find(update => update.id === pol.id);
-            if (!found) return pol;
-            return {
-                ...pol,
-                sex: found.sex,
-                role: found.sex === 'F' ? 'Deputada Federal' : pol.role?.toLowerCase().includes('senad') ? 'Senador' : 'Deputado Federal'
-            };
-        }));
-    };
+    for (const pol of missing) {
+        const cachedSex = cache[String(pol.id)];
+        if (cachedSex === 'F' || cachedSex === 'M') found.set(pol.id, cachedSex);
+        else toFetch.push(pol);
+    }
 
     const batchSize = 8;
-    for (let i = 0; i < missing.length; i += batchSize) {
-        const batch = missing.slice(i, i + batchSize);
-        const updates: Array<{ id: number; sex: SexCode }> = [];
-
-        await Promise.all(batch.map(async (pol) => {
-            const cachedSex = cache[String(pol.id)];
-            if (cachedSex === 'F' || cachedSex === 'M') {
-                updates.push({ id: pol.id, sex: cachedSex });
-                return;
-            }
-
+    let fetchedAny = false;
+    for (let i = 0; i < toFetch.length && !isCancelled(); i += batchSize) {
+        await Promise.all(toFetch.slice(i, i + batchSize).map(async (pol) => {
             try {
                 const response = await fetchAPI(`${BASE_URL_CAMARA}/deputados/${pol.id}`, 2, true, 750, 12000);
                 const sex = normalizeSex(response?.dados?.sexo);
                 if (sex) {
                     cache[String(pol.id)] = sex;
-                    updates.push({ id: pol.id, sex });
+                    found.set(pol.id, sex);
+                    fetchedAny = true;
                 }
             } catch {
                 // Skip transient API errors; chart will still use known cache entries.
             }
         }));
-
-        applyUpdates(updates);
-        if (updates.length > 0) {
-            writeSexCache(cache);
-        }
     }
+
+    if (fetchedAny) writeSexCache(cache);
+    if (isCancelled() || found.size === 0) return;
+
+    setPoliticians(prev => prev.map(pol => {
+        const sex = found.get(pol.id);
+        if (!sex || normalizeSex(pol.sex)) return pol;
+        return {
+            ...pol,
+            sex,
+            role: sex === 'F' ? 'Deputada Federal' : pol.role?.toLowerCase().includes('senad') ? 'Senador' : 'Deputado Federal'
+        };
+    }));
 };
 
 // --- Hook para Carga Inicial do App (Big Bang Load) ---
 export const useInitialData = () => {
-    const bootstrapCache = readBootstrapCache();
+    const [bootstrapCache] = useState(readBootstrapCache);
     const [politicians, setPoliticians] = useState<Politician[]>(bootstrapCache?.politicians || POLITICIANS_DB);
-    const [feedItems, setFeedItems] = useState<FeedItem[]>(bootstrapCache?.feedItems || FEED_ITEMS);
+    const [feedItems, setFeedItems] = useState<FeedItem[]>(bootstrapCache?.feedItems || []);
     const [parties, setParties] = useState<Party[]>(bootstrapCache?.parties || getStaticParties());
     const [articles, setArticles] = useState<EducationalArticle[]>(bootstrapCache?.articles || (EDUCATION_CAROUSEL as EducationalArticle[])); 
     const [isLoading, setIsLoading] = useState(!bootstrapCache);
@@ -181,21 +192,15 @@ export const useInitialData = () => {
     );
 
     useEffect(() => {
-        const cached = readBootstrapCache();
-        const hasFreshBootstrap = Boolean(cached);
-
-        if (hasFreshBootstrap) {
-            const cachedPoliticians = cached!.politicians || POLITICIANS_DB;
-            setPoliticians(cachedPoliticians);
-            setFeedItems(cached!.feedItems || FEED_ITEMS);
-            setParties(cached!.parties || getStaticParties());
-            setArticles(cached!.articles || (EDUCATION_CAROUSEL as EducationalArticle[]));
-            setIsLoading(false);
-            hydrateMissingSexMetadata(cachedPoliticians, setPoliticians);
-            return;
-        }
-
         let cancelled = false;
+        const isCancelled = () => cancelled;
+
+        if (bootstrapCache) {
+            void hydrateMissingSexMetadata(bootstrapCache.politicians || POLITICIANS_DB, setPoliticians, isCancelled);
+            return () => {
+                cancelled = true;
+            };
+        }
 
         const loadAll = async () => {
             try {
@@ -212,23 +217,25 @@ export const useInitialData = () => {
                             ...fallbackSenators
                         ]
                         : serverBootstrap.politicians;
-                    const nextFeedItems = serverBootstrap.feedItems.length > 0 ? serverBootstrap.feedItems : FEED_ITEMS;
-                    const nextParties = serverBootstrap.parties.length > 0 ? serverBootstrap.parties : getStaticParties();
-                    const nextArticles = serverBootstrap.articles && serverBootstrap.articles.length > 0
-                        ? serverBootstrap.articles
+                    const hasArticles = Boolean(serverBootstrap.articles && serverBootstrap.articles.length > 0);
+                    const nextArticles = hasArticles
+                        ? serverBootstrap.articles!
                         : (EDUCATION_CAROUSEL as EducationalArticle[]);
+                    if (cancelled) return;
                     setPoliticians(nextPoliticians);
-                    setFeedItems(nextFeedItems);
-                    setParties(nextParties);
+                    setFeedItems(serverBootstrap.feedItems);
+                    if (serverBootstrap.parties.length > 0) setParties(serverBootstrap.parties);
                     setArticles(nextArticles);
-                    writeBootstrapCache({
-                        politicians: nextPoliticians,
-                        feedItems: nextFeedItems,
-                        parties: nextParties,
-                        articles: nextArticles
-                    });
+                    if (!serverBootstrap.partial && serverBootstrap.feedItems.length > 0 && serverBootstrap.parties.length > 0) {
+                        writeBootstrapCache({
+                            politicians: nextPoliticians,
+                            feedItems: serverBootstrap.feedItems,
+                            parties: serverBootstrap.parties,
+                            articles: nextArticles
+                        });
+                    }
                     setIsLoading(false);
-                    hydrateMissingSexMetadata(nextPoliticians, setPoliticians);
+                    void hydrateMissingSexMetadata(nextPoliticians, setPoliticians, isCancelled);
                     return;
                 }
 
@@ -240,38 +247,27 @@ export const useInitialData = () => {
                     fetchPartidos().catch(() => [])
                 ]);
 
+                if (cancelled) return;
                 const mergedPoliticians = [...deps, ...sens].filter(Boolean);
-                if (mergedPoliticians.length > 0) {
-                    const nextPoliticians = mergedPoliticians;
-                    const nextFeedItems = feeds && feeds.length > 0 ? feeds : FEED_ITEMS;
-                    const nextParties = parts && parts.length > 0 ? parts : getStaticParties();
-                    const nextArticles = EDUCATION_CAROUSEL as EducationalArticle[];
+                setFeedItems(feeds || []);
+                if (parts && parts.length > 0) setParties(parts);
 
-                    if (cancelled) return;
-                    setPoliticians(nextPoliticians);
-                    hydrateMissingSexMetadata(nextPoliticians, setPoliticians);
-                    setFeedItems(nextFeedItems);
-                    setParties(nextParties);
+                if (mergedPoliticians.length > 0) {
+                    const nextArticles = EDUCATION_CAROUSEL as EducationalArticle[];
+                    setPoliticians(mergedPoliticians);
                     setArticles(nextArticles);
-                    writeBootstrapCache({
-                        politicians: nextPoliticians,
-                        feedItems: nextFeedItems,
-                        parties: nextParties,
-                        articles: nextArticles
-                    });
+                    if (feeds && feeds.length > 0 && parts && parts.length > 0) {
+                        writeBootstrapCache({
+                            politicians: mergedPoliticians,
+                            feedItems: feeds,
+                            parties: parts,
+                            articles: nextArticles
+                        });
+                    }
+                    void hydrateMissingSexMetadata(mergedPoliticians, setPoliticians, isCancelled);
                 } else {
-                    if (cancelled) return;
                     setPoliticians(POLITICIANS_DB);
-                    hydrateMissingSexMetadata(POLITICIANS_DB, setPoliticians);
-                    setFeedItems(feeds && feeds.length > 0 ? feeds : FEED_ITEMS);
-                    setParties(parts && parts.length > 0 ? parts : getStaticParties());
                     setArticles(EDUCATION_CAROUSEL as EducationalArticle[]);
-                    writeBootstrapCache({
-                        politicians: POLITICIANS_DB,
-                        feedItems: feeds && feeds.length > 0 ? feeds : FEED_ITEMS,
-                        parties: parts && parts.length > 0 ? parts : getStaticParties(),
-                        articles: EDUCATION_CAROUSEL as EducationalArticle[]
-                    });
                 }
 
             } catch (err) {
@@ -291,7 +287,7 @@ export const useInitialData = () => {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [bootstrapCache]);
 
     const loadEducationalContent = useCallback(async () => {
         if (educationalContentLoaded || isEducationalContentLoading) return;
@@ -334,18 +330,13 @@ export const useInitialData = () => {
 
             setArticles(newArticles);
             setEducationalContentLoaded(true);
-            writeBootstrapCache({
-                politicians,
-                feedItems,
-                parties,
-                articles: newArticles
-            });
+            updateBootstrapCacheArticles(newArticles);
         } catch (error) {
             console.warn('Educational content load failed', error);
         } finally {
             setIsEducationalContentLoading(false);
         }
-    }, [educationalContentLoaded, feedItems, isEducationalContentLoading, parties, politicians]);
+    }, [educationalContentLoaded, isEducationalContentLoading]);
 
     return { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent, isEducationalContentLoading };
 };
@@ -379,10 +370,10 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                 || (initialCandidate.votingHistory && initialCandidate.votingHistory.length > 0)
                 || (initialCandidate.fronts && initialCandidate.fronts.length > 0);
 
-            const cacheKey = `paporeto_cache_v8_official_pol_full_v2_${initialCandidate.id}`;
+            const cacheKey = getFullProfileCacheKey(initialCandidate.id);
             let staleLocalProfile: Politician | null = null;
             try {
-                const cached = localStorage.getItem(cacheKey);
+                const cached = safeGetItem(cacheKey);
                 if (cached) {
                     const { data, timestamp } = JSON.parse(cached);
                     const age = Date.now() - Number(timestamp || 0);

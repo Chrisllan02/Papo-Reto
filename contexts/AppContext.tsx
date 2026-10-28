@@ -1,8 +1,9 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { useInitialData } from '../hooks/useCamaraData';
 import { normalizeLocationUF, reverseGeocodeToUF } from '../utils/location';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../services/storage';
 
 // --- Types ---
 interface AppState {
@@ -71,32 +72,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   // Initialize from LocalStorage
   const [darkMode, setDarkMode] = useState(() => {
+      const saved = safeGetItem('paporeto_dark_mode');
+      if (saved !== null) return saved === 'true';
       try {
-          const saved = localStorage.getItem('paporeto_dark_mode');
-          if (saved !== null) return saved === 'true';
           if (typeof window !== 'undefined' && window.matchMedia) {
               return window.matchMedia('(prefers-color-scheme: dark)').matches;
           }
-          return false;
-      } catch { return false; }
+      } catch { /* matchMedia indisponível */ }
+      return false;
   });
-  const [isThemeLocked, setIsThemeLocked] = useState(() => {
-      try { return localStorage.getItem('paporeto_dark_mode') !== null; } catch { return false; }
-  });
-  const [highContrast, setHighContrast] = useState(() => {
-      try { return localStorage.getItem('paporeto_high_contrast') === 'true'; } catch { return false; }
-  });
+  const [isThemeLocked, setIsThemeLocked] = useState(() => safeGetItem('paporeto_dark_mode') !== null);
+  const darkModeRef = useRef(darkMode);
+  useEffect(() => { darkModeRef.current = darkMode; }, [darkMode]);
+  const [highContrast, setHighContrast] = useState(() => safeGetItem('paporeto_high_contrast') === 'true');
   const clampFontSize = (value: number) => Math.min(1.5, Math.max(0.9, value));
   const [fontSizeLevel, setFontSizeLevel] = useState(() => {
-      try { 
-          const hasUserSetting = localStorage.getItem('paporeto_font_size_set') === 'true';
-          if (!hasUserSetting) {
-              localStorage.removeItem('paporeto_font_size');
-          }
-          if (!hasUserSetting) return 1;
-          const saved = localStorage.getItem('paporeto_font_size');
-          return saved ? clampFontSize(parseFloat(saved)) : 1; 
-      } catch { return 1; }
+      const hasUserSetting = safeGetItem('paporeto_font_size_set') === 'true';
+      if (!hasUserSetting) {
+          safeRemoveItem('paporeto_font_size');
+          return 1;
+      }
+      const saved = parseFloat(safeGetItem('paporeto_font_size') || '');
+      return Number.isFinite(saved) ? clampFontSize(saved) : 1;
   });
 
   const [selectedCandidate, setSelectedCandidate] = useState<Politician | null>(null);
@@ -113,8 +110,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const LOCATION_AUTO_PROMPT_KEY = 'paporeto_location_auto_prompted_at';
   const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
 
+  const updateUserLocation = useCallback((uf: string) => {
+      const normalized = normalizeLocationUF(uf);
+      setUserLocation(normalized);
+      if (normalized) {
+          safeSetItem('paporeto_user_location', normalized);
+      } else {
+          safeRemoveItem('paporeto_user_location');
+      }
+  }, []);
+
   // Geo Logic Refactored for Reusability
-  const detectLocation = async (silent = false) => {
+  const detectLocation = useCallback(async (silent = false) => {
       if (!navigator.geolocation) {
           if (!silent) alert("Geolocalização não suportada neste dispositivo.");
           return;
@@ -146,27 +153,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               setIsLocating(false);
               resolve();
           },
-          { timeout: 15000, enableHighAccuracy: true, maximumAge: 1000 * 60 * 10 }
+          { timeout: 10000, enableHighAccuracy: false, maximumAge: 1000 * 60 * 10 }
       );
       });
-  };
+  }, [updateUserLocation]);
 
   // Initial Load Location Check
   useEffect(() => {
-      const savedLoc = localStorage.getItem('paporeto_user_location');
+      const savedLoc = safeGetItem('paporeto_user_location');
       const normalizedSavedLoc = normalizeLocationUF(savedLoc);
       if (normalizedSavedLoc) {
           setUserLocation(normalizedSavedLoc);
           if (normalizedSavedLoc !== savedLoc) {
-              localStorage.setItem('paporeto_user_location', normalizedSavedLoc);
+              safeSetItem('paporeto_user_location', normalizedSavedLoc);
           }
           return;
       }
-      if (savedLoc) localStorage.removeItem('paporeto_user_location');
+      if (savedLoc) safeRemoveItem('paporeto_user_location');
 
       if (!navigator.geolocation) return;
 
-      const lastPrompt = Number(localStorage.getItem(LOCATION_AUTO_PROMPT_KEY) || 0);
+      const lastPrompt = Number(safeGetItem(LOCATION_AUTO_PROMPT_KEY) || 0);
       const canPromptAgain = Date.now() - lastPrompt > LOCATION_AUTO_PROMPT_TTL;
 
       const detectIfAllowed = async () => {
@@ -174,17 +181,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               const permissions = await navigator.permissions?.query?.({ name: 'geolocation' as PermissionName });
               if (permissions?.state === 'denied') return;
               if (permissions?.state === 'prompt' && !canPromptAgain) return;
-              localStorage.setItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
+              safeSetItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
               await detectLocation(true);
           } catch {
               if (!canPromptAgain) return;
-              localStorage.setItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
+              safeSetItem(LOCATION_AUTO_PROMPT_KEY, String(Date.now()));
               await detectLocation(true);
           }
       };
 
       void detectIfAllowed();
-  }, []);
+  }, [detectLocation]);
 
   // --- ACESSIBILIDADE: Efeitos Colaterais ---
   
@@ -192,14 +199,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
       const percentage = Math.round(fontSizeLevel * 100);
       document.documentElement.style.fontSize = `${percentage}%`;
-      localStorage.setItem('paporeto_font_size', fontSizeLevel.toString());
+      safeSetItem('paporeto_font_size', fontSizeLevel.toString());
   }, [fontSizeLevel]);
 
   // 2. Aplicar Classes de Tema no HTML (Root)
   useEffect(() => {
       if (darkMode) document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
-      localStorage.setItem('paporeto_dark_mode', darkMode.toString());
   }, [darkMode]);
 
   // Sincroniza com o tema do sistema quando o usuário não travou preferência
@@ -234,23 +240,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           // Restaura dark mode se estava ativo
           if (darkMode) document.documentElement.classList.add('dark');
       }
-      localStorage.setItem('paporeto_high_contrast', highContrast.toString());
+      safeSetItem('paporeto_high_contrast', highContrast.toString());
   }, [highContrast, darkMode]);
 
 
   // Theme Handling
-  const toggleDarkMode = () => {
+  const toggleDarkMode = useCallback(() => {
     // Se alto contraste estiver ligado, desliga ele primeiro
-    if (highContrast) setHighContrast(false);
-        setIsThemeLocked(true);
-    setDarkMode(prev => !prev);
-  };
+    setHighContrast(false);
+    setIsThemeLocked(true);
+    const next = !darkModeRef.current;
+    safeSetItem('paporeto_dark_mode', String(next));
+    setDarkMode(next);
+  }, []);
 
-  const toggleHighContrast = () => {
+  const toggleHighContrast = useCallback(() => {
       setHighContrast(prev => !prev);
-  };
+  }, []);
 
-  const increaseFontSize = () => {
+  const increaseFontSize = useCallback(() => {
       setFontSizeLevel(prev => {
           let next = prev;
           if (prev >= 1.5) next = 1.5;
@@ -258,12 +266,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           else if (prev >= 1.1) next = 1.25;
           else if (prev >= 1) next = 1.1;
           else next = 1;
-          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          safeSetItem('paporeto_font_size_set', 'true');
           return clampFontSize(next);
       });
-  };
+  }, []);
 
-  const decreaseFontSize = () => {
+  const decreaseFontSize = useCallback(() => {
       setFontSizeLevel(prev => {
           let next = prev;
           if (prev <= 0.9) next = 0.9;
@@ -271,53 +279,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           else if (prev <= 1.1) next = 1;
           else if (prev <= 1.25) next = 1.1;
           else next = 1.25;
-          try { localStorage.setItem('paporeto_font_size_set', 'true'); } catch {}
+          safeSetItem('paporeto_font_size_set', 'true');
           return clampFontSize(next);
       });
-  };
+  }, []);
 
   // Actions
-  const markArticleAsRead = (id: number) => {
-      if (!readArticleIds.includes(id)) {
-          setReadArticleIds(prev => [...prev, id]);
-      }
+  const markArticleAsRead = useCallback((id: number) => {
+      setReadArticleIds(prev => prev.includes(id) ? prev : [...prev, id]);
       setSelectedEducationId(id);
-  };
+  }, []);
 
-  const updatePolitician = (updated: Politician) => {
+  const updatePolitician = useCallback((updated: Politician) => {
       setPoliticians(prev => prev.map(p => p.id === updated.id ? updated : p));
-      if (selectedCandidate?.id === updated.id) {
-          setSelectedCandidate(updated);
-      }
-  };
+      setSelectedCandidate(prev => prev?.id === updated.id ? updated : prev);
+  }, [setPoliticians]);
 
-  const updateUserLocation = (uf: string) => {
-      const normalized = normalizeLocationUF(uf);
-      setUserLocation(normalized);
-      if (normalized) {
-          localStorage.setItem('paporeto_user_location', normalized);
-      } else {
-          localStorage.removeItem('paporeto_user_location');
-      }
-  };
-
-  const resetNavigation = () => {
+  const resetNavigation = useCallback(() => {
       setSelectedCandidate(null);
       setSelectedEducationId(null);
       setIsFullFeed(false);
       setIsNewsHistory(false);
       setExplorePreselectedState('');
-  };
+  }, []);
 
-  const handleSetActiveTab = (tab: string) => {
+  const handleSetActiveTab = useCallback((tab: string) => {
       setActiveTab(tab);
       resetNavigation();
-  };
+  }, [resetNavigation]);
 
-  const goToExplore = (state: string) => {
+  const goToExplore = useCallback((state: string) => {
       setExplorePreselectedState(state);
       setActiveTab('explore');
-  };
+  }, []);
 
   useEffect(() => {
       if (activeTab === 'articles') {
@@ -325,7 +319,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
   }, [activeTab, loadEducationalContent]);
 
-  const value = {
+  const value = useMemo(() => ({
     state: {
         activeTab, politicians, feedItems, articles, parties, isLoading, error,
         darkMode, highContrast, fontSizeLevel,
@@ -339,7 +333,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleHighContrast,
         increaseFontSize,
         decreaseFontSize,
-        cycleFontSize: increaseFontSize, // Fallback/Alias
         selectCandidate: setSelectedCandidate,
         selectEducation: setSelectedEducationId,
         markArticleAsRead,
@@ -354,7 +347,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         resetNavigation,
         goToExplore
     }
-  };
+  }), [
+    activeTab, politicians, feedItems, articles, parties, isLoading, error,
+    darkMode, highContrast, fontSizeLevel,
+    selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
+    showDataModal, showOnboarding, readArticleIds,
+    userLocation, isLocating,
+    handleSetActiveTab, toggleDarkMode, toggleHighContrast, increaseFontSize, decreaseFontSize,
+    markArticleAsRead, updatePolitician, updateUserLocation, detectLocation, resetNavigation, goToExplore
+  ]);
 
   return (
     <AppContext.Provider value={value}>

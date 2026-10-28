@@ -287,28 +287,6 @@ export interface Politician {
   hasApiIntegration: boolean; // Flag para indicar se os dados são reais (API) ou apenas informativos
 }
 
-export interface QuizVoteStats {
-  totalYes: number;
-  totalNo: number;
-  totalAbstain: number;
-  partiesYes: string[]; // Top 3 partidos que votaram SIM
-  partiesNo: string[]; // Top 3 partidos que votaram NÃO
-  approvalRate: number; // Porcentagem de aprovação
-}
-
-export interface QuizQuestion {
-  id: number;
-  tema: string;
-  peso: number;
-  description: string; // Usado como Pergunta final
-  context?: string; // NOVO: Contexto do problema
-  proposal?: string; // NOVO: O que está sendo proposto
-  realVoteId?: string;
-  sourceUrl?: string; 
-  originalDescription?: string;
-  stats?: QuizVoteStats; // NOVO: Dados agregados da votação
-}
-
 export type FeedCategory = 'education' | 'health' | 'economy' | 'security' | 'work' | 'environment' | 'justice' | 'activity';
 
 export interface FeedItem {
@@ -360,14 +338,6 @@ export interface FeedItem {
     finalUrn?: string;
     relatedPropositions?: string[];
   };
-}
-
-export interface Alert {
-  id: number;
-  type: 'critical' | 'warning' | 'info';
-  title: string;
-  msg: string;
-  time: string;
 }
 
 export interface LegislativeEvent {

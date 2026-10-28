@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { extractBrazilianStateUF, normalizeLocationUF } from '../utils/location';
+import { describe, expect, it, vi } from 'vitest';
+import { extractBrazilianStateUF, normalizeLocationUF, reverseGeocodeToUF } from '../utils/location';
 
 describe('location helpers', () => {
   it('normalizes valid state abbreviations', () => {
@@ -28,5 +28,30 @@ describe('location helpers', () => {
         ],
       },
     })).toBe('RS');
+  });
+});
+
+describe('location: país e privacidade', () => {
+  it('ignora estados de outros países (US-AL não é Alagoas)', () => {
+    expect(extractBrazilianStateUF({ countryCode: 'US', principalSubdivisionCode: 'US-AL' })).toBe('');
+    expect(extractBrazilianStateUF({ countryCode: 'US', localityInfo: { administrative: [{ isoCode: 'US-AL' }] } })).toBe('');
+    expect(extractBrazilianStateUF({ countryCode: 'BR', principalSubdivisionCode: 'BR-AL' })).toBe('AL');
+  });
+
+  it('arredonda lat/long para 1 casa decimal antes de enviar ao serviço externo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ countryCode: 'BR', principalSubdivisionCode: 'BR-SP' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(reverseGeocodeToUF(-23.55052, -46.633308)).resolves.toBe('SP');
+
+    const [url, init] = fetchMock.mock.calls[0];
+    const params = new URL(url).searchParams;
+    expect(params.get('latitude')).toBe('-23.6');
+    expect(params.get('longitude')).toBe('-46.6');
+    expect(init.signal).toBeDefined();
+    vi.unstubAllGlobals();
   });
 });
