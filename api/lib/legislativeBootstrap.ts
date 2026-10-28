@@ -2,9 +2,9 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
-const CAMARA_PROXY_BASE_URL = 'https://papo-reto-beige.vercel.app/api/camara';
+const APP_ORIGIN = (process.env.APP_PUBLIC_URL || 'https://papo-reto-beige.vercel.app').replace(/\/+$/, '');
+const CAMARA_PROXY_BASE_URL = `${APP_ORIGIN}/api/camara`;
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
-const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
 const UPSTREAM_TIMEOUT_MS = 15000;
 const SENADO_TIMEOUT_MS = 12000;
 const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
@@ -370,15 +370,13 @@ const getCamaraProxyUrl = (url: string) => {
 };
 
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1, allowProxyFallback = true): Promise<T | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+        'User-Agent': `PapoReto/1.0 (+${APP_ORIGIN})`,
       },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       if (retries > 0 && (res.status >= 500 || res.status === 429)) {
@@ -396,28 +394,22 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retrie
     const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
     if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
 const fetchText = async (url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<string | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'text/xml, application/xml;q=0.9, */*;q=0.8',
-        'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+        'User-Agent': `PapoReto/1.0 (+${APP_ORIGIN})`,
       },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     return await res.text();
   } catch {
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
@@ -540,12 +532,13 @@ const fetchDeputados = async (): Promise<Politician[]> => {
 };
 
 const fetchSenadores = async (): Promise<Politician[]> => {
-  const xml = await fetchText(SENADO_PROXY_URL, SENADO_TIMEOUT_MS) || await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
+  const xml = await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
   if (!xml) return [];
 
   const blocks = xml.match(/<Parlamentar>[\s\S]*?<\/Parlamentar>/g) || [];
-  return blocks.map((block) => {
-    const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
+  return blocks.flatMap((block) => {
+    const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar'));
+    if (!Number.isInteger(id) || id <= 0) return [];
     const name = getXmlTag(block, 'NomeParlamentar') || getXmlTag(block, 'NomeCompletoParlamentar');
     const party = getXmlTag(block, 'SiglaPartidoParlamentar');
     const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
@@ -559,7 +552,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
       return [participation, suplenteName].filter(Boolean).join(' - ');
     }).filter(Boolean);
 
-    return {
+    return [{
       id,
       name: formatText(name),
       party,
@@ -597,7 +590,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
       mandate: { start: mandateStarts[0] || '2023-02-01', end: mandateEnds.at(-1) || '2031-01-31' },
       hasApiIntegration: false,
       votes: {},
-    } as Politician;
+    } as Politician];
   }).filter((p) => p.name && p.party && p.state);
 };
 

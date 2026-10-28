@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import handler from '../api/bootstrap';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import handler, { mergeWithPreviousBootstrap, refreshLegislativeBootstrap } from '../api/bootstrap';
 import { clearServerCacheForTests } from '../api/lib/serverCache';
 import { createJsonResponse } from './testUtils';
 
@@ -18,6 +18,13 @@ describe('/api/bootstrap', () => {
     vi.restoreAllMocks();
     clearServerCacheForTests();
     delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.CRON_SECRET;
+    delete process.env.VERCEL;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('builds and caches initial legislative data', async () => {
@@ -380,5 +387,168 @@ describe('/api/bootstrap', () => {
     expect(payload.error).toBe('Bootstrap did not return deputies.');
     expect(payload.sources.senadoSenadores.count).toBe(1);
     expect(payload.sources.camaraDeputados.ok).toBe(false);
+  });
+
+  describe('refresh authorization and cache safety', () => {
+    const senateXml = (code: string) => xmlResponse(`
+      <ListaParlamentarEmExercicio>
+        <Parlamentar>
+          ${code}
+          <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
+          <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
+          <UfParlamentar>RJ</UfParlamentar>
+          <SexoParlamentar>M</SexoParlamentar>
+        </Parlamentar>
+      </ListaParlamentarEmExercicio>
+    `);
+
+    const createUpstream = (options: { senate?: 'ok' | 'down' | 'no-code'; feed?: boolean } = {}) => {
+      const { senate = 'ok', feed = true } = options;
+      return vi.fn(async (url: string) => {
+        if (url.includes('/deputados?')) {
+          return jsonResponse({ dados: [{ id: 1, nome: 'MARIA TESTE', siglaPartido: 'PT', siglaUf: 'SP', sexo: 'F' }] });
+        }
+        if (url.includes('/partidos?')) {
+          return jsonResponse({ dados: [{ id: 10, sigla: 'PT', nome: 'Partido dos Trabalhadores', uri: 'x' }] });
+        }
+        if (url.includes('/votacoes?') && feed) {
+          return jsonResponse({
+            dados: [{ id: '123', siglaOrgao: 'PLEN', uri: 'https://dadosabertos.camara.leg.br/api/v2/votacoes/123', dataHoraRegistro: '2026-05-20T10:00:00', descricao: 'Votacao sobre saude publica' }],
+          });
+        }
+        if (url.includes('legis.senado.leg.br')) {
+          if (senate === 'down') return new Response('', { status: 503 });
+          return senateXml(senate === 'ok' ? '<CodigoParlamentar>99</CodigoParlamentar>' : '');
+        }
+        return jsonResponse({ dados: [] });
+      });
+    };
+
+    const get = async (query: Record<string, string> = {}, authorization?: string) => {
+      const response = createJsonResponse();
+      await handler({ method: 'GET', headers: authorization ? { authorization } : {}, query } as any, response.res as any);
+      return response;
+    };
+
+    const upstreamCalls = (fetchMock: ReturnType<typeof createUpstream>) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/deputados?')).length;
+
+    it('ignores ?refresh=1 without a valid bearer token and serves the cache', async () => {
+      process.env.CRON_SECRET = 'cron-secret';
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const seeded = await get({ refresh: '1' }, 'Bearer cron-secret');
+      expect(seeded.json<{ source: string }>().source).toBe('refresh:memory');
+      expect(upstreamCalls(fetchMock)).toBe(1);
+
+      for (const authorization of [undefined, 'Bearer wrong', 'Bearer cron-secret-extra']) {
+        const response = await get({ refresh: '1' }, authorization);
+        expect(response.statusCode).toBe(200);
+        expect(response.json<{ source: string }>().source).toBe('cache');
+      }
+      expect(upstreamCalls(fetchMock)).toBe(1);
+    });
+
+    it('rebuilds with a valid bearer token even when the cache is fresh', async () => {
+      process.env.CRON_SECRET = 'cron-secret';
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await get({ refresh: '1' }, 'Bearer cron-secret');
+      const response = await get({ refresh: '1' }, 'Bearer cron-secret');
+
+      expect(response.json<{ source: string }>().source).toBe('refresh:memory');
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(upstreamCalls(fetchMock)).toBe(2);
+    });
+
+    it('keeps the previous senate and feed when a refresh returns them empty', async () => {
+      vi.stubGlobal('fetch', createUpstream());
+      await get({ refresh: '1' });
+
+      vi.stubGlobal('fetch', createUpstream({ senate: 'down', feed: false }));
+      const refreshed = await get({ refresh: '1' });
+      const payload = refreshed.json<{ warnings: string[]; sources: any; data: { politicians: any[]; feedItems: any[] } }>();
+
+      expect(refreshed.statusCode).toBe(200);
+      expect(payload.data.politicians.some((politician) => politician.id === 99)).toBe(true);
+      expect(payload.data.feedItems).toHaveLength(1);
+      expect(payload.warnings).not.toContain('senado_senadores_unavailable');
+      expect(payload.warnings).not.toContain('camara_feed_unavailable');
+
+      vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('cache should be used'); }));
+      const cached = await get();
+      const cachedPayload = cached.json<{ source: string; data: { politicians: any[]; feedItems: any[] } }>();
+      expect(cachedPayload.source).toBe('cache');
+      expect(cachedPayload.data.politicians.some((politician) => politician.id === 99)).toBe(true);
+      expect(cachedPayload.data.feedItems).toHaveLength(1);
+    });
+
+    it('does not mask a genuinely partial first build', async () => {
+      vi.stubGlobal('fetch', createUpstream({ senate: 'down' }));
+      const response = await get({ refresh: '1' });
+
+      expect(response.json<{ warnings: string[] }>().warnings).toContain('senado_senadores_unavailable');
+    });
+
+    it('prefers fresh upstream parts over the previous ones when they are healthy', () => {
+      const previous: any = {
+        politicians: [{ id: 1, role: 'Deputado Federal', hasApiIntegration: true }, { id: 99, role: 'Senador' }],
+        feedItems: [{ id: 1 }], articles: [], parties: [], warnings: [], partial: false,
+        sources: { senadoSenadores: { ok: true, count: 1 }, camaraFeed: { ok: true, count: 1 } },
+      };
+      const next: any = {
+        ...previous,
+        politicians: [{ id: 1, role: 'Deputado Federal', hasApiIntegration: true }, { id: 100, role: 'Senador' }],
+        feedItems: [{ id: 2 }],
+      };
+
+      expect(mergeWithPreviousBootstrap(next, previous)).toBe(next);
+    });
+
+    it('drops senators without an official code instead of inventing ids', async () => {
+      vi.stubGlobal('fetch', createUpstream({ senate: 'no-code' }));
+      const response = await get({ refresh: '1' });
+      const payload = response.json<{ sources: any; data: { politicians: any[] } }>();
+
+      expect(payload.data.politicians.filter((politician) => /^Senador/.test(politician.role))).toHaveLength(0);
+      expect(payload.sources.senadoSenadores.ok).toBe(false);
+    });
+
+    it('requests the senate directly and never through the public proxy', async () => {
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+      await get({ refresh: '1' });
+
+      const senateUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('senado'));
+      expect(senateUrls).toEqual(['https://legis.senado.leg.br/dadosabertos/senador/lista/atual']);
+    });
+
+    it('serves the expired cache immediately and shares one background rebuild', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-06-01T10:00:00Z'));
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+      await get({ refresh: '1' });
+      expect(upstreamCalls(fetchMock)).toBe(1);
+
+      vi.setSystemTime(new Date('2026-06-01T10:30:00Z'));
+      const [first, second] = await Promise.all([get(), get()]);
+
+      expect(first.json<{ source: string }>().source).toBe('stale-cache');
+      expect(second.json<{ source: string }>().source).toBe('stale-cache');
+      await refreshLegislativeBootstrap();
+      expect(upstreamCalls(fetchMock)).toBe(2);
+    });
+
+    it('shares a single in-flight rebuild between concurrent callers', async () => {
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await Promise.all([refreshLegislativeBootstrap(), refreshLegislativeBootstrap(), refreshLegislativeBootstrap()]);
+
+      expect(upstreamCalls(fetchMock)).toBe(1);
+    });
   });
 });

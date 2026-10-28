@@ -36,7 +36,7 @@ export const readServerCache = async <T>(key: string, ttlMs: number): Promise<T 
     const { blobs } = await list({ prefix: pathname, limit: 1 });
     const blob = blobs.find((item) => item.pathname === pathname);
     if (!blob) return null;
-    const response = await fetch(blob.url);
+    const response = await fetch(blob.url, { signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return null;
     const raw = await response.text();
     memoryCache.set(pathname, raw);

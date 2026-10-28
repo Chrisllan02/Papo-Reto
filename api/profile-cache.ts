@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { list, put } from '@vercel/blob';
+import { head, put } from '@vercel/blob';
+import { hasBearerToken } from './lib/auth.js';
+import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
 
 type VercelRequest = IncomingMessage & { query?: Record<string, string | string[]>; body?: any; method?: string; };
 
@@ -10,15 +12,17 @@ type VercelResponse = ServerResponse & {
 };
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
-const isSafeNumericId = (value?: string | null) => Boolean(value && /^\d+$/.test(value));
+const isSafeNumericId = (value?: string | null) => Boolean(value && /^[1-9]\d{0,7}$/.test(value));
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 5 * 60 * 1000;
 const READ_LIMIT = 60;
 const WRITE_LIMIT = 12;
 const MAX_BODY_BYTES = 300_000;
+const REFRESH_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+const READ_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
 const MEMORY_CACHE = new Map<string, string>();
+const isOverLimit = createRateLimiter(WINDOW_MS);
 
 class RequestError extends Error {
   statusCode: number;
@@ -29,34 +33,13 @@ class RequestError extends Error {
   }
 }
 
-const getClientBucket = (req: VercelRequest) => {
-  const forwarded = req.headers?.['x-forwarded-for'];
-  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers?.['x-real-ip'] || 'unknown';
-  return String(ip).split(',')[0].trim() || 'unknown';
-};
+const isRateLimited = (bucket: string, method: string) =>
+  isOverLimit(`${bucket}:${method}`, method === 'PUT' || method === 'POST' ? WRITE_LIMIT : READ_LIMIT);
 
-const isRateLimited = (bucket: string, method: string) => {
-  const key = `${bucket}:${method}`;
-  const now = Date.now();
-  const limit = method === 'PUT' || method === 'POST' ? WRITE_LIMIT : READ_LIMIT;
-  const current = rateLimitStore.get(key);
-
-  if (!current || current.resetAt <= now) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-
-  if (current.count >= limit) {
-    return true;
-  }
-
-  current.count += 1;
-  return false;
-};
-
-const jsonResponse = (res: VercelResponse, status: number, data: any) => {
+const jsonResponse = (res: VercelResponse, status: number, data: any, cacheControl = 'no-store') => {
   res.status?.(status);
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', cacheControl);
   res.end(JSON.stringify(data));
 };
 
@@ -72,7 +55,7 @@ const authorizeWrite = (req: VercelRequest) => {
       : { ok: true };
   }
 
-  return req.headers.authorization === `Bearer ${secret}`
+  return hasBearerToken(req.headers.authorization, secret)
     ? { ok: true }
     : { ok: false, status: 401, error: 'Unauthorized.' };
 };
@@ -129,16 +112,31 @@ const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
 
 async function readFromBlob(pathname: string) {
   try {
-    const { blobs } = await list({ prefix: pathname, limit: 10 });
-    const blob = blobs.find(item => item.pathname === pathname);
-    if (!blob) return null;
-    const response = await fetch(blob.url);
+    const blob = await head(pathname);
+    const response = await fetch(blob.url, { signal: AbortSignal.timeout(8_000) });
     if (!response.ok) return null;
     return await response.json();
   } catch {
     return null;
   }
 }
+
+async function readExisting(pathname: string) {
+  const blobData = await readFromBlob(pathname);
+  if (blobData) return blobData;
+  const memory = MEMORY_CACHE.get(pathname);
+  if (!memory) return null;
+  try {
+    return JSON.parse(memory);
+  } catch {
+    return null;
+  }
+}
+
+const isFresh = (data: any) => {
+  const updatedAt = Date.parse(data?.updatedAt);
+  return Number.isFinite(updatedAt) && Date.now() - updatedAt < REFRESH_MIN_AGE_MS;
+};
 
 async function writeToBlob(pathname: string, payload: any) {
   const blob = await put(pathname, JSON.stringify(payload, null, 2), {
@@ -155,6 +153,7 @@ async function buildOfficialPoliticianCache(id: string) {
       Accept: 'application/json',
       'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
     },
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (response.status === 404) {
@@ -217,18 +216,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pathname = pathForId(id as string);
 
   if (method === 'GET') {
-    const blobData = await readFromBlob(pathname);
-    if (blobData) {
-      return jsonResponse(res, 200, blobData);
-    }
-
-    const memory = MEMORY_CACHE.get(pathname);
-    if (memory) {
-      try {
-        return jsonResponse(res, 200, JSON.parse(memory));
-      } catch {
-        // fall through
-      }
+    const existing = await readExisting(pathname);
+    if (existing) {
+      return jsonResponse(res, 200, existing, READ_CACHE_CONTROL);
     }
 
     return jsonResponse(res, 404, { ok: false, found: false });
@@ -244,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       body = await readBody(req);
     } catch (error: any) {
-      return jsonResponse(res, error?.statusCode || 400, { error: error?.message || 'Invalid request.' });
+      return jsonResponse(res, error instanceof RequestError ? error.statusCode : 400, { error: error instanceof RequestError ? error.message : 'Invalid request.' });
     }
     const payload = normalizePayload(body);
     if (!payload) {
@@ -266,11 +256,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (method === 'POST') {
+    const existing = await readExisting(pathname);
+    if (existing && isFresh(existing)) {
+      return jsonResponse(res, 200, existing);
+    }
+
     let payload: any;
     try {
       payload = await buildOfficialPoliticianCache(id as string);
     } catch (error: any) {
-      return jsonResponse(res, error?.statusCode || 502, { error: error?.message || 'Profile refresh failed.' });
+      if (error instanceof RequestError) {
+        return jsonResponse(res, error.statusCode, { error: error.message });
+      }
+      return jsonResponse(res, 502, { error: 'Profile refresh failed.' });
     }
 
     try {

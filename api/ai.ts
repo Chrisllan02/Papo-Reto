@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
+import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
 
 type VercelRequest = IncomingMessage & { body?: any; method?: string; };
 
@@ -35,10 +36,20 @@ class RequestError extends Error {
   }
 }
 
-const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const isRateLimited = createRateLimiter(RATE_WINDOW_MS);
+const MAX_TEXT_CHARS = 2000;
+const MAX_HISTORY_ITEMS = 10;
+const MAX_PROMPT_CHARS = 500;
+const MAX_SPEECH_CHARS = 3000;
+const MAX_AUDIO_BASE64_CHARS = 1_500_000;
+const CHAT_MODES = ['fast', 'standard', 'search', 'location', 'thinking'] as const;
+type ChatMode = typeof CHAT_MODES[number];
+const ASPECT_RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+const AUDIO_MIME_PATTERN = /^audio\/(webm|ogg|mp4|mpeg|wav)( *;[\w ="'.,+-]*)?$/i;
+const BASE64_PATTERN = /^[A-Za-z0-9+/=\s]+$/;
 const SUPPORTED_ACTIONS: ApiAction[] = [
   'generateEducationalContent',
   'generateNewsImage',
@@ -60,7 +71,7 @@ const getAi = () => {
   if (aiClient) return aiClient;
   const key = getApiKey();
   if (!key.trim()) return null;
-  aiClient = new GoogleGenAI({ apiKey: key });
+  aiClient = new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 25_000 } });
   return aiClient;
 };
 
@@ -70,33 +81,58 @@ const jsonResponse = (res: VercelResponse, status: number, data: any) => {
   res.end(JSON.stringify(data));
 };
 
-const getClientBucket = (req: VercelRequest) => {
-  const forwarded = req.headers?.['x-forwarded-for'];
-  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers?.['x-real-ip'] || 'unknown';
-  return String(ip).split(',')[0].trim() || 'unknown';
+const getHeader = (req: VercelRequest, name: string) => {
+  const value = req.headers?.[name];
+  return (Array.isArray(value) ? value[0] : value) || '';
 };
 
-const isRateLimited = (bucket: string) => {
-  const now = Date.now();
-  const current = rateLimitStore.get(bucket);
+const isJsonContentType = (req: VercelRequest) =>
+  getHeader(req, 'content-type').split(';')[0].trim().toLowerCase() === 'application/json';
 
-  if (!current || current.resetAt <= now) {
-    rateLimitStore.set(bucket, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  if (current.count >= RATE_LIMIT) {
+const isCrossSiteRequest = (req: VercelRequest) => {
+  if (getHeader(req, 'sec-fetch-site').toLowerCase() === 'cross-site') return true;
+  const origin = getHeader(req, 'origin');
+  if (!origin) return false;
+  try {
+    return new URL(origin).host.toLowerCase() !== getHeader(req, 'host').toLowerCase();
+  } catch {
     return true;
   }
+};
 
-  current.count += 1;
-  return false;
+const assertBodySize = (body: unknown) => {
+  const size = typeof body === 'string' ? Buffer.byteLength(body, 'utf8') : Buffer.byteLength(JSON.stringify(body) || '', 'utf8');
+  if (size > MAX_BODY_BYTES) {
+    throw new RequestError(413, 'Payload too large.');
+  }
+};
+
+const cleanText = (value: unknown, maxChars: number) =>
+  typeof value === 'string' ? value.trim().slice(0, maxChars) : '';
+
+const normalizeHistory = (history: unknown) => {
+  if (!Array.isArray(history)) return [];
+  return history.slice(-MAX_HISTORY_ITEMS).flatMap((item) => {
+    const parts = Array.isArray(item?.parts) ? item.parts : [];
+    const text = parts
+      .map((part: any) => (typeof part?.text === 'string' ? part.text : ''))
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+      .slice(0, MAX_TEXT_CHARS);
+    if (!text) return [];
+    return [{ role: item?.role === 'model' ? 'model' : 'user', parts: [{ text }] }];
+  });
 };
 
 const readBody = async (req: VercelRequest) => {
-  if (req.body && typeof req.body === 'object') return req.body;
+  if (req.body && typeof req.body === 'object') {
+    assertBodySize(req.body);
+    return req.body;
+  }
 
   if (typeof req.body === 'string') {
+    assertBodySize(req.body);
     try {
       return JSON.parse(req.body);
     } catch {
@@ -158,7 +194,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
   }
 
-  if (isRateLimited(getClientBucket(req))) {
+  if (isCrossSiteRequest(req)) {
+    return jsonResponse(res, 403, { error: 'Forbidden.' });
+  }
+
+  if (!isJsonContentType(req)) {
+    return jsonResponse(res, 415, { error: 'Unsupported media type.' });
+  }
+
+  if (isRateLimited(getClientBucket(req), RATE_LIMIT)) {
     return jsonResponse(res, 429, { error: 'Too many requests.' });
   }
 
@@ -166,10 +210,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     body = await readBody(req);
   } catch (error: any) {
-    return jsonResponse(res, error?.statusCode || 400, { error: error?.message || 'Invalid request.' });
+    return jsonResponse(res, error instanceof RequestError ? error.statusCode : 400, { error: error instanceof RequestError ? error.message : 'Invalid request.' });
   }
 
-  if (!isApiAction(body?.action)) {
+  if (!body || typeof body !== 'object' || !isApiAction(body?.action)) {
     return jsonResponse(res, 400, { error: body?.action ? 'Unsupported action.' : 'Missing action.' });
   }
 
@@ -242,7 +286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'generateNewsImage': {
-        const headline = String(body?.headline || '').trim();
+        const headline = cleanText(body?.headline, 300).replace(/["\r\n]+/g, ' ');
         if (!headline) return jsonResponse(res, 400, { error: 'Missing headline.' });
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash-image',
@@ -260,8 +304,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'speakContent': {
-        const text = String(body?.text || '').trim();
-        if (!text) return jsonResponse(res, 400, { error: 'Missing text.' });
+        const rawText = typeof body?.text === 'string' ? body.text.trim() : '';
+        if (!rawText) return jsonResponse(res, 400, { error: 'Missing text.' });
+        const text = rawText.slice(0, MAX_SPEECH_CHARS);
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash-preview-tts',
           contents: [{
@@ -284,7 +329,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'getSearchContext': {
-        const query = String(body?.query || '').trim();
+        const query = cleanText(body?.query, 300).replace(/["\r\n]+/g, ' ');
         if (!query) return jsonResponse(res, 400, { error: 'Missing query.' });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -299,19 +344,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'chatWithGemini': {
-        const message = String(body?.message || '').trim();
-        const mode = (body?.mode || 'standard') as 'fast' | 'standard' | 'search' | 'location' | 'thinking';
-        const history = Array.isArray(body?.history) ? body.history : [];
+        const message = cleanText(body?.message, MAX_TEXT_CHARS);
+        const mode: ChatMode = CHAT_MODES.includes(body?.mode) ? body.mode : 'standard';
+        const history = normalizeHistory(body?.history);
         if (!message) return jsonResponse(res, 400, { error: 'Missing message.' });
 
         let model = 'gemini-3-pro-preview';
         let tools: any[] = [];
-        let config: any = {};
+        let config: any = { maxOutputTokens: 2048 };
         switch (mode) {
           case 'fast': model = 'gemini-flash-lite-latest'; break;
           case 'search': model = 'gemini-3-flash-preview'; tools = [{ googleSearch: {} }]; break;
           case 'location': model = 'gemini-flash-latest'; tools = [{ googleMaps: {} }]; break;
-          case 'thinking': model = 'gemini-3-pro-preview'; config = { thinkingConfig: { thinkingBudget: 32768 } }; break;
+          case 'thinking': model = 'gemini-3-pro-preview'; config = { maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 4096 } }; break;
         }
         const contents = [...history, { role: 'user', parts: [{ text: message }] }];
         const response = await ai.models.generateContent({ model, contents, config: { ...config, tools: tools.length > 0 ? tools : undefined } });
@@ -322,12 +367,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'generateCampaignImage': {
-        const prompt = String(body?.prompt || '').trim();
-        const aspectRatio = String(body?.aspectRatio || '1:1');
+        const prompt = cleanText(body?.prompt, MAX_PROMPT_CHARS).replace(/["\r\n]+/g, ' ');
+        const aspectRatio = ASPECT_RATIOS.includes(body?.aspectRatio) ? body.aspectRatio : '1:1';
         if (!prompt) return jsonResponse(res, 400, { error: 'Missing prompt.' });
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash-image',
-          contents: { parts: [{ text: prompt }] },
+          contents: { parts: [{ text: `Create an abstract, minimalist editorial illustration for a civic education campaign about: "${prompt}". Use symbolic objects and shapes only (e.g. documents, scales, buildings, charts). Mandatory constraints: NO TEXT, NO LETTERS, NO NUMBERS, NO HUMAN FACES, NO REAL OR IDENTIFIABLE PEOPLE, NO CROWDS, NO POLITICAL PARTY LOGOS, SYMBOLS OR SLOGANS, NO BRAND LOGOS. Colors: professional palette inspired by Brazil (deep green, navy blue, golden yellow, white, grey).` }] },
           config: { imageConfig: { aspectRatio: aspectRatio as any } }
         });
         const parts = response.candidates?.[0]?.content?.parts || [];
@@ -340,9 +385,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case 'transcribeAudio': {
-        const base64Audio = String(body?.base64Audio || '').trim();
-        const mimeType = String(body?.mimeType || 'audio/webm');
+        const base64Audio = typeof body?.base64Audio === 'string' ? body.base64Audio.trim() : '';
+        const mimeType = typeof body?.mimeType === 'string' ? body.mimeType.trim() : 'audio/webm';
         if (!base64Audio) return jsonResponse(res, 400, { error: 'Missing audio.' });
+        if (base64Audio.length > MAX_AUDIO_BASE64_CHARS) return jsonResponse(res, 413, { error: 'Audio too large.' });
+        if (!AUDIO_MIME_PATTERN.test(mimeType) || !BASE64_PATTERN.test(base64Audio)) {
+          return jsonResponse(res, 400, { error: 'Unsupported audio.' });
+        }
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
           contents: { parts: [{ inlineData: { mimeType, data: base64Audio } }, { text: 'Transcreva o áudio.' }] }
@@ -354,6 +403,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return jsonResponse(res, 400, { error: 'Unsupported action.' });
     }
   } catch (error: any) {
-    return jsonResponse(res, 500, { error: error?.message || 'Unexpected server error.' });
+    console.error('[api/ai] request failed', { action, name: error?.name, status: error?.status });
+    return jsonResponse(res, 500, { error: 'Unexpected server error.' });
   }
 }

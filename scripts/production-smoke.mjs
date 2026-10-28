@@ -69,7 +69,7 @@ const main = async () => {
   assert(blockedProxy.status === 400, `Proxy host guard returned ${blockedProxy.status}`);
 
   const cron = await fetchWithTimeout('/api/cron/refresh-legislative-data');
-  assert(cron.status === 401 || cron.ok, `Cron guard returned unexpected status ${cron.status}`);
+  assert(cron.status === 401, `Cron guard expected 401, received ${cron.status}`);
 
   console.log(JSON.stringify({
     ok: true,
