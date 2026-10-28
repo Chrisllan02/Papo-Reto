@@ -69,7 +69,7 @@ export const mergeWithPreviousBootstrap = (next: LegislativeBootstrap, previous:
       ...previous.politicians.filter(isSenator),
     ];
     merged.sources.senadoSenadores = previous.sources.senadoSenadores;
-    warnings = warnings.filter((warning) => warning !== 'senado_senadores_unavailable');
+    warnings = [...warnings.filter((warning) => warning !== 'senado_senadores_unavailable'), 'senado_from_previous_cache'];
   }
 
   if (keepFeed) {
@@ -77,11 +77,11 @@ export const mergeWithPreviousBootstrap = (next: LegislativeBootstrap, previous:
     merged.articles = previous.articles;
     merged.sources.camaraFeed = previous.sources.camaraFeed;
     if (previous.sources.educationArticles) merged.sources.educationArticles = previous.sources.educationArticles;
-    warnings = warnings.filter((warning) => warning !== 'camara_feed_unavailable' && warning !== 'education_articles_unavailable');
+    warnings = [...warnings.filter((warning) => warning !== 'camara_feed_unavailable' && warning !== 'education_articles_unavailable'), 'feed_from_previous_cache'];
   }
 
   merged.warnings = warnings;
-  merged.partial = warnings.length > 0;
+  merged.partial = warnings.some((warning) => !warning.endsWith('_from_previous_cache'));
   return merged;
 };
 

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 
@@ -7,6 +7,7 @@ const MobileNav: React.FC = () => {
   const { state, actions } = useAppContext();
   const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const tabs = useMemo(() => [
     { id: 'feed', label: 'Mural', icon: ScrollText },
@@ -29,6 +30,10 @@ const MobileNav: React.FC = () => {
       return () => document.removeEventListener('keydown', handleEscape);
   }, [isMenuOpen]);
 
+  useEffect(() => {
+      if (menuRef.current) (menuRef.current as HTMLDivElement & { inert: boolean }).inert = !isMenuOpen;
+  }, [isMenuOpen]);
+
   const toggleMenu = () => {
       setIsMenuOpen(!isMenuOpen);
   };
@@ -38,8 +43,8 @@ const MobileNav: React.FC = () => {
         {/* Expanded Overlay Menu */}
         <div 
             id="menu-movel"
+            ref={menuRef}
             aria-hidden={!isMenuOpen}
-            {...(!isMenuOpen ? ({ inert: '' } as Record<string, string>) : {})}
             className={`fixed inset-x-0 bottom-0 z-[60] glass-panel rounded-t-[2.5rem] transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
             style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}
         >

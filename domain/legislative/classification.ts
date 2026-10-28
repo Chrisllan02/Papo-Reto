@@ -14,13 +14,13 @@ export const compileTerms = (terms: string[]): RegExp => {
 };
 
 const CATEGORY_RULES: Array<{ category: FeedCategory; pattern: RegExp }> = [
-  { category: 'education', pattern: compileTerms(['educacao*', 'escola*', 'ensino*', 'fundeb']) },
-  { category: 'health', pattern: compileTerms(['saude', 'sus', 'medic*', 'hospital*', 'vacina*']) },
-  { category: 'economy', pattern: compileTerms(['economia', 'tribut*', 'imposto*', 'dinheiro', 'orcamento*', 'fiscal', 'fiscais']) },
-  { category: 'security', pattern: compileTerms(['seguranca', 'policia*', 'crime*', 'criminal*', 'pena', 'penas', 'penal', 'penais', 'arma', 'armas']) },
+  { category: 'education', pattern: compileTerms(['educa*', 'escola*', 'ensino*', 'fundeb']) },
+  { category: 'health', pattern: compileTerms(['saude*', 'sus', 'medic*', 'hospital*', 'vacina*']) },
+  { category: 'economy', pattern: compileTerms(['econom*', 'tribut*', 'imposto*', 'dinheiro', 'orcament*', 'fiscal', 'fiscais']) },
+  { category: 'security', pattern: compileTerms(['seguranc*', 'policia*', 'crime*', 'criminal*', 'pena', 'penas', 'penal', 'penais', 'arma', 'armas']) },
   { category: 'work', pattern: compileTerms(['trabalh*', 'emprego*', 'salario*', 'clt']) },
-  { category: 'environment', pattern: compileTerms(['ambiente', 'floresta*', 'animal', 'animais', 'clima*', 'agua', 'aguas']) },
-  { category: 'justice', pattern: compileTerms(['justica', 'lei', 'leis', 'direito*', 'codigo*', 'constituicao', 'constitucional']) },
+  { category: 'environment', pattern: compileTerms(['ambient*', 'floresta*', 'animal', 'animais', 'clima*', 'agua', 'aguas']) },
+  { category: 'justice', pattern: compileTerms(['justic*', 'lei', 'leis', 'direito*', 'codigo*', 'constituicao', 'constitucional']) },
 ];
 
 export const detectLegislativeCategory = (text: string): FeedCategory => {

@@ -164,18 +164,22 @@ const writePrefetchMarks = (marks: Record<string, number>) => {
     safeSetItem(PREFETCH_MARK_KEY, JSON.stringify(marks));
 };
 
-export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000): Promise<any> => {
+let apiRateLimited = false;
+export const isApiRateLimited = () => apiRateLimited;
+
+export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000, accept = 'application/json'): Promise<any> => {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
         const res = await fetch(getLegislativeApiUrl(url), {
-            headers: { 'Accept': 'application/json' },
+            headers: { 'Accept': accept },
             signal: controller?.signal
         });
         if (!res.ok) {
             const error = new Error(`API Error ${res.status}`) as Error & { status?: number; retryable?: boolean };
             error.status = res.status;
-            error.retryable = res.status >= 500 || res.status === 429;
+            error.retryable = res.status >= 500;
+            if (res.status === 429) apiRateLimited = true;
             throw error;
         }
         return json ? await res.json() : res;
@@ -184,7 +188,7 @@ export const fetchAPI = async (url: string, retries = 3, json = true, delay = 10
         if (retries > 0 && retryable) {
             // Exponential backoff
             await new Promise(resolve => setTimeout(resolve, delay));
-            return fetchAPI(url, retries - 1, json, delay * 2, timeoutMs);
+            return fetchAPI(url, retries - 1, json, delay * 2, timeoutMs, accept);
         }
         throw error;
     } finally {
@@ -399,7 +403,7 @@ export const fetchSenadores = async (): Promise<Politician[]> => {
     };
 
     const result = await fetchWithCache('senadores_list', async () => {
-        const res = await fetchAPI(SENADO_URL, 2, false, 1000, 15000);
+        const res = await fetchAPI(SENADO_URL, 2, false, 1000, 15000, 'text/xml');
         const xmlText = await (res as Response).text();
         const senators = parseXmlText(xmlText);
         if (senators.length === 0) throw new Error('Lista de senadores vazia');
@@ -717,7 +721,7 @@ export const enrichPoliticianData = async (pol: Politician, onProgress?: (status
 
 export const prefetchPoliticianProfile = async (pol: Politician) => {
     if (!pol?.id || prefetchInFlight.has(pol.id)) return;
-    if (pol.hasApiIntegration === false) return;
+    if (pol.hasApiIntegration === false || apiRateLimited) return;
 
     const marks = readPrefetchMarks();
     const lastPrefetch = marks[String(pol.id)] || 0;

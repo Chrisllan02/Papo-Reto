@@ -45,6 +45,13 @@ describe('legislativeTranslator: falsos positivos por substring', () => {
     expect(detectCategory('Pena de prisão para crimes')).toBe('security');
   });
 
+  it('mantém derivados de termos de raiz (ambiental, educacional, orçamentárias)', () => {
+    expect(detectCategory('Meio ambientes urbanos')).toBe('environment');
+    expect(detectCategory('Licenciamento ambiental')).toBe('environment');
+    expect(detectCategory('Política educacional')).toBe('education');
+    expect(detectCategory('Diretrizes orçamentárias')).toBe('economy');
+  });
+
   it('não confunde "PLEN" com PL nem "ESPECIAL" com PEC no contexto didático', () => {
     const plen = getDidacticContext('PLEN 12', 'Sessão no PLEN', 'voto');
     expect(plen.text).not.toContain('Projeto de Lei Ordinária');

@@ -4,7 +4,9 @@ import {
   calculateProgress,
   enrichPoliticianData,
   fetchGlobalVotacoes,
+  fetchAPI,
   fetchPartidos,
+  isApiRateLimited,
   fetchSenadores,
   getBrazilDateString,
   getFullProfileCacheKey,
@@ -62,6 +64,15 @@ describe('camaraApi com fetch simulado', () => {
     const senators = await fetchSenadores();
     expect(senators.map(s => s.id)).toEqual([5012]);
     expect(senators[0].mandate.end).toBe('');
+    expect((fetch as any).mock.calls[0][1].headers.Accept).toBe('text/xml');
+  });
+
+  it('não repete a chamada em 429 e marca o limite da sessão', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 429 });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchAPI('https://dadosabertos.camara.leg.br/api/v2/deputados', 3, true, 1)).rejects.toMatchObject({ status: 429 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(isApiRateLimited()).toBe(true);
   });
 
   it('feed: isola falhas, usa ids de votação sem colisão e não inventa data/status', async () => {

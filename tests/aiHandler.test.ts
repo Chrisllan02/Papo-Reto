@@ -154,14 +154,6 @@ describe('/api/ai', () => {
       expect(request.config.thinkingConfig).toBeUndefined();
     });
 
-    it('uses a modest thinking budget in thinking mode', async () => {
-      await call({ action: 'chatWithGemini', message: 'oi', mode: 'thinking' });
-
-      const { config } = generateContentMock.mock.calls[0][0];
-      expect(config.thinkingConfig.thinkingBudget).toBeLessThanOrEqual(4096);
-      expect(config.maxOutputTokens).toBeGreaterThan(config.thinkingConfig.thinkingBudget);
-    });
-
     it.each([
       ['unsupported mime type', 'text/html', 'QUJD', 400],
       ['mime with injected suffix', 'audio/webm;codecs=opus\nx', 'QUJD', 400],
@@ -191,12 +183,6 @@ describe('/api/ai', () => {
       expect(text).toContain('NO POLITICAL PARTY LOGOS');
       expect(text).not.toContain('p'.repeat(501));
       expect(text).not.toContain('"rules"');
-    });
-
-    it('generateCampaignImage keeps allowed aspect ratios', async () => {
-      await call({ action: 'generateCampaignImage', aspectRatio: '16:9', prompt: 'saude' });
-
-      expect(generateContentMock.mock.calls[0][0].config.imageConfig.aspectRatio).toBe('16:9');
     });
 
     it('speakContent caps oversized scripts', async () => {

@@ -38,7 +38,7 @@ describe('location: país e privacidade', () => {
     expect(extractBrazilianStateUF({ countryCode: 'BR', principalSubdivisionCode: 'BR-AL' })).toBe('AL');
   });
 
-  it('arredonda lat/long para 1 casa decimal antes de enviar ao serviço externo', async () => {
+  it('arredonda lat/long para 2 casas decimais (cidades de divisa) antes de enviar ao serviço externo', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ countryCode: 'BR', principalSubdivisionCode: 'BR-SP' }),
@@ -49,9 +49,21 @@ describe('location: país e privacidade', () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     const params = new URL(url).searchParams;
-    expect(params.get('latitude')).toBe('-23.6');
-    expect(params.get('longitude')).toBe('-46.6');
+    expect(params.get('latitude')).toBe('-23.55');
+    expect(params.get('longitude')).toBe('-46.63');
     expect(init.signal).toBeDefined();
+    vi.unstubAllGlobals();
+  });
+
+  it('não confunde Timon (MA) com Teresina (PI) ao arredondar', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reverseGeocodeToUF(-5.0977, -42.8369);
+
+    const params = new URL(fetchMock.mock.calls[0][0]).searchParams;
+    expect(params.get('latitude')).toBe('-5.10');
+    expect(params.get('longitude')).toBe('-42.84');
     vi.unstubAllGlobals();
   });
 });

@@ -23,13 +23,15 @@ class RequestError extends Error {
 }
 
 const ALLOWED_UPSTREAMS = new Map([
-  ['dadosabertos.camara.leg.br', { pathPrefix: '/api/v2/', accept: 'application/json' }],
-  ['legis.senado.leg.br', { pathPrefix: '/dadosabertos/', accept: 'text/xml, application/xml;q=0.9' }],
+  ['dadosabertos.camara.leg.br', { pathPrefix: '/api/v2/' }],
+  ['legis.senado.leg.br', { pathPrefix: '/dadosabertos/' }],
 ]);
 const MAX_UPSTREAM_BYTES = 2_000_000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
-const RATE_LIMIT = 120;
+const RATE_LIMIT = 600;
+const DEFAULT_ACCEPT = 'application/json';
+const ACCEPT_ITEM = /^(application\/json|application\/xml|text\/xml)(;\s*q=(0(\.\d{1,3})?|1(\.0{1,3})?))?$/i;
 const isRateLimited = createRateLimiter(RATE_WINDOW_MS);
 
 const resolveContentType = (upstreamContentType: string | null) => {
@@ -40,6 +42,13 @@ const resolveContentType = (upstreamContentType: string | null) => {
   if (type === 'application/json') return `application/json${suffix}`;
   if (type === 'application/xml' || type === 'text/xml') return `application/xml${suffix}`;
   return null;
+};
+
+const resolveAccept = (header?: string | string[]) => {
+  const value = Array.isArray(header) ? header[0] : header;
+  if (!value || value.length > 200) return DEFAULT_ACCEPT;
+  const items = value.split(',').map((item) => item.trim());
+  return items.every((item) => ACCEPT_ITEM.test(item)) ? items.join(', ') : DEFAULT_ACCEPT;
 };
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
@@ -126,7 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const upstream = await fetch(target.toString(), {
       headers: {
-        Accept: upstreamRule.accept,
+        Accept: resolveAccept(req.headers?.accept),
         'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
       },
       redirect: 'manual',

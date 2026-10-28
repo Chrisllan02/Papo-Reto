@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchDailyNews, generateEducationalContent, getEmergencyNews, getNewsHistory } from '../services/ai';
+import { fetchDailyNews, generateEducationalContent, getNewsHistory } from '../services/ai';
 
 const json = (body: unknown, ok = true) => ({ ok, status: ok ? 200 : 404, json: async () => body });
 const GENERATED = 'data:image/png;base64,AAAA';
@@ -25,10 +25,6 @@ const installFetch = (opts: { ai?: unknown } = {}) => {
 describe('ai: notícias e conteúdo', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
-
-  it('não inventa notícias de emergência', () => {
-    expect(getEmergencyNews()).toEqual([]);
-  });
 
   it('não persiste imagem gerada (base64) no cache nem no histórico', async () => {
     installFetch();

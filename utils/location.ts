@@ -97,8 +97,8 @@ const GEOCODE_TIMEOUT_MS = 8000;
 
 export const reverseGeocodeToUF = async (latitude: number, longitude: number) => {
   const params = new URLSearchParams({
-    latitude: latitude.toFixed(1),
-    longitude: longitude.toFixed(1),
+    latitude: latitude.toFixed(2),
+    longitude: longitude.toFixed(2),
     localityLanguage: 'pt',
   });
 

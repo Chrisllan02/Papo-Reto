@@ -134,15 +134,11 @@ const writeSvg = async (filename, config) => {
 const main = async () => {
   await mkdir(OUT_DIR, { recursive: true });
 
-  const [pkg, health, initialBootstrap] = await Promise.all([
+  const [pkg, health, bootstrap] = await Promise.all([
     readJson('package.json'),
     fetchJson(`${APP_URL}/api/health`),
     fetchJson(`${APP_URL}/api/bootstrap`),
   ]);
-
-  const bootstrap = initialBootstrap?.data?.politicians?.length
-    ? initialBootstrap
-    : await fetchJson(`${APP_URL}/api/bootstrap?refresh=1`) || initialBootstrap;
 
   const integrations = health?.integrations || {};
   const data = bootstrap?.data || {};

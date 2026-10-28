@@ -324,8 +324,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const mandateInfo = useMemo(() => {
       const start = parseLocalDate(candidate.mandate.start);
       const end = parseLocalDate(candidate.mandate.end);
-      const startStr = formatLocalDate(candidate.mandate.start, undefined, '—');
-      const endStr = formatLocalDate(candidate.mandate.end, undefined, '—');
+      const startStr = formatLocalDate(candidate.mandate.start);
+      const endStr = formatLocalDate(candidate.mandate.end);
       if (!start || !end) return { percentage: 0, startStr, endStr };
       const now = new Date();
       const totalTime = end.getTime() - start.getTime();

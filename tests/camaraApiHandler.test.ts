@@ -159,6 +159,24 @@ describe('/api/camara', () => {
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
+  it('forwards a whitelisted client Accept and replaces arbitrary ones', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => jsonUpstream());
+    vi.stubGlobal('fetch', fetchMock);
+    const url = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
+
+    await proxy(url, { accept: 'text/xml' });
+    await proxy(url, { accept: 'application/xml;q=0.9, application/json;q=0.5' });
+    await proxy(url, { accept: 'text/xml, text/html' });
+    await proxy(url, { accept: '*/*' });
+
+    expect(fetchMock.mock.calls.map(call => call[1].headers.Accept)).toEqual([
+      'text/xml',
+      'application/xml;q=0.9, application/json;q=0.5',
+      'application/json',
+      'application/json',
+    ]);
+  });
+
   it('normalizes senate XML responses to application/xml', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response('<Lista/>', { status: 200, headers: { 'content-type': 'text/xml;charset=UTF-8' } })
@@ -183,7 +201,7 @@ describe('/api/camara', () => {
 
   it('rate limits clients per IP', async () => {
     let last = createJsonResponse();
-    for (let index = 0; index < 121; index += 1) {
+    for (let index = 0; index < 601; index += 1) {
       last = createJsonResponse();
       await handler({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.7' }, query: {} } as any, last.res as any);
     }

@@ -754,7 +754,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
-                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top opacity-50">%</span></> : <span aria-label="Sem dados">—</span>}
+                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top opacity-50">%</span></> : <span className="text-base">Sem dados</span>}
                         </span>
                         <div className={`mt-2 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider backdrop-blur-sm border border-white/10 ${status.bg} ${status.color}`}>
                             {status.label}

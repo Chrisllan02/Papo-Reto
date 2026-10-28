@@ -476,6 +476,8 @@ describe('/api/bootstrap', () => {
       expect(payload.data.feedItems).toHaveLength(1);
       expect(payload.warnings).not.toContain('senado_senadores_unavailable');
       expect(payload.warnings).not.toContain('camara_feed_unavailable');
+      expect(payload.warnings).toEqual(expect.arrayContaining(['senado_from_previous_cache', 'feed_from_previous_cache']));
+      expect((refreshed.json<{ partial: boolean }>()).partial).toBe(false);
 
       vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('cache should be used'); }));
       const cached = await get();
@@ -516,16 +518,7 @@ describe('/api/bootstrap', () => {
       expect(payload.sources.senadoSenadores.ok).toBe(false);
     });
 
-    it('requests the senate directly and never through the public proxy', async () => {
-      const fetchMock = createUpstream();
-      vi.stubGlobal('fetch', fetchMock);
-      await get({ refresh: '1' });
-
-      const senateUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('senado'));
-      expect(senateUrls).toEqual(['https://legis.senado.leg.br/dadosabertos/senador/lista/atual']);
-    });
-
-    it('serves the expired cache immediately and shares one background rebuild', async () => {
+    it('serves the expired cache immediately and starts a single background rebuild', async () => {
       vi.useFakeTimers({ toFake: ['Date'] });
       vi.setSystemTime(new Date('2026-06-01T10:00:00Z'));
       const fetchMock = createUpstream();
@@ -538,8 +531,47 @@ describe('/api/bootstrap', () => {
 
       expect(first.json<{ source: string }>().source).toBe('stale-cache');
       expect(second.json<{ source: string }>().source).toBe('stale-cache');
-      await refreshLegislativeBootstrap();
+      await vi.waitFor(() => expect(upstreamCalls(fetchMock)).toBe(2));
+      await new Promise((resolve) => setTimeout(resolve, 20));
       expect(upstreamCalls(fetchMock)).toBe(2);
+    });
+
+    it('uses stable negative ids, approval status and no invented dates or mandate', async () => {
+      const fetchMock = vi.fn(async (url: string) => {
+        if (url.includes('/deputados?')) {
+          return jsonResponse({ dados: [{ id: 1, nome: 'MARIA TESTE', siglaPartido: 'PT', siglaUf: 'SP', sexo: 'F' }] });
+        }
+        if (url.includes('/partidos?')) return jsonResponse({ dados: [{ id: 10, sigla: 'PT', nome: 'PT', uri: 'x' }] });
+        if (url.includes('/votacoes?')) {
+          return jsonResponse({ dados: [
+            { id: '2367475-47', siglaOrgao: 'PLEN', uri: 'x/votacoes/2367475-47', dataHoraRegistro: '2026-05-20T10:00:00', descricao: 'Votacao A', aprovacao: 1 },
+            { id: '2367475-48', siglaOrgao: 'PLEN', uri: 'x/votacoes/2367475-48', dataHoraRegistro: '2026-05-20T11:00:00', descricao: 'Votacao B', aprovacao: 0 },
+            { id: '2367475-49', siglaOrgao: 'PLEN', uri: 'x/votacoes/2367475-49', descricao: 'Votacao C' },
+          ] });
+        }
+        if (url.includes('/proposicoes?')) {
+          return jsonResponse({ dados: [{ id: 2367475, siglaTipo: 'PL', numero: 1, ano: 2026, ementa: 'Ementa sem data' }] });
+        }
+        if (url.includes('legis.senado.leg.br')) return senateXml('<CodigoParlamentar>99</CodigoParlamentar>');
+        return jsonResponse({ dados: [] });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const response = await get({ refresh: '1' });
+      const { data } = response.json<{ data: { feedItems: any[]; politicians: any[] } }>();
+      const votes = data.feedItems.filter((item) => item.title.startsWith('PLEN'));
+      const proposition = data.feedItems.find((item) => item.title === 'PL 1/2026');
+
+      expect(votes).toHaveLength(3);
+      expect(votes.every((item) => item.id < 0)).toBe(true);
+      expect(new Set(votes.map((item) => item.id)).size).toBe(3);
+      expect(votes.find((item) => /votacao a/i.test(item.description)).status).toBe('Aprovado');
+      expect(votes.find((item) => /votacao b/i.test(item.description)).status).toBe('Rejeitado');
+      expect(votes.find((item) => /votacao c/i.test(item.description)).status).toBeUndefined();
+      expect(votes.find((item) => /votacao c/i.test(item.description)).date).toBeUndefined();
+      expect(proposition.id).toBe(2367475);
+      expect(proposition.date).toBeUndefined();
+      expect(data.politicians.find((politician) => politician.id === 99).mandate).toEqual({ start: '', end: '' });
     });
 
     it('shares a single in-flight rebuild between concurrent callers', async () => {

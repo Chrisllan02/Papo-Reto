@@ -144,13 +144,13 @@ const buildEventItem = (event: any): FeedItem | null => {
     id: event.id,
     type: 'evento',
     title,
-    date: new Date(event.dataHoraInicio).toLocaleDateString('pt-BR'),
+    date: formatBrazilianDate(event.dataHoraInicio),
     description: summary,
     originalDescription,
     summary,
     whyItMatters,
     nextStep,
-    status: 'Tramitação',
+    status: event.situacao || undefined,
     sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${event.id}`,
     category: detectCategory(`${topic} ${originalDescription}`),
     organ,
@@ -587,7 +587,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
         spending: 0,
         partyFidelity: undefined,
       },
-      mandate: { start: mandateStarts[0] || '2023-02-01', end: mandateEnds.at(-1) || '2031-01-31' },
+      mandate: { start: mandateStarts[0] || '', end: mandateEnds.at(-1) || '' },
       hasApiIntegration: false,
       votes: {},
     } as Politician];
@@ -617,6 +617,22 @@ const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> 
   };
 };
 
+const stableNegativeId = (value: string): number => {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash * 33) ^ value.charCodeAt(i)) >>> 0;
+  }
+  return -(hash + 1);
+};
+
+const formatBrazilianDate = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString('pt-BR');
+};
+
 const fetchFeed = async (): Promise<FeedItem[]> => {
   const dateVotes = new Date();
   dateVotes.setDate(dateVotes.getDate() - 30);
@@ -636,16 +652,16 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     const propId = v.uriProposicaoObjeto?.split('/').pop();
     const insight = buildLegislativeInsight('vote', v.descricao);
     return {
-      id: parseInt(v.id, 10) || Math.floor(Date.now() + Math.random() * 1000),
+      id: stableNegativeId(String(v.id)),
       type: 'voto',
       title: `${v.siglaOrgao} ${v.uri ? v.uri.split('/').pop() : ''}`,
-      date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
+      date: formatBrazilianDate(v.dataHoraRegistro),
       description: formatText(v.descricao),
       originalDescription: cleanOfficialText(v.descricao),
       summary: insight.summary,
       whyItMatters: insight.whyItMatters,
       nextStep: insight.nextStep,
-      status: 'Tramitação',
+      status: v.aprovacao === 1 ? 'Aprovado' : v.aprovacao === 0 ? 'Rejeitado' : undefined,
       sourceUrl: propId
         ? `https://www.camara.leg.br/propostas-legislativas/${propId}`
         : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(v.descricao)}`,
@@ -664,7 +680,7 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
       id: p.id,
       type: 'voto',
       title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
-      date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
+      date: formatBrazilianDate(p.dataApresentacao),
       description: formatText(p.ementa),
       originalDescription: cleanOfficialText(p.ementa),
       summary: insight.summary,
