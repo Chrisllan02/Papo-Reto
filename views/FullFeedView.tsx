@@ -1,7 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, Search, Calendar, Filter, X, Landmark, Banknote, Info, ExternalLink, ArrowDownUp } from 'lucide-react';
+import { ChevronLeft, Search, Calendar, Filter, X, ExternalLink, ArrowDownUp } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
+import DataState from '../components/DataState';
+import { parseLocalDate } from '../utils/date';
+import { getFeedTypeMeta } from '../utils/feedType';
+import { safeHttpUrl } from '../utils/url';
 
 interface FullFeedViewProps {
   feedItems: FeedItem[];
@@ -10,22 +14,24 @@ interface FullFeedViewProps {
   onSelectCandidate: (pol: Politician) => void;
 }
 
+type TypeFilter = 'todos' | 'voto' | 'despesa' | 'evento';
+
+const TYPE_FILTERS: Array<{ id: TypeFilter; label: string }> = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'voto', label: 'Votações' },
+  { id: 'despesa', label: 'Despesas' },
+  { id: 'evento', label: 'Eventos' },
+];
+
+// Itens sem data válida ficam por último na ordenação e fora de qualquer filtro de período
+const dateTime = (dateStr?: string) => parseLocalDate(dateStr)?.getTime() ?? null;
+
 const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onBack, onSelectCandidate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'todos' | 'voto' | 'despesa'>('todos');
+  const [activeFilter, setActiveFilter] = useState<TypeFilter>('todos');
   const [sortBy, setSortBy] = useState<'relevance' | 'date_desc' | 'date_asc' | 'type'>('date_desc');
-
-  // Helper de Data: Converte "DD/MM/YYYY" (formato do feed) para Date object
-  const parseFeedDate = (dateStr?: string) => {
-      if (!dateStr) return new Date();
-      if (dateStr.includes('/')) {
-          const [day, month, year] = dateStr.split('/');
-          return new Date(`${year}-${month}-${day}`);
-      }
-      return new Date(dateStr);
-  };
 
   const filteredItems = useMemo(() => {
     // 1. Filtragem
@@ -41,20 +47,13 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         if (!matchText) return false;
 
         // Filtro de Data
-        const itemDate = parseFeedDate(item.date);
-        
-        if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0,0,0,0);
-            itemDate.setHours(0,0,0,0);
-            if (itemDate < start) return false;
-        }
-
-        if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23,59,59,999);
-            itemDate.setHours(0,0,0,0);
-            if (itemDate > end) return false;
+        if (startDate || endDate) {
+            const itemTime = dateTime(item.date);
+            if (itemTime === null) return false;
+            const startTime = parseLocalDate(startDate)?.getTime();
+            const endTime = parseLocalDate(endDate)?.getTime();
+            if (startTime !== undefined && itemTime < startTime) return false;
+            if (endTime !== undefined && itemTime > endTime) return false;
         }
 
         return true;
@@ -69,7 +68,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
 
         // Data Ascendente (Mais Antigos)
         if (sortBy === 'date_asc') {
-            return parseFeedDate(a.date).getTime() - parseFeedDate(b.date).getTime();
+            return (dateTime(a.date) ?? Number.MAX_SAFE_INTEGER) - (dateTime(b.date) ?? Number.MAX_SAFE_INTEGER);
         }
 
         // Relevância (Apenas se houver busca, senão cai no default date_desc)
@@ -95,7 +94,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         }
 
         // Default: Data Descendente (Mais Recentes)
-        return parseFeedDate(b.date).getTime() - parseFeedDate(a.date).getTime();
+        return (dateTime(b.date) ?? Number.MIN_SAFE_INTEGER) - (dateTime(a.date) ?? Number.MIN_SAFE_INTEGER);
     });
 
   }, [feedItems, searchTerm, startDate, endDate, activeFilter, sortBy]);
@@ -109,8 +108,8 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                  {/* Linha Superior: Voltar e Título */}
                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                    <div className="flex items-center gap-4">
-                     <button onClick={onBack} className="p-2.5 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-blue-100/70 dark:border-white/10 shadow-sm" aria-label="Voltar para o mural">
-                        <ChevronLeft className="text-gray-700 dark:text-white" size={24}/>
+                     <button type="button" onClick={onBack} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 p-2.5 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-blue-100/70 dark:border-white/10 shadow-sm" aria-label="Voltar para o mural">
+                        <ChevronLeft className="text-gray-700 dark:text-white" size={24} aria-hidden="true" />
                      </button>
                      <div>
                          <h1 className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-none tracking-tight">Histórico Completo</h1>
@@ -119,7 +118,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                    </div>
 
                    <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-blue-50/70 dark:bg-blue-900/20 px-4 py-3 text-xs font-bold text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30">
-                     <Filter size={16} />
+                     <Filter size={16} aria-hidden="true" />
                      Use filtros para cruzar data, tipo e termo.
                    </div>
                  </div>
@@ -129,9 +128,10 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                      
                      {/* Busca */}
                      <div className="relative flex-1">
-                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} aria-hidden="true" />
                          <input 
                             type="text" 
+                            aria-label="Pesquisar no histórico" 
                             placeholder="Pesquisar por palavras-chave..." 
                             value={searchTerm}
                             onChange={(e) => {
@@ -141,8 +141,8 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                             className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-950/40 rounded-2xl text-sm font-bold text-gray-900 dark:text-white border border-blue-100 dark:border-white/10 placeholder-slate-400 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-4 focus:ring-blue-500/15 transition-all shadow-sm"
                          />
                          {searchTerm && (
-                             <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
-                                 <X size={14}/>
+                             <button type="button" onClick={() => setSearchTerm('')} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                 <X size={14} aria-hidden="true" />
                              </button>
                          )}
                      </div>
@@ -151,19 +151,21 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                         {/* Datas */}
                         <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14}/></div>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
                                 <input 
                                     type="date" 
+                                    aria-label="Data inicial"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
                                     className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
                                 />
                             </div>
-                            <div className="flex items-center text-slate-400 font-bold">-</div>
+                            <div className="flex items-center text-slate-400 font-bold" aria-hidden="true">-</div>
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14}/></div>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
                                 <input 
                                     type="date" 
+                                    aria-label="Data final"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
                                     className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
@@ -173,8 +175,9 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
 
                         {/* Ordenação */}
                         <div className="relative shrink-0">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ArrowDownUp size={14}/></div>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ArrowDownUp size={14} aria-hidden="true" /></div>
                             <select
+                                aria-label="Ordenar registros"
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as any)}
                                 className="h-full min-w-[180px] appearance-none rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-8 text-xs font-black uppercase text-slate-700 dark:text-slate-100 cursor-pointer focus:ring-4 focus:ring-blue-500/15"
@@ -187,14 +190,16 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                         </div>
 
                         {/* Tabs Tipo */}
-                        <div className="flex shrink-0 rounded-2xl border border-blue-100 dark:border-white/10 bg-white/70 dark:bg-slate-950/40 p-1 shadow-sm">
-                            {(['todos', 'voto', 'despesa'] as const).map(type => (
+                        <div role="group" aria-label="Filtrar por tipo" className="flex shrink-0 rounded-2xl border border-blue-100 dark:border-white/10 bg-white/70 dark:bg-slate-950/40 p-1 shadow-sm">
+                            {TYPE_FILTERS.map(({ id, label }) => (
                                 <button
-                                    key={type}
-                                    onClick={() => setActiveFilter(type)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black capitalize transition-all ${activeFilter === type ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:text-blue-700'}`}
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setActiveFilter(id)}
+                                    aria-pressed={activeFilter === id}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${activeFilter === id ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:text-blue-700'}`}
                                 >
-                                    {type}
+                                    {label}
                                 </button>
                             ))}
                         </div>
@@ -206,21 +211,17 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         {/* GRID DE CONTEÚDO */}
         <div className="mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {filteredItems.map((item, idx) => {
+                {filteredItems.map((item) => {
                     const candidate = item.candidateId ? politicians.find(p => p.id === item.candidateId) : null;
-                    const isVote = item.type === 'voto';
                     const isExpense = item.type === 'despesa';
+                    const typeMeta = getFeedTypeMeta(item.type);
 
                     return (
-                        <div key={idx} className="group flex h-full min-h-[250px] flex-col rounded-[2rem] border border-white/70 dark:border-white/10 bg-white/82 dark:bg-white/[0.05] p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.14)]">
+                        <div key={`${item.type}-${item.id}`} className="group flex h-full min-h-[250px] flex-col rounded-[2rem] border border-white/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.14)]">
                             <div className="flex justify-between items-start mb-3">
-                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 ${
-                                    isVote ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
-                                    isExpense ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
-                                    'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
-                                }`}>
-                                    {isVote ? <Landmark size={10}/> : isExpense ? <Banknote size={10}/> : <Info size={10}/>}
-                                    {item.type}
+                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 ${typeMeta.chipClass}`}>
+                                    <typeMeta.Icon size={10} aria-hidden="true" />
+                                    {typeMeta.label}
                                 </span>
                                 <span className="text-[10px] font-black text-slate-400">{item.date}</span>
                             </div>
@@ -243,21 +244,18 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
                             )}
 
                             <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
-                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => candidate && onSelectCandidate(candidate)}>
-                                    {candidate ? (
-                                        <>
-                                            <img src={candidate.photo} className="w-6 h-6 rounded-full bg-gray-200 object-cover" alt=""/>
-                                            <div className="truncate max-w-[100px]">
-                                                <p className="text-[10px] font-bold text-midnight dark:text-white truncate">{candidate.name}</p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <span className="text-[10px] font-black text-slate-400">Institucional</span>
-                                    )}
-                                </div>
-                                {item.sourceUrl && (
-                                    <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-500 transition-colors" aria-label="Abrir fonte oficial">
-                                        <ExternalLink size={14}/>
+                                {candidate ? (
+                                    <button type="button" onClick={() => onSelectCandidate(candidate)} className="flex items-center gap-2 rounded-lg text-left focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                        <img src={candidate.photo} className="w-6 h-6 rounded-full bg-gray-200 object-cover" alt=""/>
+                                        <span className="truncate max-w-[100px] text-[10px] font-bold text-midnight dark:text-white">{candidate.name}</span>
+                                        <span className="sr-only">Ver perfil</span>
+                                    </button>
+                                ) : (
+                                    <span className="text-[10px] font-black text-slate-400">Institucional</span>
+                                )}
+                                {safeHttpUrl(item.sourceUrl) && (
+                                    <a href={safeHttpUrl(item.sourceUrl)} target="_blank" rel="noopener noreferrer" className="p-1 rounded-md text-slate-400 hover:text-blue-500 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40" aria-label="Abrir fonte oficial (nova aba)">
+                                        <ExternalLink size={14} aria-hidden="true" />
                                     </a>
                                 )}
                             </div>
@@ -267,9 +265,18 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
             </div>
             
             {filteredItems.length === 0 && (
-                <div className="text-center py-20 opacity-70">
-                    <Filter className="mx-auto h-12 w-12 text-gray-300 mb-4"/>
-                    <p className="font-bold text-slate-500">Nenhum item encontrado com esses filtros.</p>
+                <div className="py-10 flex justify-center">
+                    <DataState
+                        title="Nenhum item encontrado"
+                        description="Nenhum registro corresponde a esses filtros. Tente outro termo, outro período ou limpe os filtros."
+                        actionLabel="Limpar filtros"
+                        onAction={() => {
+                            setSearchTerm('');
+                            setStartDate('');
+                            setEndDate('');
+                            setActiveFilter('todos');
+                        }}
+                    />
                 </div>
             )}
         </div>

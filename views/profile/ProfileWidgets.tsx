@@ -26,6 +26,7 @@ import {
   Link,
   Loader2,
   MapPin,
+  Phone,
   MessageSquare,
   Mic2,
   MonitorOff,
@@ -45,6 +46,8 @@ import {
   Vote,
   X,
 } from 'lucide-react';
+import { formatLocalDate, parseLocalDate } from '../../utils/date';
+import { safeHttpUrl } from '../../utils/url';
 import {
   AmendmentStats,
   Bill,
@@ -103,9 +106,12 @@ const SocialIcon: React.FC<{ url: string }> = ({ url }) => {
   else if (url.includes('youtube.com')) { Icon = Youtube; label = 'YouTube'; colorClass = 'text-red-600 hover:text-red-700'; }
   else if (url.includes('linkedin.com')) { Icon = Linkedin; label = 'LinkedIn'; colorClass = 'text-blue-800 hover:text-blue-900'; }
 
+  const href = safeHttpUrl(url);
+  if (!href) return null;
+
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${colorClass}`} title={label}>
-      <Icon size={20} className="stroke-[1.5]" />
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${colorClass}`} title={label} aria-label={`${label} (nova aba)`}>
+      <Icon size={20} className="stroke-[1.5]" aria-hidden="true" />
     </a>
   );
 };
@@ -235,7 +241,7 @@ export const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
 
       <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-6">
         {agenda.map((event, i) => (
-          <div key={i} className="relative pl-6">
+          <div key={event.id ?? i} className="relative pl-6">
             <div className="absolute -left-[9px] top-0 w-4 h-4 bg-blue-500 rounded-full border-4 border-white dark:border-gray-800" />
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-1">
               <span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-wide bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md self-start">
@@ -259,15 +265,15 @@ export const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
                 Órgãos: {event.organs.join(', ')}
               </p>
             )}
-            {(event.agendaDocumentUrl || event.sourceUrl) && (
+            {(safeHttpUrl(event.agendaDocumentUrl) || safeHttpUrl(event.sourceUrl)) && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {event.agendaDocumentUrl && (
-                  <a href={event.agendaDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300">
+                {safeHttpUrl(event.agendaDocumentUrl) && (
+                  <a href={safeHttpUrl(event.agendaDocumentUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300">
                     <FileText size={11} /> Pauta oficial
                   </a>
                 )}
-                {event.sourceUrl && (
-                  <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-300">
+                {safeHttpUrl(event.sourceUrl) && (
+                  <a href={safeHttpUrl(event.sourceUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-300">
                     <ExternalLink size={11} /> Registro do evento
                   </a>
                 )}
@@ -333,7 +339,7 @@ export const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) =>
       const dateKey = normalizeDateKey(item.date);
       if (dateKey.length < 10) return;
       if (!groups[dateKey]) {
-        groups[dateKey] = { total: 0, count: 0, dateObj: new Date(`${dateKey}T12:00:00`) };
+        groups[dateKey] = { total: 0, count: 0, dateObj: parseLocalDate(dateKey) ?? new Date(0) };
       }
       const value = parseCurrency(item.value);
       if (!Number.isFinite(value)) return;
@@ -414,7 +420,7 @@ export const WordCloudWidget = ({ speeches }: { speeches: Speech[] }) => {
           const scale = 0.8 + ((word.value / maxVal) * 1.5);
           const opacity = 0.5 + ((word.value / maxVal) * 0.5);
           return (
-            <span key={i} className="font-black uppercase tracking-tighter transition-all hover:scale-110 hover:text-blue-600 dark:hover:text-blue-400 cursor-default" style={{ fontSize: `${scale}rem`, opacity, color: i < 3 ? 'var(--color-primary)' : 'inherit' }}>
+            <span key={word.text} className="font-black uppercase tracking-tighter transition-all hover:scale-110 hover:text-blue-600 dark:hover:text-blue-400 cursor-default" style={{ fontSize: `${scale}rem`, opacity, color: i < 3 ? '#1E488F' : 'inherit' }}>
               {word.text}
             </span>
           );
@@ -428,7 +434,8 @@ export const WordCloudWidget = ({ speeches }: { speeches: Speech[] }) => {
 export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoading: boolean }) => {
   const age = useMemo(() => {
     if (!candidate.birthDate) return null;
-    const birth = new Date(candidate.birthDate);
+    const birth = parseLocalDate(candidate.birthDate);
+    if (!birth) return null;
     const now = new Date();
     let years = now.getFullYear() - birth.getFullYear();
     if (now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) {
@@ -438,7 +445,8 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
   }, [candidate.birthDate]);
 
   const getZodiac = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
+    if (!d) return '';
     const day = d.getDate();
     const month = d.getMonth() + 1;
     if ((month == 1 && day <= 20) || (month == 12 && day >= 22)) return 'Capricórnio';
@@ -471,8 +479,8 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
   ].filter(Boolean) as string[];
   const formatStaffStart = (value?: string) => {
     if (!value) return null;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
+    const parsed = parseLocalDate(value);
+    if (!parsed) return value;
     return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
   };
 
@@ -495,9 +503,9 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 xl:col-span-2">
           <div>
             <p className="text-xs font-black uppercase text-gray-400 mb-1 flex items-center gap-1.5"><Calendar size={10} /> Idade</p>
-            <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+            <div className="text-xs font-bold text-gray-800 dark:text-gray-200">
               {isLoading ? <Skeleton className="h-4 w-12" /> : (age ? `${age} anos` : 'N/A')}
-            </p>
+            </div>
             {candidate.birthDate && <span className="text-[9px] text-gray-400 font-bold uppercase">{getZodiac(candidate.birthDate)}</span>}
           </div>
           <div>
@@ -560,7 +568,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
             )}
             {candidate.cabinet?.phone && (
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><MapPin size={12} className="text-blue-500" /> Telefone</div>
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1"><Phone size={12} className="text-blue-500" aria-hidden="true" /> Telefone</div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">{candidate.cabinet.phone}</p>
               </div>
             )}
@@ -600,10 +608,10 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
                 </div>
               )}
             </div>
-            {(candidate.website || candidate.officialPage) && (
+            {(safeHttpUrl(candidate.website) || safeHttpUrl(candidate.officialPage)) && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {candidate.officialPage && <a href={candidate.officialPage} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"><ExternalLink size={11} /> Página oficial</a>}
-                {candidate.website && <a href={candidate.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 dark:bg-white/10 dark:text-gray-300"><Globe size={11} /> Site</a>}
+                {safeHttpUrl(candidate.officialPage) && <a href={safeHttpUrl(candidate.officialPage)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"><ExternalLink size={11} /> Página oficial</a>}
+                {safeHttpUrl(candidate.website) && <a href={safeHttpUrl(candidate.website)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-black uppercase text-gray-600 dark:bg-white/10 dark:text-gray-300"><Globe size={11} /> Site</a>}
               </div>
             )}
           </div>
@@ -616,7 +624,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
             </p>
             <div className="space-y-2 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
               {candidate.staff.map((sec, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-gray-50 dark:bg-white/5 p-2 rounded-lg border border-gray-100 dark:border-white/5">
+                <div key={`${sec.name}-${sec.role}-${idx}`} className="flex items-center justify-between bg-gray-50 dark:bg-white/5 p-2 rounded-lg border border-gray-100 dark:border-white/5">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center text-[9px] font-black">
                       {sec.name.substring(0, 2).toUpperCase()}
@@ -643,7 +651,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
             <p className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2">Suplentes</p>
             <div className="flex flex-wrap gap-2">
               {candidate.suplentes.map((sup, i) => (
-                <span key={i} className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-2 py-1 rounded text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5">
+                <span key={`${sup}-${i}`} className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-2 py-1 rounded text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5">
                   {sup}
                 </span>
               ))}
@@ -654,7 +662,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
         {candidate.socials && candidate.socials.length > 0 && (
           <div className="pt-2 xl:self-end">
             <div className="flex flex-wrap gap-2">
-              {candidate.socials.map((url, i) => <SocialIcon key={i} url={url} />)}
+              {candidate.socials.map((url, i) => <SocialIcon key={`${url}-${i}`} url={url} />)}
             </div>
           </div>
         )}
@@ -714,6 +722,8 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
                 <Clock size={12} /> Linha do Tempo
               </span>
               <button
+                type="button"
+                aria-pressed={selectedYear === 'total'}
                 onClick={() => setSelectedYear('total')}
                 className={`text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wide transition-all ${selectedYear === 'total' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/20'}`}
               >
@@ -733,6 +743,9 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
                 return (
                   <button
                     key={year}
+                    type="button"
+                    aria-pressed={isActive}
+                    aria-label={`Ano ${year}`}
                     onClick={() => setSelectedYear(year)}
                     className={`group relative flex flex-col items-center justify-center w-10 h-10 rounded-full transition-all duration-300 z-10 active:scale-90 ${
                       isActive
@@ -822,7 +835,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
       <article className="glass-panel p-6 rounded-[2.5rem] flex flex-col gap-4 group hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-2">
         <div className="flex justify-between items-start">
           <span className={`text-xs font-black uppercase px-3 py-1 rounded-full backdrop-blur-md ${getStatusColor(item.status)}`}>{item.status}</span>
-          <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+          <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
         </div>
         <div>
           <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2">Proposta de Lei</span>
@@ -830,13 +843,13 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
           <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">{item.description}</p>
         </div>
         <div className="flex gap-2 mt-auto">
-          {item.urlInteiroTeor && (
-            <a href={item.urlInteiroTeor} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
+          {safeHttpUrl(item.urlInteiroTeor) && (
+            <a href={safeHttpUrl(item.urlInteiroTeor)} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
               <FileText size={12} /> Inteiro Teor
             </a>
           )}
-          {item.externalLink && (
-            <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-gray-500 dark:text-gray-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-gray-100/50 dark:hover:bg-white/5 transition-colors ml-auto">
+          {safeHttpUrl(item.externalLink) && (
+            <a href={safeHttpUrl(item.externalLink)} target="_blank" rel="noopener noreferrer" className="text-xs font-black uppercase text-gray-500 dark:text-gray-400 flex items-center gap-1.5 hover:underline px-3 py-1.5 rounded-lg hover:bg-gray-100/50 dark:hover:bg-white/5 transition-colors ml-auto">
               Ver Site <ExternalLink size={12} />
             </a>
           )}
@@ -858,7 +871,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start mb-2">
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Votação Nominal</span>
-              <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+              <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
             </div>
             <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight mb-2 line-clamp-3" title={item.description}>{item.description}</h4>
           </div>
@@ -903,7 +916,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
         <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-3xl pointer-events-none" />
         <div className="flex justify-between items-start relative z-10">
           <span className="bg-purple-100/50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 text-xs font-black uppercase px-3 py-1 rounded-full backdrop-blur-md">Relatoria</span>
-          <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+          <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
         </div>
         <div>
           <h4 className="font-bold text-gray-900 dark:text-white leading-tight mb-1 text-lg">{item.billTitle}</h4>
@@ -928,7 +941,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
             </div>
             <div>
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Discurso</span>
-              <span className="text-xs font-bold text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
+              <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
             </div>
           </div>
           <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${isHighRelevance ? 'bg-orange-100/50 text-orange-700 border-orange-200' : 'bg-gray-100/50 text-gray-600 border-gray-200'}`}>
@@ -957,15 +970,15 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
             {hasVideo ? (
               showVideo ? (
                 <div className="relative w-full h-full aspect-video bg-black">
-                  <video controls className="w-full h-full object-contain" src={item.urlVideo}>
+                  <video controls className="w-full h-full object-contain" src={safeHttpUrl(item.urlVideo)}>
                     Seu navegador não suporta o elemento de vídeo.
                   </video>
-                  <button onClick={() => setShowVideo(false)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition-colors backdrop-blur-sm">
-                    <X size={16} />
+                  <button type="button" onClick={() => setShowVideo(false)} aria-label="Fechar vídeo" className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition-colors backdrop-blur-sm focus-visible:ring-4 focus-visible:ring-white/60">
+                    <X size={16} aria-hidden="true" />
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setShowVideo(true)} className="w-full h-48 md:h-64 bg-gray-900 relative group/play flex flex-col items-center justify-center hover:bg-gray-800 transition-colors">
+                <button type="button" onClick={() => setShowVideo(true)} className="focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/60 w-full h-48 md:h-64 bg-gray-900 relative group/play flex flex-col items-center justify-center hover:bg-gray-800 transition-colors">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                   <div className="relative z-10 flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover/play:scale-110 transition-transform mb-3">
@@ -994,7 +1007,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
                 <div className="p-3 bg-white dark:bg-white/10 rounded-full text-blue-500 shadow-sm shrink-0"><Volume2 size={20} /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Áudio Oficial</p>
-                  <audio controls className="w-full h-8 outline-none" src={item.urlAudio}>Seu navegador não suporta áudio.</audio>
+                  <audio controls className="w-full h-8" src={safeHttpUrl(item.urlAudio)}>Seu navegador não suporta áudio.</audio>
                 </div>
               </>
             ) : (
@@ -1009,12 +1022,12 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
           </div>
           <div className="flex gap-2 flex-wrap pt-2 border-t border-gray-100 dark:border-white/5">
             {item.transcription && (
-              <button onClick={() => setExpanded(!expanded)} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl text-xs font-black uppercase text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors backdrop-blur-md">
+              <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 inline-flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl text-xs font-black uppercase text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors backdrop-blur-md">
                 <FileSearch size={14} className="pl-0.5" /> {expanded ? 'Recolher Texto' : 'Ler Íntegra'}
               </button>
             )}
-            {item.externalLink && (
-              <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors backdrop-blur-md ml-auto">
+            {safeHttpUrl(item.externalLink) && (
+              <a href={safeHttpUrl(item.externalLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100/50 dark:bg-white/5 rounded-xl text-xs font-black uppercase text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors backdrop-blur-md ml-auto">
                 <ExternalLink size={14} /> Fonte Oficial
               </a>
             )}

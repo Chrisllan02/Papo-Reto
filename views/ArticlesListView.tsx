@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, ArrowRight, Lightbulb, Banknote, ScrollText, History, CheckCircle2, Search, X, ChevronDown, RefreshCw } from 'lucide-react';
+import { ArrowRight, History, CheckCircle2, Search, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { EducationalArticle } from '../types';
+import DataState from '../components/DataState';
+import { getArticleTheme, renderIcon } from '../utils/articleTheme';
 
 interface ArticlesListViewProps {
   onSelectArticle: (id: number) => void;
@@ -10,25 +12,6 @@ interface ArticlesListViewProps {
 }
 
 const PAGE_SIZE = 12;
-
-const ARTICLE_THEMES = [
-    { bg: 'bg-gradient-to-br from-picture to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
-    { bg: 'bg-gradient-to-br from-nuit to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
-    { bg: 'bg-gradient-to-br from-blue-700 to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' },
-    { bg: 'bg-gradient-to-br from-emerald-700 to-slate-950', icon: 'bg-white/20', badge: 'bg-white/20' },
-    { bg: 'bg-gradient-to-br from-orange-700 to-orange-950', icon: 'bg-white/20', badge: 'bg-white/20' },
-    { bg: 'bg-gradient-to-br from-slate-800 to-midnight', icon: 'bg-white/20', badge: 'bg-white/20' }
-];
-
-const getArticleTheme = (topic: string | undefined, index: number) => {
-    const normalized = (topic || '').toLowerCase();
-    if (normalized.includes('educ')) return ARTICLE_THEMES[1];
-    if (normalized.includes('legis') || normalized.includes('lei') || normalized.includes('congresso')) return ARTICLE_THEMES[0];
-    if (normalized.includes('econom') || normalized.includes('orçamento') || normalized.includes('tribut')) return ARTICLE_THEMES[2];
-    if (normalized.includes('segurança')) return ARTICLE_THEMES[4];
-    if (normalized.includes('saúde') || normalized.includes('ambiente')) return ARTICLE_THEMES[3];
-    return ARTICLE_THEMES[index % ARTICLE_THEMES.length];
-};
 
 const cleanPreviewText = (text: string) => text
     .replace(/\*\*/g, '')
@@ -90,15 +73,6 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
       setVisibleCount(prev => prev + PAGE_SIZE);
   };
 
-  // Helper para renderizar o ícone correto
-  const renderIcon = (iconName: string, size: number, className: string) => {
-      switch(iconName) {
-          case 'Banknote': return <Banknote size={size} className={className}/>;
-          case 'ScrollText': return <ScrollText size={size} className={className}/>;
-          default: return <Lightbulb size={size} className={className}/>;
-      }
-  };
-
   // Helper para classes de grid assimétrico
   const getGridSpanClass = (index: number) => {
       const pattern = index % 7;
@@ -131,26 +105,27 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                     </p>
                     {generatedCount > 0 && (
                         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-green-700 dark:text-green-300">
-                            <RefreshCw size={12} />
-                            {generatedCount} materiais atualizados pelo cron{latestGeneratedAt ? ` em ${latestGeneratedAt}` : ''}
+                            <RefreshCw size={12} aria-hidden="true" />
+                            {generatedCount} materiais atualizados automaticamente todos os dias{latestGeneratedAt ? ` em ${latestGeneratedAt}` : ''}
                         </div>
                     )}
                 </div>
 
                 {onOpenNewsHistory && (
                     <button 
+                        type="button"
                         onClick={onOpenNewsHistory}
-                        className="group flex items-center gap-3 glass-panel p-3 md:p-4 rounded-[2rem] hover:shadow-xl transition-all text-left"
+                        className="group flex items-center gap-3 glass-panel p-3 md:p-4 rounded-[2rem] hover:shadow-xl transition-all text-left focus-visible:ring-4 focus-visible:ring-blue-500/40"
                     >
                         <div className="p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full group-hover:scale-110 transition-transform">
-                            <History size={20} />
+                            <History size={20} aria-hidden="true" />
                         </div>
                         <div className="hidden md:block">
                             <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Acervo</p>
                             <p className="font-bold text-gray-900 dark:text-white text-sm">Galeria de Notícias</p>
                         </div>
                         <div className="pl-2 hidden md:block">
-                            <ArrowRight size={16} className="text-gray-300 group-hover:text-blue-500 transition-colors"/>
+                            <ArrowRight size={16} className="text-gray-300 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
                         </div>
                         <span className="md:hidden font-bold text-gray-900 dark:text-white text-sm pr-2">Histórico</span>
                     </button>
@@ -160,31 +135,34 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
             {/* Search Bar */}
             <div className="relative w-full max-w-md mb-6 group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                    <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" aria-hidden="true" />
                 </div>
                 <input 
                     type="text"
+                    aria-label="Buscar artigos por tema ou título"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Buscar por tema, título..."
                     className="block w-full pl-11 pr-10 py-3.5 bg-white/50 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-2xl text-sm font-bold text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-gray-800 transition-all shadow-inner"
                 />
                 {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button type="button" onClick={() => setSearch('')} aria-label="Limpar busca" className="absolute inset-y-0 right-0 pr-3 flex items-center focus-visible:ring-4 focus-visible:ring-blue-500/40 rounded-2xl">
                         <div className="p-1 bg-gray-200 dark:bg-white/10 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors">
-                            <X size={14} />
+                            <X size={14} aria-hidden="true" />
                         </div>
                     </button>
                 )}
             </div>
 
             {/* Category Filter Dinâmico */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" role="group" aria-label="Filtrar por categoria">
                 {categories.map(cat => (
                     <button
                         key={cat}
+                        type="button"
                         onClick={() => setSelectedCategory(cat)}
-                        className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all border backdrop-blur-sm whitespace-nowrap ${
+                        aria-pressed={selectedCategory === cat}
+                        className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all border backdrop-blur-sm whitespace-nowrap focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                             selectedCategory === cat 
                             ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-[1.02]' 
                             : 'bg-white/40 dark:bg-gray-800/40 text-gray-600 dark:text-gray-300 border-white/60 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-700/60'
@@ -199,10 +177,13 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
         {/* Grid de Artigos */}
         <div className="px-4 md:px-12 max-w-[2000px] mx-auto">
             {filteredArticles.length === 0 ? (
-                <div className="text-center py-20 opacity-50 flex flex-col items-center">
-                    <Search size={48} className="text-gray-300 mb-4" />
-                    <p className="font-bold text-gray-500">Nenhum artigo encontrado.</p>
-                    <p className="text-xs text-gray-400 mt-2">Tente outro termo ou categoria.</p>
+                <div className="py-10 flex justify-center">
+                    <DataState
+                        title="Nenhum artigo encontrado"
+                        description="Tente outro termo ou categoria."
+                        actionLabel="Limpar filtros"
+                        onAction={() => { setSearch(''); setSelectedCategory('Todos'); }}
+                    />
                 </div>
             ) : (
                 <>
@@ -213,8 +194,9 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                             return (
                                 <button 
                                     key={item.id}
+                                    type="button"
                                     onClick={() => onSelectArticle(item.id)}
-                                    className={`group relative text-left h-full min-h-[320px] outline-none col-span-12 ${getGridSpanClass(index)} transition-transform hover:scale-[1.01] active:scale-[0.99]`}
+                                    className={`group relative text-left h-full min-h-[320px] rounded-[2.5rem] focus-visible:ring-4 focus-visible:ring-blue-500/40 col-span-12 ${getGridSpanClass(index)} transition-transform hover:scale-[1.01] active:scale-[0.99]`}
                                 >
                                     {/* Background Container with Refined Glassmorphism */}
                                     <div className={`absolute inset-0 rounded-[2.5rem] bg-midnight ${theme.bg} shadow-sm group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)] transition-all duration-500 overflow-hidden border border-white/20 dark:border-white/5`}>
@@ -232,7 +214,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                         <div className="flex gap-2">
                                             {isRead && (
                                                     <div className="bg-green-500/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-green-100 border border-green-400/30 flex items-center gap-1 shadow-sm">
-                                                        <CheckCircle2 size={10} /> Lido
+                                                        <CheckCircle2 size={10} aria-hidden="true" /> Lido
                                                     </div>
                                                 )}
                                                 <div className={`${theme.badge} backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white/90 border border-white/20`}>
@@ -258,7 +240,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
 
                                         {/* Footer */}
                                         <div className="mt-auto pt-6 border-t border-white/20 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white group-hover:gap-3 transition-all drop-shadow-md">
-                                            {isRead ? 'Ler Novamente' : 'Ler Agora'} <ArrowRight size={14} className="text-white"/>
+                                            {isRead ? 'Ler Novamente' : 'Ler Agora'} <ArrowRight size={14} className="text-white" aria-hidden="true" />
                                         </div>
                                     </div>
                                 </button>
@@ -270,10 +252,11 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                     {visibleCount < filteredArticles.length && (
                         <div className="flex justify-center mt-10">
                             <button 
+                                type="button"
                                 onClick={handleLoadMore}
-                                className="flex items-center gap-2 px-8 py-3 glass-surface rounded-full text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                                className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex items-center gap-2 px-8 py-3 glass-surface rounded-full text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                             >
-                                <ChevronDown size={16} /> Carregar Mais Artigos
+                                <ChevronDown size={16} aria-hidden="true" /> Carregar Mais Artigos
                             </button>
                         </div>
                     )}

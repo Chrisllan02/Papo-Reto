@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { HelpCircle, X } from 'lucide-react';
+import Modal from './Modal';
 
 export const DICTIONARY: Record<string, string> = {
     'Obstrução': 'Estratégia onde o partido orienta não votar para tentar impedir que a votação aconteça (atrapalhar o quórum) ou atrasar os trabalhos.',
-    'Art. 17': 'Quando o deputado vota contra a orientação do próprio partido (rebeldia partidária).',
+    'Art. 17': 'Indica o voto ou a ausência do Presidente da Câmara, que pelo Regimento Interno (art. 17) só vota em casos específicos, como desempate ou votação secreta.',
     'Tramitação': 'O projeto ainda está sendo discutido nas comissões, não virou lei nem foi rejeitado definitivamente.',
     'Urgência': 'Votação para pular a fila e analisar o projeto imediatamente no Plenário, sem precisar passar antes por comissões.',
     'Relator': 'O deputado escolhido para estudar o projeto e recomendar aos demais se ele deve ser aprovado ou não.',
@@ -22,6 +23,7 @@ interface GlossaryProps {
 
 export const Glossary: React.FC<GlossaryProps> = ({ term, children }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const titleId = useId();
     
     // Tenta encontrar a definição exata ou uma parcial
     const definition = DICTIONARY[term] || DICTIONARY[Object.keys(DICTIONARY).find(k => term.includes(k)) || ''];
@@ -30,36 +32,39 @@ export const Glossary: React.FC<GlossaryProps> = ({ term, children }) => {
 
     return (
         <>
-            <span 
+            <button 
+                type="button"
                 onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
-                className="cursor-help border-b-2 border-dotted border-blue-400/50 decoration-none hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors inline-flex items-baseline gap-0.5 whitespace-nowrap group"
+                className="cursor-help border-b-2 border-dotted border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors inline-flex items-baseline gap-0.5 whitespace-nowrap group rounded-sm font-[inherit] text-[inherit] focus-visible:ring-4 focus-visible:ring-blue-500/40"
                 title="Toque para ver o significado"
+                aria-haspopup="dialog"
             >
                 {children}
-                <HelpCircle size={10} className="text-blue-400 group-hover:text-blue-600 mb-0.5" />
-            </span>
+                <HelpCircle size={10} className="text-blue-400 group-hover:text-blue-600 mb-0.5" aria-hidden="true" />
+                <span className="sr-only"> (ver significado)</span>
+            </button>
 
             {isOpen && (
-                <div 
-                    className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
-                    onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                <Modal
+                    onClose={() => setIsOpen(false)}
+                    labelledBy={titleId}
+                    className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
                 >
-                    <div 
-                        className="glass-panel p-6 rounded-[2rem] max-w-xs w-full shadow-2xl relative animate-in zoom-in-95 duration-200" 
-                        onClick={e => e.stopPropagation()}
-                    >
+                    <div className="glass-panel p-6 rounded-[2rem] max-w-xs w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
                         <button 
+                            type="button"
                             onClick={() => setIsOpen(false)}
-                            className="absolute top-4 right-4 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                            aria-label="Fechar"
+                            className="absolute top-4 right-4 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-400 hover:text-red-500 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
                         >
-                            <X size={16} />
+                            <X size={16} aria-hidden="true" />
                         </button>
 
                         <div className="flex items-center gap-2 mb-4 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-xs">
-                            <HelpCircle size={18} /> Dicionário Cidadão
+                            <HelpCircle size={18} aria-hidden="true" /> Dicionário Cidadão
                         </div>
                         
-                        <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
+                        <h3 id={titleId} className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
                             "{term}"
                         </h3>
                         
@@ -70,13 +75,14 @@ export const Glossary: React.FC<GlossaryProps> = ({ term, children }) => {
                         </div>
 
                         <button 
+                            type="button"
                             onClick={() => setIsOpen(false)}
-                            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-transform active:scale-95 shadow-lg"
+                            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-transform active:scale-95 shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500/40"
                         >
                             Entendi
                         </button>
                     </div>
-                </div>
+                </Modal>
             )}
         </>
     );

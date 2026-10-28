@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
+import Modal from './Modal';
 import { ChevronRight, X, Sparkles, ScrollText, BrainCircuit, Check, ChevronLeft } from 'lucide-react';
 
 interface OnboardingModalProps {
@@ -92,56 +93,66 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
       onFinish();
   };
 
+  const hasTarget = targetRect !== null;
+  useEffect(() => {
+      document.getElementById('onboarding-next')?.focus({ preventScroll: true });
+  }, [currentStepIndex, hasTarget]);
+
   // Renderização do Modal Central (Fallback ou Passos Iniciais/Finais)
   if (!targetRect) {
       return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
+        <Modal onClose={handleSkip} labelledBy="onboarding-titulo" closeOnBackdrop={false} className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
             <div className="glass-panel w-full max-w-sm rounded-[2.5rem] p-8 text-center relative overflow-hidden">
                 
                 {/* Botão de Fechar no topo */}
                 <button 
+                    type="button"
                     onClick={handleSkip}
-                    className="absolute top-5 right-5 p-2 text-subtle hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-20"
-                    title="Fechar Tour"
+                    className="absolute top-5 right-5 p-2 text-subtle hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-20 focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                    aria-label="Fechar tour"
+                    title="Fechar tour"
                 >
-                    <X size={20} />
+                    <X size={20} aria-hidden="true" />
                 </button>
 
                 {step.icon && (
                     <div className="mb-6 flex justify-center">
                         <div className={`p-4 rounded-full bg-gray-50 dark:bg-gray-800 ${step.color}`}>
-                            <step.icon size={48} />
+                            <step.icon size={48} aria-hidden="true" />
                         </div>
                     </div>
                 )}
-                <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">{step.title}</h2>
+                <h2 id="onboarding-titulo" className="text-2xl font-black text-gray-900 dark:text-white mb-4">{step.title}</h2>
                 <p className="text-muted font-medium mb-8 leading-relaxed">{step.desc}</p>
                 
                 <div className="flex gap-3">
                     {currentStepIndex > 0 && (
-                        <button onClick={handlePrev} className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-muted hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                            <ChevronLeft size={20}/>
+                        <button type="button" onClick={handlePrev} aria-label="Passo anterior" className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-muted hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                            <ChevronLeft size={20} aria-hidden="true" />
                         </button>
                     )}
                     <button 
+                        id="onboarding-next"
+                        type="button"
                         onClick={handleNext}
-                        className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg flex items-center justify-center gap-2 focus-visible:ring-4 focus-visible:ring-blue-500/40"
                     >
-                        {isLast ? "Começar" : "Continuar"} <ChevronRight size={18}/>
+                        {isLast ? "Começar" : "Continuar"} <ChevronRight size={18} aria-hidden="true" />
                     </button>
                 </div>
 
                 {/* Link Pular explícito na primeira tela */}
                 {currentStepIndex === 0 && (
                     <button 
+                        type="button"
                         onClick={handleSkip}
-                        className="mt-4 text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-white transition-colors uppercase tracking-wider"
+                        className="mt-4 focus-visible:ring-4 focus-visible:ring-blue-500/40 rounded-md text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-white transition-colors uppercase tracking-wider"
                     >
                         Pular Introdução
                     </button>
                 )}
             </div>
-        </div>
+        </Modal>
       );
   }
 
@@ -172,7 +183,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] animate-in fade-in duration-300">
+    <Modal onClose={handleSkip} labelledBy="onboarding-titulo" closeOnBackdrop={false} className="fixed inset-0 z-[100] animate-in fade-in duration-300">
         
         {/* Spotlight Overlay: Usando box-shadow massivo para criar o "buraco" */}
         <div 
@@ -207,7 +218,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
             )}
 
             <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-lg font-black ${step.color || 'text-gray-900 dark:text-white'}`}>{step.title}</h3>
+                <h3 id="onboarding-titulo" className={`text-lg font-black ${step.color || 'text-gray-900 dark:text-white'}`}>{step.title}</h3>
                 <span className="text-[10px] font-bold text-subtle bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                     {currentStepIndex + 1}/{STEPS.length}
                 </span>
@@ -219,31 +230,36 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
 
             <div className="flex gap-3 justify-end">
                 <button 
+                    type="button"
                     onClick={handleSkip}
-                    className="text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-gray-200 px-3 py-2 transition-colors"
+                    className="text-xs font-bold text-subtle hover:text-gray-600 dark:hover:text-gray-200 px-3 py-2 transition-colors rounded-md focus-visible:ring-4 focus-visible:ring-blue-500/40"
                 >
                     Pular
                 </button>
                 <div className="flex gap-2">
                     {currentStepIndex > 0 && (
                         <button 
+                            type="button"
                             onClick={handlePrev}
-                            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-strong transition-colors"
+                            aria-label="Passo anterior"
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-strong transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
                         >
-                            <ChevronLeft size={18}/>
+                            <ChevronLeft size={18} aria-hidden="true" />
                         </button>
                     )}
                     <button 
+                        id="onboarding-next"
+                        type="button"
                         onClick={handleNext}
-                        className="px-5 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-1"
+                        className="px-5 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-1 focus-visible:ring-4 focus-visible:ring-blue-500/40"
                     >
-                        {isLast ? "Concluir" : "Próximo"} <ChevronRight size={14}/>
+                        {isLast ? "Concluir" : "Próximo"} <ChevronRight size={14} aria-hidden="true" />
                     </button>
                 </div>
             </div>
         </div>
 
-    </div>
+    </Modal>
   );
 };
 

@@ -3,7 +3,8 @@ import React from 'react';
 
 const LoadingScreen: React.FC = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-500">
+    <div role="status" aria-live="polite" className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-500">
+      <span className="sr-only">Carregando o PapoReto</span>
       <style>{`
         .loader-wrapper {
             display: flex;
@@ -190,7 +191,7 @@ const LoadingScreen: React.FC = () => {
             <div className="flag-green"></div>
             <div className="flag-yellow"></div>
             <div className="flag-blue">
-                <svg className="flag-details-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                <svg aria-hidden="true" className="flag-details-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <path id="textCurve" d="M -50,265 Q 250,145 550,265" />
                     </defs>
@@ -236,7 +237,7 @@ const LoadingScreen: React.FC = () => {
             </div>
         </div>
         
-        <div className="loading-text-wrapper">
+        <div className="loading-text-wrapper" aria-hidden="true">
             <span className="text-ghost">CARREGANDO...</span>
             <span className="text-visible">CARREGANDO...</span>
         </div>

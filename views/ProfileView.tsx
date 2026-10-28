@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, Clock, Building2, Banknote, Mic2, Loader2, Globe, Phone, Mail, Instagram, Twitter, Facebook, Youtube, ExternalLink, GraduationCap, Users, Info, MapPin, Wallet, Vote, PlayCircle, FolderOpen, Contact, CalendarDays, Linkedin, BarChart3, X, FileText, CheckCircle2, Search, Briefcase, FileSearch, Flag, PieChart, Tag, Plane, Volume2, Video, VolumeX, MonitorOff, FileCheck, Calendar, Scale, AlertTriangle, Link, Crown, Star, MessageSquare, DollarSign, Award, ScrollText, BadgeCheck } from 'lucide-react';
-import { Politician, FeedItem, YearStats, ExpenseItem, Speech, Secretary, LegislativeEvent } from '../types';
+import { ChevronLeft, Clock, Banknote, Loader2, ExternalLink, Wallet, Briefcase, Flag, PieChart, Tag, Plane, FileCheck, FileText, Crown, Star, ScrollText, BadgeCheck, CheckCircle2 } from 'lucide-react';
+import { Politician, FeedItem } from '../types';
 import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
+import { formatLocalDate, parseLocalDate } from '../utils/date';
+import { safeHttpUrl } from '../utils/url';
 import {
   ActivityCard,
   AgendaWidget,
@@ -26,70 +28,6 @@ export interface ProfileViewProps {
   onToggleFollow?: () => void;
 }
 
-// ... (Other existing helper components: getStatusColor, SocialIcon, PresenceBar, getFrontCategoryStyle) ...
-const getStatusColor = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('aprovado')) return 'bg-blue-100/50 text-blue-900 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200'; 
-    if (s.includes('tramitação')) return 'bg-yellow-100/50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300';
-    return 'bg-gray-100/50 text-gray-600 border-gray-200 dark:bg-gray-700/50 dark:text-gray-300';
-};
-
-const SocialIcon: React.FC<{ url: string }> = ({ url }) => {
-    let Icon = Globe;
-    let label = 'Site';
-    let colorClass = 'text-gray-500 hover:text-blue-600';
-
-    if (url.includes('instagram.com')) { Icon = Instagram; label = 'Instagram'; colorClass = 'text-pink-600 hover:text-pink-700'; }
-    else if (url.includes('twitter.com') || url.includes('x.com')) { Icon = Twitter; label = 'Twitter'; colorClass = 'text-blue-400 hover:text-blue-500'; }
-    else if (url.includes('facebook.com')) { Icon = Facebook; label = 'Facebook'; colorClass = 'text-blue-700 hover:text-blue-800'; }
-    else if (url.includes('youtube.com')) { Icon = Youtube; label = 'YouTube'; colorClass = 'text-red-600 hover:text-red-700'; }
-    else if (url.includes('linkedin.com')) { Icon = Linkedin; label = 'LinkedIn'; colorClass = 'text-blue-800 hover:text-blue-900'; }
-
-    return (
-        <a href={url} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${colorClass}`} title={label}>
-            <Icon size={20} className="stroke-[1.5]" />
-        </a>
-    );
-};
-
-const PresenceBar = ({ label, present, justified, unjustified, total }: { label: string, present: number, justified: number, unjustified: number, total: number }) => {
-    if (total === 0) {
-        return (
-            <div className="w-full">
-                <div className="flex justify-between items-end mb-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                </div>
-                <div className="w-full h-10 bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-400">
-                    <FolderOpen size={14} />
-                    <span className="text-xs font-bold uppercase tracking-wide">Sem dados</span>
-                </div>
-            </div>
-        );
-    }
-    const pctPresent = total > 0 ? (present / total) * 100 : 0;
-    const pctJustified = total > 0 ? (justified / total) * 100 : 0;
-    const pctUnjustified = total > 0 ? (unjustified / total) * 100 : 0;
-
-    return (
-        <div className="w-full">
-            <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</span>
-                <span className="text-sm font-black text-gray-900 dark:text-white">{Math.round(pctPresent)}% Presença</span>
-            </div>
-            <div className="w-full h-3 bg-gray-100/50 dark:bg-gray-700/50 rounded-full overflow-hidden flex shadow-inner">
-                <div style={{ width: `${pctPresent}%` }} className="bg-green-500 h-full shadow-[0_0_10px_rgba(34,197,94,0.4)]" title="Presenças"></div>
-                <div style={{ width: `${pctJustified}%` }} className="bg-yellow-400 h-full" title="Ausências Justificadas"></div>
-                <div style={{ width: `${pctUnjustified}%` }} className="bg-red-500 h-full" title="Ausências Não Justificadas"></div>
-            </div>
-            <div className="flex justify-between mt-1.5 text-xs font-bold text-gray-400 uppercase tracking-wide">
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> {present}</div>
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div> {justified} Justif.</div>
-                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> {unjustified} Falta</div>
-            </div>
-        </div>
-    );
-};
-
 const getFrontCategoryStyle = (title: string) => {
     const t = title.toLowerCase();
     
@@ -106,11 +44,142 @@ const getFrontCategoryStyle = (title: string) => {
     return { name: 'Outros', bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', stroke: '#94a3b8' };
 };
 
+interface TimeLeft {
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+}
+
+const ZERO_TIME: TimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+const computeTimeLeft = (end: string): TimeLeft => {
+    const endDate = parseLocalDate(end);
+    if (!endDate) return ZERO_TIME;
+    endDate.setHours(23, 59, 59, 0);
+    const difference = endDate.getTime() - Date.now();
+    if (difference <= 0) return ZERO_TIME;
+    return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000)
+    };
+};
+
+interface MandateCountdownProps {
+    end: string;
+    percentage: number;
+    startStr: string;
+    endStr: string;
+    variant: 'hero' | 'card';
+}
+
+// Estado próprio: o relógio de 1s não re-renderiza o perfil inteiro
+const MandateCountdown: React.FC<MandateCountdownProps> = ({ end, percentage, startStr, endStr, variant }) => {
+    const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => computeTimeLeft(end));
+
+    useEffect(() => {
+        const update = () => setTimeLeft(computeTimeLeft(end));
+        update();
+        const timerId = setInterval(update, 1000);
+        return () => clearInterval(timerId);
+    }, [end]);
+
+    const isHero = variant === 'hero';
+    const units = [
+        { label: 'DIAS', value: timeLeft.days },
+        { label: 'HRS', value: timeLeft.hours },
+        { label: 'MIN', value: timeLeft.minutes },
+        { label: 'SEG', value: timeLeft.seconds },
+    ];
+
+    return (
+        <>
+            <div className="flex justify-between items-center mb-4">
+                <p className={`text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 ${isHero ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'}`}><Clock size={12} className="text-orange-500" aria-hidden="true" /> Contagem Regressiva</p>
+                <span className={`text-xs font-black px-2 py-1 rounded-lg border ${isHero ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' : 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20'}`}>{percentage}%</span>
+            </div>
+            <div role="timer" className="flex justify-between items-center gap-2 mb-4 text-center">
+                {units.map((time) => (
+                    <div key={time.label} className={isHero
+                        ? 'flex-1 bg-white/10 rounded-xl p-2 border border-white/5 backdrop-blur-sm shadow-inner group/timer hover:bg-white/15 transition-colors'
+                        : 'flex-1 bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-100 dark:border-white/5 backdrop-blur-sm shadow-inner'}>
+                        <span className={isHero
+                            ? 'block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none group-hover/timer:scale-110 transition-transform'
+                            : 'block text-xl font-black text-gray-900 dark:text-white tabular-nums tracking-tighter leading-none'}>{String(time.value).padStart(2, '0')}</span>
+                        <span className={`text-[7px] font-bold uppercase tracking-wider ${isHero ? 'text-white/50' : 'text-gray-400 dark:text-white/40'}`}>{time.label}</span>
+                    </div>
+                ))}
+            </div>
+            <div className={`relative w-full h-2 rounded-full overflow-hidden mb-2 ${isHero ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`}><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div>
+            <div className={`flex justify-between text-[9px] font-bold uppercase tracking-widest ${isHero ? 'text-white/40' : 'text-gray-400 dark:text-white/30'}`}><span>Início: {startStr}</span><span>Fim: {endStr}</span></div>
+        </>
+    );
+};
+
+interface QuickMetricProps {
+    icon: React.ElementType;
+    label: string;
+    value: string;
+    hint: string;
+    tone: string;
+}
+
+const QuickMetric: React.FC<QuickMetricProps> = ({ icon: Icon, label, value, hint, tone }) => (
+    <div className="glass-surface rounded-2xl p-4 md:p-5 border border-white/60 dark:border-white/10 min-w-0">
+        <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
+                <Icon size={18} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
+                <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
+                <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
+            </div>
+        </div>
+    </div>
+);
+
+interface FrontCategory {
+    name: string;
+    percent: number;
+    strokeColor: string;
+}
+
+const DnaDonutChart: React.FC<{ categories: FrontCategory[]; total: number }> = ({ categories, total }) => {
+    const size = 220; 
+    const strokeWidth = 35; 
+    const center = size / 2;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    let accumulatedPercent = 0;
+    return (
+        <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label={`Distribuição de ${total} frentes parlamentares por tema`}>
+                <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
+                {categories.slice(0, 6).map((cat) => {
+                    const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
+                    const rotation = (accumulatedPercent / 100) * 360;
+                    const offset = 0; 
+                    accumulatedPercent += cat.percent;
+                    return (
+                        <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
+                    );
+                })}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{total}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Frentes</span>
+            </div>
+        </div>
+    );
+};
+
 // ... (ProfileView component with new integrated sections) ...
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [showOtherFronts, setShowOtherFronts] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [translateX, setTranslateX] = useState(0);
@@ -196,32 +265,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       });
   }, [candidate.fronts]);
 
-  useEffect(() => {
-      const parseDate = (s: string) => {
-          if (!s) return new Date();
-          if (s.includes('/')) return new Date(s.split('/').reverse().join('-') + 'T23:59:59');
-          return new Date(s);
-      };
-      const endDate = parseDate(candidate.mandate.end);
-      const updateTimer = () => {
-          const now = new Date();
-          const difference = endDate.getTime() - now.getTime();
-          if (difference > 0) {
-              setTimeLeft({
-                  days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                  hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                  minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-                  seconds: Math.floor((difference % (1000 * 60)) / 1000)
-              });
-          } else {
-              setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-          }
-      };
-      const timerId = setInterval(updateTimer, 1000);
-      updateTimer();
-      return () => clearInterval(timerId);
-  }, [candidate.mandate.end]);
-
   const displayStats = useMemo(() => {
       if (selectedYear === 'total' || !candidate.yearlyStats || !candidate.yearlyStats[selectedYear]) {
           return candidate.stats;
@@ -257,7 +300,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           if (activityFilter === 'reported') activities = activities.filter(a => a._type === 'report');
           if (activityFilter === 'speeches') activities = activities.filter(a => a._type === 'speech');
       }
-      return activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return activities.sort((a, b) => {
+          const diff = (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0);
+          if (diff !== 0) return diff;
+          return String(b.date || '').localeCompare(String(a.date || ''));
+      });
   }, [candidate, activityFilter]);
 
   const commissionGroups = useMemo(() => {
@@ -272,22 +319,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       return { titular };
   }, [candidate.roles]);
 
+  const hasMandateDates = Boolean(parseLocalDate(candidate.mandate.start) && parseLocalDate(candidate.mandate.end));
+
   const mandateInfo = useMemo(() => {
-      const parseDate = (s: string) => {
-          if (!s) return new Date();
-          if (s.includes('/')) return new Date(s.split('/').reverse().join('-'));
-          return new Date(s);
-      };
-      const start = parseDate(candidate.mandate.start);
-      const end = parseDate(candidate.mandate.end);
+      const start = parseLocalDate(candidate.mandate.start);
+      const end = parseLocalDate(candidate.mandate.end);
+      const startStr = formatLocalDate(candidate.mandate.start, undefined, '—');
+      const endStr = formatLocalDate(candidate.mandate.end, undefined, '—');
+      if (!start || !end) return { percentage: 0, startStr, endStr };
       const now = new Date();
       const totalTime = end.getTime() - start.getTime();
       const elapsedTime = now.getTime() - start.getTime();
       const totalDays = Math.max(1, Math.ceil(totalTime / (1000 * 60 * 60 * 24)));
       const daysPassed = Math.max(0, Math.ceil(elapsedTime / (1000 * 60 * 60 * 24)));
       const percentage = Math.min(100, Math.max(0, Math.round((daysPassed / totalDays) * 100)));
-      const formatDate = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      return { percentage, startStr: formatDate(start), endStr: formatDate(end) };
+      return { percentage, startStr, endStr };
   }, [candidate.mandate]);
 
   const profileSummary = useMemo(() => {
@@ -298,50 +344,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       const spending = displayStats.spending || 0;
       return { activitiesCount, attendance, hasAttendance, frontsCount, spending };
   }, [candidate, displayStats]);
-
-  const QuickMetric = ({ icon: Icon, label, value, hint, tone }: { icon: any; label: string; value: string; hint: string; tone: string }) => (
-      <div className="glass-surface rounded-2xl p-4 md:p-5 border border-white/60 dark:border-white/10 min-w-0">
-          <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
-                  <Icon size={18} />
-              </div>
-              <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
-                  <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
-                  <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
-              </div>
-          </div>
-      </div>
-  );
-
-  const DnaDonutChart = () => {
-        const size = 220; 
-        const strokeWidth = 35; 
-        const center = size / 2;
-        const radius = (size - strokeWidth) / 2;
-        const circumference = 2 * Math.PI * radius;
-        let accumulatedPercent = 0;
-        return (
-            <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-                    <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
-                    {frontCategories.slice(0, 6).map((cat, i) => {
-                        const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (accumulatedPercent / 100) * 360;
-                        const offset = 0; 
-                        accumulatedPercent += cat.percent;
-                        return (
-                            <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
-                        );
-                    })}
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{candidate.fronts?.length || 0}</span>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Frentes</span>
-                </div>
-            </div>
-        );
-  };
 
   const getStatusDisplay = () => {
       let statusText = "Em Exercício";
@@ -389,8 +391,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
         style={{ transform: `translateX(${translateX}px)`, transition: translateX === 0 ? 'transform 0.3s ease-out' : 'none' }}
     >
       {isLoadingDetails && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
-              <Loader2 size={18} className="animate-spin shrink-0"/>
+          <div role="status" className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
+              <Loader2 size={18} className="animate-spin shrink-0" aria-hidden="true" />
               <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">{loadingStatus}</span>
           </div>
       )}
@@ -398,11 +400,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto pt-6 px-safe">
           <div className="relative w-full overflow-hidden rounded-[2.5rem] md:rounded-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
               <div className="absolute inset-0 bg-green-900"></div>
-              <div className="absolute inset-0 opacity-50 mix-blend-overlay"><img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="Bandeira do Brasil" className="w-full h-full object-cover scale-110 brightness-75"/></div>
+              <div className="absolute inset-0 opacity-50 mix-blend-overlay"><img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="" className="w-full h-full object-cover scale-110 brightness-75"/></div>
               <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
               <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
-                <button onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg"><ChevronLeft size={24} aria-hidden="true" /></button>
+                <button type="button" onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg focus-visible:ring-4 focus-visible:ring-white/50"><ChevronLeft size={24} aria-hidden="true" /></button>
               </div>
               <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
                   <div className="shrink-0 relative">
@@ -423,20 +425,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                       </p>
                   </div>
                   <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
-                      <div className="flex justify-between items-center mb-4">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 flex items-center gap-1.5"><Clock size={12} className="text-orange-500" /> Contagem Regressiva</p>
-                        <span className="text-xs font-black text-orange-400 bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-500/20">{mandateInfo.percentage}%</span>
-                      </div>
-                      <div className="flex justify-between items-center gap-2 mb-4 text-center">
-                          {[{ label: 'DIAS', value: timeLeft.days }, { label: 'HRS', value: timeLeft.hours }, { label: 'MIN', value: timeLeft.minutes }, { label: 'SEG', value: timeLeft.seconds }].map((time, i) => (
-                              <div key={i} className="flex-1 bg-white/10 rounded-xl p-2 border border-white/5 backdrop-blur-sm shadow-inner group/timer hover:bg-white/15 transition-colors">
-                                  <span className="block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none group-hover/timer:scale-110 transition-transform">{String(time.value).padStart(2, '0')}</span>
-                                  <span className="text-[7px] font-bold text-white/50 uppercase tracking-wider">{time.label}</span>
-                              </div>
-                          ))}
-                      </div>
-                      <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden mb-2"><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div></div>
-                      <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-widest"><span>Início: {mandateInfo.startStr}</span><span>Fim: {mandateInfo.endStr}</span></div>
+                      {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="hero" /> : <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Mandato: datas não informadas</p>}
                   </div>
               </div>
           </div>
@@ -444,20 +433,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-6 relative z-20 space-y-6 px-safe">
           <div className="lg:hidden mb-6 glass-panel rounded-[2.5rem] p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 flex items-center gap-1.5"><Clock size={12} className="text-orange-500" /> Contagem Regressiva</p>
-                    <span className="text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-200 dark:border-orange-500/20">{mandateInfo.percentage}%</span>
-                </div>
-                <div className="flex justify-between items-center gap-2 mb-4 text-center">
-                    {[{ label: 'DIAS', value: timeLeft.days }, { label: 'HRS', value: timeLeft.hours }, { label: 'MIN', value: timeLeft.minutes }, { label: 'SEG', value: timeLeft.seconds }].map((time, i) => (
-                        <div key={i} className="flex-1 bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-100 dark:border-white/5 backdrop-blur-sm shadow-inner">
-                            <span className="block text-xl font-black text-gray-900 dark:text-white tabular-nums tracking-tighter leading-none">{String(time.value).padStart(2, '0')}</span>
-                            <span className="text-[7px] font-bold text-gray-400 dark:text-white/40 uppercase tracking-wider">{time.label}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="relative w-full h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-2"><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${mandateInfo.percentage}%` }}></div></div>
-                <div className="flex justify-between text-[9px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest"><span>Início: {mandateInfo.startStr}</span><span>Fim: {mandateInfo.endStr}</span></div>
+                {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="card" /> : <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Mandato: datas não informadas</p>}
           </div>
 
           <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4" aria-label="Resumo do parlamentar">
@@ -499,14 +475,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           <div className="min-w-0">
               <div className="sticky top-0 z-40 glass-surface p-1.5 rounded-2xl md:rounded-full shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
                  {(['activities', 'money'] as const).map(tab => (
-                     <button key={tab} id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
+                     <button key={tab} type="button" id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
                         {tab === 'money' ? 'Custos e Salário' : 'Atuação e Agenda'}
                      </button>
                  ))}
               </div>
               
               <div className="space-y-6 md:space-y-10 pb-24 md:pb-12">
-                  <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="outline-none">
+                  <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="rounded-3xl focus-visible:ring-4 focus-visible:ring-blue-500/40">
                     {profileTab === 'activities' && (
                         <div>
                             {/* --- AGENDA (NOVO WIDGET) --- */}
@@ -523,7 +499,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                         <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-[3rem] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
                                             <div className="flex flex-col items-center justify-center">
                                                 <div className="flex items-center gap-2 mb-6"><div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl"><PieChart size={18} /></div><h4 className="text-sm font-black uppercase text-gray-700 dark:text-gray-200 tracking-wide">DNA de Interesses</h4></div>
-                                                <DnaDonutChart />
+                                                <DnaDonutChart categories={frontCategories} total={candidate.fronts?.length || 0} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
                                                 {frontCategories.slice(0, 4).map((cat) => (
@@ -531,8 +507,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                 ))}
                                                 {frontCategories.length > 4 && (
                                                     <button
+                                                        type="button"
+                                                        aria-expanded={showOtherFronts}
                                                         onClick={() => setShowOtherFronts(prev => !prev)}
-                                                        className="col-span-2 p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10 transition-colors"
+                                                        className="col-span-2 p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
                                                     >
                                                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                                                             +{candidate.fronts.length - frontCategories.slice(0,4).reduce((acc, c) => acc + c.count, 0)} Outras
@@ -576,8 +554,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                 {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? <div className="space-y-4"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.occupations && candidate.occupations.length > 0 ? (
                                         <div className="space-y-4 relative">
                                             <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
-                                            {candidate.occupations.sort((a,b) => (b.startYear || 0) - (a.startYear || 0)).map((job, i) => (
-                                                <div key={i} className="flex gap-4 relative z-10 group">
+                                            {[...candidate.occupations].sort((a,b) => (b.startYear || 0) - (a.startYear || 0)).map((job, i) => (
+                                                <div key={`${job.title}-${job.entity ?? ''}-${job.startYear ?? ''}-${i}`} className="flex gap-4 relative z-10 group">
                                                     <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-blue-500 group-hover:text-blue-500 transition-colors"><Briefcase size={18} className="text-gray-400 group-hover:text-blue-500"/></div>
                                                     <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
                                                         <h4 className="font-black text-gray-900 dark:text-white text-sm">{job.title}</h4>
@@ -592,11 +570,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
                             <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                                 {['all', 'propositions', 'reported', 'votes', 'speeches'].map(f => (
-                                    <button key={f} onClick={() => setActivityFilter(f as any)} className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white/50 dark:bg-midnight/50 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}>{f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}</button>
+                                    <button key={f} type="button" aria-pressed={activityFilter === f} onClick={() => setActivityFilter(f as any)} className={`focus-visible:ring-4 focus-visible:ring-blue-500/40 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white/50 dark:bg-midnight/50 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}>{f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}</button>
                                 ))}
                             </div>
                             <div className="space-y-4">
-                                {isLoadingDetails && combinedActivities.length === 0 ? <><SkeletonFeedItem /><SkeletonFeedItem /><SkeletonFeedItem /></> : (combinedActivities.length > 0 ? combinedActivities.map((item, i) => <ActivityCard key={`${item._type}-${i}`} item={item} />) : <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhuma atividade encontrada neste filtro</div>)}
+                                {isLoadingDetails && combinedActivities.length === 0 ? <><SkeletonFeedItem /><SkeletonFeedItem /><SkeletonFeedItem /></> : (combinedActivities.length > 0 ? combinedActivities.map((item, i) => <ActivityCard key={`${item._type}-${item.id ?? `${item.date}-${i}`}`} item={item} />) : <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhuma atividade encontrada neste filtro</div>)}
                             </div>
                         </div>
                     )}
@@ -624,8 +602,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                       <section className="glass-panel p-6 md:p-12 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
                                           <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 mb-8 tracking-[0.4em] border-b border-gray-50 dark:border-white/5 pb-3">Detalhamento dos Gastos</h4>
                                           <div className="space-y-4 md:space-y-6">
-                                              {candidate.expensesBreakdown.map((exp, i) => (
-                                                  <a key={i} href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" title="Ver fonte oficial na Câmara" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md rounded-3xl border border-transparent hover:bg-white/80 dark:hover:bg-white/10 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900 transition-all group cursor-pointer hover:scale-[1.01]">
+                                              {candidate.expensesBreakdown.map((exp) => (
+                                                  <a key={exp.type} href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" title="Ver fonte oficial na Câmara" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md rounded-3xl border border-transparent hover:bg-white/80 dark:hover:bg-white/10 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900 transition-all group cursor-pointer hover:scale-[1.01]">
                                                       <div className="flex items-center gap-4 mb-2 sm:mb-0"><div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-gray-700/50 flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform"><Banknote size={24} aria-hidden="true" /></div><div><span className="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-200 line-clamp-1 group-hover:text-blue-600 transition-colors">{exp.type}</span><span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1 group-hover:text-blue-400">Fonte Oficial <ExternalLink size={8}/></span></div></div>
                                                       <div className="flex items-center justify-between sm:justify-end gap-6 pl-16 sm:pl-0"><div className="text-right"><span className="text-sm md:text-lg font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">R$ {exp.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full mt-1.5 overflow-hidden" aria-hidden="true"><div className="bg-blue-500 h-full rounded-full" style={{ width: `${exp.percent}%` }}></div></div></div></div>
                                                   </a>
@@ -643,7 +621,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                 </div>
                                 <div className="space-y-4">
                                     {candidate.assets.map((asset, i) => (
-                                        <div key={i} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                        <div key={`${asset.type}-${asset.description}-${i}`} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                                             <div>
                                                 <p className="text-xs font-bold text-gray-800 dark:text-white">{asset.type}</p>
                                                 <p className="text-[9px] text-gray-500 uppercase">{asset.description}</p>
@@ -664,9 +642,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                     </div>
                                     <div className="space-y-3">
                                         {candidate.detailedExpenses.slice(0, 20).map((expense, idx) => ( 
-                                            <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
+                                            <div key={expense.id ?? idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
                                                 <div className="flex items-start gap-4 mb-3 md:mb-0">
-                                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{expense.date.length > 7 ? new Date(expense.date).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'}).replace('.', '') : expense.date}</span><FileText size={14} className="text-gray-300 mt-0.5"/></div>
+                                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{formatLocalDate(expense.date, { day: '2-digit', month: 'short' }, expense.date).replace('.', '')}</span><FileText size={14} className="text-gray-300 mt-0.5"/></div>
                                                     <div>
                                                         <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide line-clamp-1 group-hover:text-blue-600 transition-colors">{expense.provider}</p>
                                                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
@@ -686,7 +664,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                 </div>
                                                 <div className="flex items-center justify-between md:justify-end gap-4 pl-16 md:pl-0">
                                                     <p className="text-sm font-black text-gray-900 dark:text-white">R$ {expense.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                                    {expense.urlDocumento ? (<a href={expense.urlDocumento} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm">Nota Fiscal <ExternalLink size={8} /></a>) : (<span className="px-3 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-400 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-50 cursor-not-allowed">Sem Nota</span>)}
+                                                    {safeHttpUrl(expense.urlDocumento) ? (<a href={safeHttpUrl(expense.urlDocumento)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm">Nota Fiscal <ExternalLink size={8} /></a>) : (<span className="px-3 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-400 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-50 cursor-not-allowed">Sem Nota</span>)}
                                                 </div>
                                             </div>
                                         ))}
@@ -700,8 +678,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                      <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-600 dark:text-sky-400 backdrop-blur-sm"><Plane size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Viagens Oficiais</h4><p className="text-[10px] text-gray-500 font-medium">Deslocamentos com Cota Parlamentar</p></div></div>
                                      <div className="space-y-3">
                                          {candidate.travels.map((trip, i) => (
-                                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-900 transition-colors group">
-                                                 <div className="flex items-center gap-4"><div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{new Date(trip.date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span><span className="text-lg font-black text-gray-800 dark:text-white leading-none">{new Date(trip.date).getDate()}</span></div><div><p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide group-hover:text-sky-600 transition-colors">{trip.destiny}</p><p className="text-[10px] text-gray-500 line-clamp-1">{trip.reason}</p></div></div>
+                                             <div key={`${trip.date}-${trip.destiny}-${i}`} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-900 transition-colors group">
+                                                 <div className="flex items-center gap-4"><div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{formatLocalDate(trip.date, { month: 'short' }).replace('.', '')}</span><span className="text-lg font-black text-gray-800 dark:text-white leading-none">{parseLocalDate(trip.date)?.getDate() ?? ''}</span></div><div><p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide group-hover:text-sky-600 transition-colors">{trip.destiny}</p><p className="text-[10px] text-gray-500 line-clamp-1">{trip.reason}</p></div></div>
                                                  <div className="text-right"><p className="text-sm font-black text-sky-600 dark:text-sky-400">R$ {trip.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
                                              </div>
                                          ))}

@@ -5,6 +5,7 @@ import MobileNav from './components/MobileNav';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
+import { Skeleton, SkeletonFeedItem } from './components/Skeleton';
 import { useAppContext } from './contexts/AppContext';
 
 const FeedView = lazy(() => import('./views/FeedView'));
@@ -16,6 +17,16 @@ const EducationView = lazy(() => import('./views/EducationView'));
 const ArticlesListView = lazy(() => import('./views/ArticlesListView'));
 const NewsHistoryView = lazy(() => import('./views/NewsHistoryView'));
 const ChatView = lazy(() => import('./views/ChatView'));
+
+const ViewFallback = () => (
+  <div role="status" aria-live="polite" className="w-full h-full overflow-hidden p-6 md:p-10 space-y-6">
+    <span className="sr-only">Carregando conteúdo</span>
+    <Skeleton className="h-10 w-1/3" />
+    <Skeleton className="h-40 w-full" />
+    <SkeletonFeedItem />
+    <SkeletonFeedItem />
+  </div>
+);
 
 function App() {
   const { state, actions } = useAppContext();
@@ -82,130 +93,9 @@ function App() {
 
   return (
     <div className={`flex h-[100dvh] w-full overflow-hidden font-sans transition-colors duration-500`}>
-        <style>{`
-            /* ALTO CONTRASTE (Amarelo sobre Preto) - Global Scope */
-            html.high-contrast, html.high-contrast body {
-                background-color: #000000 !important;
-                background-image: none !important;
-                color: #FFFF00 !important;
-            }
-            
-            /* Reset Global para High Contrast */
-            html.high-contrast * {
-                background-color: #000000 !important;
-                background-image: none !important;
-                color: #FFFF00 !important;
-                box-shadow: none !important;
-                text-shadow: none !important;
-                backdrop-filter: none !important;
-                border-color: #FFFF00 !important;
-            }
-
-            /* Bordas para definição de estrutura */
-            html.high-contrast div, 
-            html.high-contrast section, 
-            html.high-contrast article, 
-            html.high-contrast nav,
-            html.high-contrast header,
-            html.high-contrast aside {
-                border-color: #FFFF00 !important;
-            }
-
-            /* Componentes Interativos */
-            html.high-contrast button, 
-            html.high-contrast a, 
-            html.high-contrast input, 
-            html.high-contrast select, 
-            html.high-contrast textarea {
-                border: 2px solid #FFFF00 !important;
-                background-color: #000000 !important;
-                color: #FFFF00 !important;
-            }
-
-            /* Estado Hover */
-            html.high-contrast button:hover, 
-            html.high-contrast a:hover,
-            html.high-contrast select:hover {
-                background-color: #FFFF00 !important;
-                color: #000000 !important;
-            }
-            html.high-contrast button:hover *, 
-            html.high-contrast a:hover * {
-                color: #000000 !important;
-                stroke: #000000 !important;
-                fill: #000000 !important;
-            }
-
-            /* Ícones SVG */
-            html.high-contrast svg {
-                stroke: #FFFF00 !important;
-                color: #FFFF00 !important;
-                /* fill: none !important; REMOVIDO para permitir gráficos e mapas */
-            }
-            html.high-contrast svg.text-white {
-                stroke: #FFFF00 !important;
-            }
-
-            /* Barras de Progresso e Gráficos */
-            /* No alto contraste, preenchemos o que seria colorido com amarelo sólido */
-            html.high-contrast .bg-blue-600, 
-            html.high-contrast .bg-blue-500,
-            html.high-contrast .bg-green-500, 
-            html.high-contrast .bg-red-500,
-            html.high-contrast .bg-orange-500,
-            html.high-contrast .bg-yellow-400 {
-                background-color: #FFFF00 !important;
-                border: 1px solid #000 !important;
-            }
-            
-            /* Tracks de fundo dos gráficos */
-            html.high-contrast .bg-gray-200,
-            html.high-contrast .bg-gray-100 {
-                border: 1px solid #FFFF00 !important;
-                background-color: #000000 !important;
-            }
-
-            /* Imagens */
-            html.high-contrast img {
-                filter: grayscale(100%) contrast(150%) !important;
-                border: 2px solid #FFFF00 !important;
-                opacity: 0.8 !important;
-            }
-
-            /* Mapa do Brasil (SVG) */
-            html.high-contrast #map .state .shape {
-                fill: #000000 !important;
-                stroke: #FFFF00 !important;
-                stroke-width: 1px !important;
-            }
-            html.high-contrast #map .state:hover .shape,
-            html.high-contrast #map .state.active .shape {
-                fill: #FFFF00 !important;
-                stroke: #FFFF00 !important;
-            }
-            html.high-contrast #map .state:hover text,
-            html.high-contrast #map .state.active text {
-                fill: #000000 !important;
-                stroke: none !important;
-            }
-
-            /* Scrollbars */
-            html.high-contrast ::-webkit-scrollbar {
-                width: 14px;
-                background: #000;
-                border-left: 2px solid #FFFF00;
-            }
-            html.high-contrast ::-webkit-scrollbar-thumb {
-                background: #FFFF00;
-                border: 2px solid #000;
-            }
-
-            body { background-attachment: fixed; }
-        `}</style>
-        
         {showOnboarding && <OnboardingModal onFinish={() => actions.setShowOnboarding(false)} />}
         {error && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
+            <div role="alert" className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
                 {error}
             </div>
         )}
@@ -214,9 +104,9 @@ function App() {
              <Sidebar />
         </aside>
 
-        <main id="main-content" className="flex-1 h-full relative overflow-hidden outline-none">
+        <main id="main-content" tabIndex={-1} className="flex-1 h-full relative overflow-hidden focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-500/40">
              {showDataModal && <DataTransparencyModal onClose={() => actions.setShowDataModal(false)} />}
-             <Suspense fallback={<LoadingScreen />}>
+             <Suspense fallback={<ViewFallback />}>
                {content}
              </Suspense>
         </main>

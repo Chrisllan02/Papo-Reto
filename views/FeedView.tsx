@@ -9,6 +9,7 @@ import StateSpotlightWidget from '../components/StateSpotlightWidget';
 import FeedCard from '../components/FeedCard';
 import DataState from '../components/DataState';
 import { getCategoryIcon } from '../utils/legislativeTranslator';
+import { parseLocalDate } from '../utils/date';
 
 interface FeedViewProps {
   politicians: Politician[];
@@ -18,13 +19,7 @@ interface FeedViewProps {
   onGoToExplore: (state: string) => void;
 }
 
-const parseFeedDate = (date?: string) => {
-    if (!date) return null;
-    const [day, month, year] = date.split('/').map(Number);
-    if (!day || !month || !year) return null;
-    const parsed = new Date(year, month - 1, day);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
+const parseFeedDate = (date?: string) => parseLocalDate(date);
 
 const formatUpdateLabel = (date?: string) => {
     const parsed = parseFeedDate(date);
@@ -246,11 +241,11 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                     aria-label="Limpar filtro"
                                     title="Limpar filtro"
                                 >
-                                    <RotateCcw size={16} />
+                                    <RotateCcw size={16} aria-hidden="true" />
                                 </button>
                             )}
                             {feedItems.length > 0 && (
-                                <button onClick={onSeeMore} className="h-10 px-4 rounded-xl text-xs font-black text-blue-700 dark:text-blue-200 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/25 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                <button type="button" onClick={onSeeMore} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 h-10 px-4 rounded-xl text-xs font-black text-blue-700 dark:text-blue-200 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/25 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
                                     Ver histórico
                                 </button>
                             )}
@@ -258,10 +253,11 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     </div>
 
                     {categoryOptions.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" aria-label="Filtrar atividades por tema">
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" role="group" aria-label="Filtrar atividades por tema">
                             <button
                                 type="button"
                                 onClick={() => setSelectedCategory('all')}
+                                aria-pressed={selectedCategory === 'all'}
                                 className={`shrink-0 px-4 h-11 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                                     selectedCategory === 'all'
                                         ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20 dark:bg-blue-500/20 dark:text-blue-100 dark:border-blue-400/50'
@@ -275,13 +271,14 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                     key={id}
                                     type="button"
                                     onClick={() => setSelectedCategory(id)}
+                                    aria-pressed={selectedCategory === id}
                                     className={`shrink-0 px-3 h-11 rounded-xl text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-2 ${
                                         selectedCategory === id
                                             ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20'
                                             : 'bg-white/60 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10'
                                     }`}
                                 >
-                                    <meta.icon size={15} />
+                                    <meta.icon size={15} aria-hidden="true" />
                                     {meta.label}
                                     <span className="opacity-70">{count}</span>
                                 </button>
@@ -292,14 +289,14 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     {feedItems.length === 0 ? (
                         <DataState
                             title="Sem atividades recentes"
-                            description="Nao encontramos movimentacoes novas para exibir agora. Voce ainda pode explorar parlamentares, partidos e conteudos educativos."
-                            actionLabel="Explorar politicos"
+                            description="Não encontramos movimentações novas para exibir agora. Você ainda pode explorar parlamentares, partidos e conteúdos educativos."
+                            actionLabel="Explorar políticos"
                             onAction={() => onGoToExplore('')}
                         />
                     ) : filteredFeedItems.length === 0 ? (
                         <DataState
                             title="Nenhuma atividade neste filtro"
-                            description="Troque o tema ou limpe o filtro para ver todas as movimentacoes recentes."
+                            description="Troque o tema ou limpe o filtro para ver todas as movimentações recentes."
                             actionLabel="Ver todos"
                             onAction={() => setSelectedCategory('all')}
                         />

@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayoutEffect } from 'react';
-import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart, Filter, User } from 'lucide-react';
+import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart } from 'lucide-react';
 import { Politician, Party } from '../types';
 import { formatPartyName, getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
 import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
+import DataState from '../components/DataState';
 import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';
 
@@ -53,6 +54,7 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
 
     return (
         <button 
+            type="button"
             onClick={() => onSelect(group.name)}
             className={`group relative glass-panel rounded-[2rem] p-4 text-left shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10 focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none`}
             aria-label={`Ver detalhes do partido ${group.name}, ideologia ${theme.label}`}
@@ -140,7 +142,7 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
             {isFollowing && (
                 <div className="absolute top-2 left-2 z-20">
                     <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
-                        <Heart size={8} className="fill-white text-white"/>
+                        <Heart size={8} className="fill-white text-white" aria-hidden="true" />
                     </div>
                 </div>
             )}
@@ -152,6 +154,38 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
                 <span className="text-[8px] font-black bg-gray-100/80 dark:bg-white/10 px-1.5 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
                 <span className="text-[8px] font-black bg-blue-50/80 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
             </div>
+        </div>
+    );
+};
+
+interface VirtualRowData {
+    items: Politician[];
+    numColumns: number;
+    onSelect: (pol: Politician) => void;
+    followingIds: number[];
+}
+
+const VirtualRow = ({ index, style, data }: { index: number; style: React.CSSProperties; data: VirtualRowData }) => {
+    const { items, numColumns, onSelect, followingIds } = data;
+    const startIndex = index * numColumns;
+    const rowItems = items.slice(startIndex, startIndex + numColumns);
+
+    return (
+        <div style={style} className="flex gap-3 md:gap-4 px-1 pb-4">
+            {rowItems.map((pol: Politician) => (
+                <div key={pol.id} className="flex-1 min-w-0 h-full">
+                    <PoliticianCard 
+                        pol={pol} 
+                        onSelect={onSelect} 
+                        isFollowing={followingIds.includes(pol.id)}
+                    />
+                </div>
+            ))}
+            {rowItems.length < numColumns && 
+                Array.from({ length: numColumns - rowItems.length }).map((_, i) => (
+                    <div key={`spacer-${i}`} className="flex-1"></div>
+                ))
+            }
         </div>
     );
 };
@@ -320,33 +354,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         if (!selectedParty) return [];
         const partyGroup = partiesData.find(p => p.name === selectedParty);
         if (!partyGroup) return [];
-        return partyGroup.members.sort((a, b) => a.name.localeCompare(b.name));
+        return [...partyGroup.members].sort((a, b) => a.name.localeCompare(b.name));
     }, [partiesData, selectedParty]);
-
-    const VirtualRow = ({ index, style, data }: any) => {
-        const { items, numColumns } = data;
-        const startIndex = index * numColumns;
-        const rowItems = items.slice(startIndex, startIndex + numColumns);
-
-        return (
-            <div style={style} className="flex gap-3 md:gap-4 px-1 pb-4">
-                {rowItems.map((pol: Politician) => (
-                    <div key={pol.id} className="flex-1 min-w-0 h-full">
-                        <PoliticianCard 
-                            pol={pol} 
-                            onSelect={onSelectCandidate} 
-                            isFollowing={followingIds.includes(pol.id)}
-                        />
-                    </div>
-                ))}
-                {rowItems.length < numColumns && 
-                    Array.from({ length: numColumns - rowItems.length }).map((_, i) => (
-                        <div key={`spacer-${i}`} className="flex-1"></div>
-                    ))
-                }
-            </div>
-        );
-    };
 
     const getColumnCount = (width: number) => {
         if (width >= 1536) return 8; 
@@ -379,15 +388,16 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                          {selectedParty ? (
                              <button 
+                                type="button"
                                 onClick={() => setSelectedParty(null)}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-white text-white dark:text-black rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
                              >
-                                 <ChevronLeft size={16} /> Voltar
+                                 <ChevronLeft size={16} aria-hidden="true" /> Voltar
                              </button>
                          ) : (
                              <div className="flex items-center gap-3">
                                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-900 dark:text-blue-400">
-                                     {viewMode === 'parties' ? <LayoutGrid size={20}/> : <Users size={20}/>}
+                                     {viewMode === 'parties' ? <LayoutGrid size={20} aria-hidden="true" /> : <Users size={20} aria-hidden="true" />}
                                  </div>
                                  <span className="text-lg font-black text-midnight dark:text-white tracking-tight">
                                      {viewMode === 'parties' ? 'Partidos' : 'Parlamentares'}
@@ -399,17 +409,21 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                          {!selectedParty && (
                              <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-white/20 self-end sm:self-auto">
                                  <button 
+                                    type="button"
+                                    aria-pressed={viewMode === 'parties'}
                                     onClick={() => setViewMode('parties')}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'parties' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'}`}
                                 >
-                                     <LayoutGrid size={16} />
+                                     <LayoutGrid size={16} aria-hidden="true" />
                                      <span>Partidos</span>
                                  </button>
                                  <button 
+                                    type="button"
+                                    aria-pressed={viewMode === 'candidates'}
                                     onClick={() => setViewMode('candidates')}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'}`}
                                 >
-                                     <Contact size={16} />
+                                     <Contact size={16} aria-hidden="true" />
                                      <span>Candidatos</span>
                                  </button>
                              </div>
@@ -419,18 +433,19 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                     {/* Search Bar - Com Handler Misto */}
                     <div className="relative group w-full">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" aria-hidden="true" />
                         </div>
                         <input 
                             type="text"
+                            aria-label={selectedParty ? `Buscar em ${selectedParty}` : viewMode === 'candidates' ? 'Buscar parlamentar por nome ou estado' : 'Buscar partido ou parlamentar'}
                             value={search}
                             onChange={handleSearch}
                             placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, estado..." : "Buscar partido ou político..."}
                             className="block w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm"
                         />
                         {search && (
-                          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
-                            <X size={14} />
+                          <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+                            <X size={14} aria-hidden="true" />
                           </button>
                         )}
                     </div>
@@ -454,6 +469,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         return (
                                             <button
                                                 key={ideology}
+                                                type="button"
+                                                aria-pressed={isActive}
                                                 onClick={() => setSelectedIdeology(ideology)}
                                                 className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
                                                     isActive 
@@ -495,7 +512,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                             setSelectedUF('');
                                                             setIsStateSelectorOpen(false);
                                                         }}
-                                                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 dark:text-blue-300"
+                                                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 dark:text-blue-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
                                                     >
                                                         Brasil
                                                     </button>
@@ -594,24 +611,17 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                             )}
 
                             {itemsToRender.length === 0 ? (
-                                <div className="text-center py-20 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 px-4">
-                                    <div className="bg-gray-100 dark:bg-white/5 p-6 rounded-full mb-4 shadow-inner">
-                                        <User size={48} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5}/>
-                                    </div>
-                                    <h3 className="font-black text-gray-900 dark:text-white text-lg mb-2">Nenhum resultado encontrado</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 max-w-[250px] mx-auto mb-6 font-medium leading-relaxed">
-                                        Não encontramos parlamentares com os filtros atuais.
-                                    </p>
-                                    <button 
-                                        onClick={() => {
+                                <div className="py-10 flex justify-center px-4">
+                                    <DataState
+                                        title="Nenhum resultado encontrado"
+                                        description="Não encontramos parlamentares com os filtros atuais."
+                                        actionLabel="Limpar filtros"
+                                        onAction={() => {
                                             setSearch("");
                                             setSelectedUF("");
                                             setSelectedIdeology('Todos');
                                         }}
-                                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2 focus-visible:ring-4 focus-visible:ring-blue-300 focus-visible:outline-none"
-                                    >
-                                        <Filter size={14} /> Limpar Filtros
-                                    </button>
+                                    />
                                 </div>
                             ) : (
                                 <div className="flex-1 min-h-0">
@@ -627,7 +637,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                     itemCount={rowCount}
                                                     itemSize={itemHeight}
                                                     width={width}
-                                                    itemData={{ items: itemsToRender, numColumns }}
+                                                    itemData={{ items: itemsToRender, numColumns, onSelect: onSelectCandidate, followingIds }}
                                                     className="scrollbar-hide"
                                                 >
                                                     {VirtualRow}
