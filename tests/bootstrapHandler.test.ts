@@ -463,10 +463,25 @@ describe('/api/bootstrap', () => {
 
       for (const authorization of [undefined, 'Bearer wrong', 'Bearer cron-secret-extra']) {
         const response = await get({ refresh: '1' }, authorization);
-        expect(response.statusCode).toBe(200);
-        expect(response.json<{ source: string }>().source).toBe('cache');
+        expect(response.statusCode).toBe(308);
+        expect(response.headers.get('location')).toBe('/api/bootstrap');
       }
       expect(upstreamCalls(fetchMock)).toBe(1);
+    });
+
+    it('redirects arbitrary query strings to the canonical URL without running the build', async () => {
+      process.env.CRON_SECRET = 'cron-secret';
+      const fetchMock = createUpstream();
+      vi.stubGlobal('fetch', fetchMock);
+
+      for (const request of [{ query: { x: 'random' } }, { query: {}, url: '/api/bootstrap?x=random' }]) {
+        const response = createJsonResponse();
+        await handler({ method: 'GET', headers: {}, ...request } as any, response.res as any);
+        expect(response.statusCode).toBe(308);
+        expect(response.headers.get('location')).toBe('/api/bootstrap');
+        expect(response.headers.get('cache-control')).toMatch(/^public/);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('rebuilds with a valid bearer token even when the cache is fresh', async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '../api/profile-cache';
 import { createJsonResponse } from './testUtils';
+import { BOOTSTRAP_CACHE_KEY, clearServerCacheForTests, writeServerCache } from '../api/lib/serverCache';
 import { head, put } from '@vercel/blob';
 
 vi.mock('@vercel/blob', () => ({
@@ -29,6 +30,14 @@ const officialProfile = () => new Response(JSON.stringify({
   },
 }), { status: 200, headers: { 'content-type': 'application/json' } });
 
+const KNOWN_DEPUTY_IDS = [30, 32, 33, 40, 41];
+const seedBootstrap = () => writeServerCache(BOOTSTRAP_CACHE_KEY, {
+  politicians: [
+    ...KNOWN_DEPUTY_IDS.map((id) => ({ id, role: 'Deputada Federal' })),
+    { id: 50, role: 'Senador' },
+  ],
+});
+
 const blobJson = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
 
 let ipCounter = 0;
@@ -50,6 +59,7 @@ describe('/api/profile-cache', () => {
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL;
     process.env.NODE_ENV = 'test';
+    clearServerCacheForTests();
   });
 
   afterEach(() => {
@@ -124,6 +134,7 @@ describe('/api/profile-cache', () => {
   });
 
   it('refreshes from official data when no cached profile exists', async () => {
+    await seedBootstrap();
     const fetchMock = vi.fn(async () => officialProfile());
     vi.stubGlobal('fetch', fetchMock);
     const response = createJsonResponse();
@@ -163,6 +174,7 @@ describe('/api/profile-cache', () => {
   it('rebuilds when the cached profile is older than 24h', async () => {
     const stale = { id: 32, name: 'Old', updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() };
     vi.mocked(head).mockResolvedValue({ url: 'https://blob.example/politicians/32.json' } as any);
+    await seedBootstrap();
     vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('dadosabertos') ? officialProfile() : blobJson(stale))));
     const response = createJsonResponse();
 
@@ -173,6 +185,7 @@ describe('/api/profile-cache', () => {
   });
 
   it('does not leak upstream failure details on refresh', async () => {
+    await seedBootstrap();
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('connect ECONNREFUSED 10.9.9.9'); }));
     const response = createJsonResponse();
 
@@ -180,5 +193,44 @@ describe('/api/profile-cache', () => {
 
     expect(response.statusCode).toBe(502);
     expect(response.body).not.toContain('10.9.9.9');
+  });
+
+  it('refuses to refresh ids outside the bootstrap deputies without calling upstream', async () => {
+    await seedBootstrap();
+    const fetchMock = vi.fn(async () => officialProfile());
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (const id of ['99999', '50']) {
+      const response = createJsonResponse();
+      await handler(request('POST', id), response.res as any);
+      expect(response.statusCode).toBe(404);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('refuses to refresh with 503 when the bootstrap cache is unavailable', async () => {
+    const fetchMock = vi.fn(async () => officialProfile());
+    vi.stubGlobal('fetch', fetchMock);
+    const response = createJsonResponse();
+
+    await handler(request('POST', '40'), response.res as any);
+
+    expect(response.statusCode).toBe(503);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('remembers an upstream 404 instead of calling the Câmara again', async () => {
+    await seedBootstrap();
+    const fetchMock = vi.fn(async () => new Response('', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = createJsonResponse();
+      await handler(request('POST', '41'), response.res as any);
+      expect(response.statusCode).toBe(404);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

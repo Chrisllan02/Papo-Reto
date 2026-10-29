@@ -25,8 +25,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     service: 'paporeto',
     timestamp: new Date().toISOString(),
     integrations: {
-      ai: Boolean(process.env.API_KEY || process.env.GOOGLE_API_KEY),
-      profileBlobCache: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
       legislativeProxy: true,
     },
   });

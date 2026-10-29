@@ -7,7 +7,7 @@ Este projeto roda sem integrações opcionais, mas produção estável precisa d
 | Variável | Ambiente | Uso |
 | --- | --- | --- |
 | `CRON_SECRET` | Production | Autentica o Vercel Cron em `/api/cron/refresh-legislative-data` e o `?refresh=1` de `/api/bootstrap`. |
-| `PROFILE_CACHE_WRITE_SECRET` | Production | Autoriza escritas manuais em `/api/profile-cache` via `PUT`. |
+| `PROFILE_CACHE_WRITE_SECRET` | Production | Autoriza escritas manuais em `/api/profile-cache` via `PUT`. Sem ela, o endpoint usa `CRON_SECRET` como fallback; configure uma própria para não compartilhar o segredo do cron. |
 
 Quando `CRON_SECRET` está configurado, a Vercel envia automaticamente o cabeçalho:
 

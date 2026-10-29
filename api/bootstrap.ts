@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { waitUntil } from '@vercel/functions';
 import { buildLegislativeBootstrap, withGeneratedEducationalArticles, type LegislativeBootstrap } from './lib/legislativeBootstrap.js';
 import { isCronAuthorized } from './lib/auth.js';
-import { readServerCache, writeServerCache } from './lib/serverCache.js';
+import { BOOTSTRAP_CACHE_KEY, readServerCache, writeServerCache } from './lib/serverCache.js';
 
 type VercelRequest = IncomingMessage & {
   query?: Record<string, string | string[]>;
@@ -15,7 +15,7 @@ type VercelResponse = ServerResponse & {
   setHeader: (name: string, value: string) => void;
 };
 
-const CACHE_KEY = 'legislative-bootstrap-v2';
+const CACHE_KEY = BOOTSTRAP_CACHE_KEY;
 const LEGACY_CACHE_KEYS = ['legislative-bootstrap-v1'];
 const CACHE_TTL_MS = 1000 * 60 * 15;
 const BACKGROUND_REFRESH_COOLDOWN_MS = 1000 * 60;
@@ -37,6 +37,16 @@ const getRefreshFlag = (req: VercelRequest) => {
   if (fromQuery) return fromQuery === '1' || fromQuery === 'true';
   const requestUrl = new URL(req.url || '', 'http://localhost');
   return requestUrl.searchParams.get('refresh') === '1';
+};
+
+const hasQueryString = (req: VercelRequest) =>
+  Object.keys(req.query || {}).length > 0 || new URL(req.url || '', 'http://localhost').search.length > 1;
+
+const redirectToCanonical = (res: VercelResponse) => {
+  res.status?.(308);
+  res.setHeader('Location', '/api/bootstrap');
+  res.setHeader('Cache-Control', 'public, s-maxage=86400');
+  res.end();
 };
 
 const createBootstrapResponse = (
@@ -128,6 +138,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const shouldRefresh = getRefreshFlag(req) && isCronAuthorized(req.headers?.authorization);
+    if (!shouldRefresh && hasQueryString(req)) {
+      return redirectToCanonical(res);
+    }
 
     if (!shouldRefresh) {
       const fresh = await readServerCache<LegislativeBootstrap>(CACHE_KEY, CACHE_TTL_MS);

@@ -5,6 +5,8 @@ type CacheEnvelope<T> = {
   timestamp: number;
 };
 
+export const BOOTSTRAP_CACHE_KEY = 'legislative-bootstrap-v2';
+
 const memoryCache = new Map<string, string>();
 
 const pathnameForKey = (key: string) => `server-cache/${key}.json`;

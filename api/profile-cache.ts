@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { head, put } from '@vercel/blob';
 import { hasBearerToken } from './lib/auth.js';
 import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
+import { BOOTSTRAP_CACHE_KEY, readServerCache } from './lib/serverCache.js';
+import type { LegislativeBootstrap } from './lib/legislativeBootstrap.js';
 import { formatPersonName } from '../domain/legislative/text.js';
 
 type VercelRequest = IncomingMessage & { query?: Record<string, string | string[]>; body?: any; method?: string; };
@@ -22,7 +24,9 @@ const WRITE_LIMIT = 12;
 const MAX_BODY_BYTES = 300_000;
 const REFRESH_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 const READ_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
+const NOT_FOUND_TTL_MS = 60 * 60 * 1000;
 const MEMORY_CACHE = new Map<string, string>();
+const NOT_FOUND_UNTIL = new Map<string, number>();
 const isOverLimit = createRateLimiter(WINDOW_MS);
 
 class RequestError extends Error {
@@ -145,6 +149,12 @@ async function writeToBlob(pathname: string, payload: any) {
   return blob;
 }
 
+const isKnownDeputy = async (id: string) => {
+  const bootstrap = await readServerCache<LegislativeBootstrap>(BOOTSTRAP_CACHE_KEY, 0);
+  if (!bootstrap?.politicians?.length) return null;
+  return bootstrap.politicians.some((politician) => String(politician.id) === id && !/^senador/i.test(politician.role || ''));
+};
+
 async function buildOfficialPoliticianCache(id: string) {
   const response = await fetch(`${BASE_URL_CAMARA}/deputados/${id}`, {
     headers: {
@@ -259,11 +269,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return jsonResponse(res, 200, existing);
     }
 
+    const known = await isKnownDeputy(id as string);
+    if (known === null) {
+      return jsonResponse(res, 503, { error: 'Profile refresh unavailable.' });
+    }
+    if (!known || (NOT_FOUND_UNTIL.get(pathname) || 0) > Date.now()) {
+      return jsonResponse(res, 404, { error: 'Politician not found.' });
+    }
+
     let payload: any;
     try {
       payload = await buildOfficialPoliticianCache(id as string);
     } catch (error: any) {
       if (error instanceof RequestError) {
+        if (error.statusCode === 404) NOT_FOUND_UNTIL.set(pathname, Date.now() + NOT_FOUND_TTL_MS);
         return jsonResponse(res, error.statusCode, { error: error.message });
       }
       return jsonResponse(res, 502, { error: 'Profile refresh failed.' });
