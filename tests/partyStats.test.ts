@@ -44,6 +44,14 @@ describe('computePartyStats', () => {
     expect(Object.values(partyStats[0].regionStats).reduce((a, b) => a + b, 0)).toBe(0);
   });
 
+  it('média de gastos só considera quem tem gasto informado', () => {
+    const senador = { ...pol(3, 'PT', 0), hasApiIntegration: false, stats: { attendancePct: 0, spending: 0 } } as Politician;
+    const semGasto = { ...pol(4, 'PT', 0), stats: { attendancePct: 0, spending: 0 } } as Politician;
+    const { partyStats } = computePartyStats([pol(1, 'PT', 50), pol(2, 'PT', 50), senador, semGasto]);
+    expect(partyStats[0].avgSpending).toBe(100);
+    expect(partyStats[0].spendingSampleCount).toBe(2);
+  });
+
   it('resume a cobertura geral', () => {
     const { partyStats } = computePartyStats([pol(1, 'PT', 100), pol(2, 'PL', 0), pol(3, 'PL', 50)]);
     expect(summarizeAttendance(partyStats)).toEqual({ average: 75, sample: 2, total: 3 });

@@ -587,7 +587,7 @@ const fetchSenadores = async (): Promise<Politician[]> => {
         spending: 0,
         partyFidelity: undefined,
       },
-      mandate: { start: mandateStarts[0] || '', end: mandateEnds.at(-1) || '' },
+      mandate: { start: mandateStarts[0] || '', end: mandateEnds[mandateEnds.length - 1] || '' },
       hasApiIntegration: false,
       votes: {},
     } as Politician];

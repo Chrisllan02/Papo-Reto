@@ -32,6 +32,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
 
     useEffect(() => {
         if (!politicians || politicians.length === 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza a lista do estado com os dados carregados
             setStatePoliticians([]);
             setIsLoading(false);
             return;
@@ -69,6 +70,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                 setIsLoading(false);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sorteia o estado só na carga; a troca manual não pode refazer o sorteio
     }, [politicians, userLocation]);
 
     const getIdeologyStyle = (party: string) => {

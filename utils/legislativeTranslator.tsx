@@ -1,6 +1,7 @@
 import React from 'react';
 import { GraduationCap, HeartPulse, Banknote, Shield, Briefcase, Leaf, Gavel, Activity } from 'lucide-react';
-import { Glossary, DICTIONARY } from '../components/Glossary';
+import { Glossary } from '../components/Glossary';
+import { DICTIONARY } from './glossary';
 import { FeedCategory } from '../types';
 import { detectLegislativeCategory, normalizeForMatch } from '../domain/legislative/classification';
 
@@ -118,7 +119,6 @@ export const getDidacticContext = (title: string, description: string | undefine
     }
 
     const text = description || title || "";
-    let didacticText = "";
     let constitutionRef = null;
 
     let legislativeExplanation = "";
@@ -168,7 +168,7 @@ export const getDidacticContext = (title: string, description: string | undefine
     const constitutionMatch = CONSTITUTION_MATCHERS.find(({ regex }) => regex.test(fullTextSearch));
     if (constitutionMatch) constitutionRef = constitutionMatch.value;
 
-    didacticText = translatedStatus;
+    let didacticText = translatedStatus;
     if (legislativeExplanation) {
         didacticText += " " + legislativeExplanation;
     }

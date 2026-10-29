@@ -32,12 +32,8 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // Imagem da notícia; sem imagem válida mostra um espaço neutro (nunca uma foto genérica)
 const ImageWithFallback = ({ src, alt, className }: { src?: string, alt: string, className?: string }) => {
-    const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
-
-    useEffect(() => {
-        if (!src) setStatus('error');
-        else setStatus('loading');
-    }, [src]);
+    const [result, setResult] = useState<{ src: string; status: 'loaded' | 'error' } | null>(null);
+    const status = result && result.src === src ? result.status : 'loading';
 
     if (status === 'error' || !src) {
         return (
@@ -52,8 +48,8 @@ const ImageWithFallback = ({ src, alt, className }: { src?: string, alt: string,
             src={src} 
             alt={alt}
             className={`${className} transition-opacity duration-500 ${status === 'loading' ? 'opacity-0' : 'opacity-100'}`}
-            onLoad={() => setStatus('loaded')}
-            onError={() => setStatus('error')}
+            onLoad={() => setResult({ src, status: 'loaded' })}
+            onError={() => setResult({ src, status: 'error' })}
             loading="lazy"
         />
     );
@@ -62,7 +58,7 @@ const ImageWithFallback = ({ src, alt, className }: { src?: string, alt: string,
 // --- MAIN COMPONENT ---
 
 const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
-    const [history, setHistory] = useState<NewsArticle[]>([]);
+    const [history] = useState<NewsArticle[]>(getNewsHistory);
     const [query, setQuery] = useState('');
     
     // Performance: Aguarda 350ms após a última digitação para atualizar o filtro
@@ -90,11 +86,6 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
         const timer = setTimeout(() => setShareNotice(null), 5000);
         return () => clearTimeout(timer);
     }, [shareNotice]);
-
-    useEffect(() => {
-        const loaded = getNewsHistory();
-        setHistory(loaded);
-    }, []);
 
     // Effect para gerar imagem quando sharingItem muda
     useEffect(() => {
@@ -280,7 +271,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             
             const response = await chatWithGemini(prompt, 'fast');
             setSummaryResult(response.text);
-        } catch (e) {
+        } catch {
             setSummaryResult("Não foi possível gerar o resumo agora. Tente novamente.");
         } finally {
             setIsGeneratingSummary(false);

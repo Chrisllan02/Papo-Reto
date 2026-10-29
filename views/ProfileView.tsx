@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, Clock, Banknote, Loader2, ExternalLink, Wallet, Briefcase, Flag, PieChart, Tag, Plane, FileCheck, FileText, Crown, Star, ScrollText, BadgeCheck, CheckCircle2 } from 'lucide-react';
 import { Politician, FeedItem } from '../types';
-import { Skeleton, SkeletonFeedItem, SkeletonStats } from '../components/Skeleton';
+import { Skeleton, SkeletonFeedItem } from '../components/Skeleton';
 import { usePoliticianProfile } from '../hooks/useCamaraData';
 import { formatLocalDate, parseLocalDate } from '../utils/date';
 import { safeHttpUrl } from '../utils/url';
@@ -153,16 +153,16 @@ const DnaDonutChart: React.FC<{ categories: FrontCategory[]; total: number }> = 
     const center = size / 2;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
-    let accumulatedPercent = 0;
+    const visibleCategories = categories.slice(0, 6);
+    const startPercents = visibleCategories.map((_, i) => visibleCategories.slice(0, i).reduce((sum, cat) => sum + cat.percent, 0));
     return (
         <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label={`Distribuição de ${total} frentes parlamentares por tema`}>
                 <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
-                {categories.slice(0, 6).map((cat) => {
+                {visibleCategories.map((cat, i) => {
                     const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
-                    const rotation = (accumulatedPercent / 100) * 360;
+                    const rotation = (startPercents[i] / 100) * 360;
                     const offset = 0; 
-                    accumulatedPercent += cat.percent;
                     return (
                         <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
                     );
@@ -177,7 +177,7 @@ const DnaDonutChart: React.FC<{ categories: FrontCategory[]; total: number }> = 
 };
 
 // ... (ProfileView component with new integrated sections) ...
-const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack, onShare, onUpdate, isFollowing }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
     const [showOtherFronts, setShowOtherFronts] = useState(false);
@@ -232,6 +232,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
   useEffect(() => {
       // Mantém "Mandato Completo" como padrão ao abrir o perfil.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- volta para o mandato completo ao trocar de parlamentar
       setSelectedYear('total');
   }, [candidate.id]);
 

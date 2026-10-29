@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useDeferredValue, useEffect, useRef, useLayoutEffect } from 'react';
 import { Search, Users, ChevronLeft, MapPin, LayoutGrid, ChevronDown, X, Contact, Heart } from 'lucide-react';
 import { Politician, Party } from '../types';
-import { formatPartyName, getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
+import { getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
 import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
 import DataState from '../components/DataState';
@@ -212,6 +212,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
 
     useEffect(() => {
         if (preselectedState) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- aplica o estado pré-selecionado vindo de fora
             setSelectedUF(preselectedState);
             setViewMode('candidates');
         }

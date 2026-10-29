@@ -33,14 +33,11 @@ import {
   PlayCircle,
   Search,
   ScrollText,
-  Share2,
   Scale,
-  Star,
   Tag,
   Twitter,
   Users,
   Youtube,
-  Video,
   Volume2,
   VolumeX,
   Vote,
@@ -49,21 +46,17 @@ import {
 import { formatLocalDate, parseLocalDate } from '../../utils/date';
 import { safeHttpUrl } from '../../utils/url';
 import {
-  AmendmentStats,
   Bill,
-  Cabinet,
   ExpenseItem,
   LegislativeEvent,
   LegislativeVote,
   Politician,
   Relatoria,
   Remuneration,
-  Role,
   Speech,
   Stats,
-  YearStats,
 } from '../../types';
-import { Skeleton, SkeletonFeedItem } from '../../components/Skeleton';
+import { Skeleton } from '../../components/Skeleton';
 
 type ProfileActivityItem =
   | ({ _type: 'bill' } & Bill)

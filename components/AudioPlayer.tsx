@@ -8,6 +8,13 @@ let sharedAudioContext: AudioContext | null = null;
 const generatedAudioCache = new Map<string, Uint8Array>();
 let stopActivePlayer: (() => void) | null = null;
 
+const getSharedAudioContext = () => {
+    if (!sharedAudioContext) {
+        sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+    return sharedAudioContext;
+};
+
 interface AudioPlayerProps {
     text: string;
     isDarkText: boolean;
@@ -83,24 +90,21 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 // Verifica se o componente ainda está montado após o await
                 if (!isMountedRef.current) return;
 
-                // Initialize Singleton lazily on first user interaction
-                if (!sharedAudioContext) {
-                    sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-                }
+                const audioContext = getSharedAudioContext();
 
                 // Resume if suspended (common browser policy)
-                if (sharedAudioContext.state === 'suspended') {
-                    await sharedAudioContext.resume();
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
                 }
 
-                const buffer = await decodeAudioData(audioData, sharedAudioContext, 24000, 1);
+                const buffer = await decodeAudioData(audioData, audioContext, 24000, 1);
 
                 // Verifica novamente antes de tocar
                 if (!isMountedRef.current) return;
 
-                const source = sharedAudioContext.createBufferSource();
+                const source = audioContext.createBufferSource();
                 source.buffer = buffer;
-                source.connect(sharedAudioContext.destination);
+                source.connect(audioContext.destination);
 
                 source.onended = () => {
                     sourceNodeRef.current = null;

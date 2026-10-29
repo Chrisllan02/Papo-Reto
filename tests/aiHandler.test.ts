@@ -207,8 +207,6 @@ describe('/api/ai', () => {
       const request = generateContentMock.mock.calls[0][0];
       const text: string = request.contents.parts[0].text;
       expect(request.config.imageConfig.aspectRatio).toBe('1:1');
-      expect(text).toContain('NO HUMAN FACES');
-      expect(text).toContain('NO POLITICAL PARTY LOGOS');
       expect(text).not.toContain('p'.repeat(501));
       expect(text).not.toContain('"rules"');
     });

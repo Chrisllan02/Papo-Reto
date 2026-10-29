@@ -15,7 +15,10 @@ export interface PartyStats {
   totalMembers: number;
   femaleCount: number;
   totalSpending: number;
+  /** Média apenas de quem tem gasto informado pela fonte. */
   avgSpending: number;
+  /** Quantos membros têm gasto informado. */
+  spendingSampleCount: number;
   /** Média apenas de quem tem presença real; null quando nenhum deputado tem dado. */
   avgAttendance: number | null;
   /** Quantos membros têm presença real informada. */
@@ -37,6 +40,10 @@ const hasRealAttendance = (pol: Politician) => {
   return typeof pct === 'number' && Number.isFinite(pct) && pct > 0;
 };
 
+const hasSpendingData = (pol: Politician) =>
+  pol.hasApiIntegration !== false
+  && ((pol.stats?.spending || 0) > 0 || Boolean(pol.detailedExpenses?.length) || Boolean(pol.expensesBreakdown?.length));
+
 export const computePartyStats = (politicians: Politician[]) => {
   const groups: Record<string, PartyStats> = {};
   const attendanceSums: Record<string, number> = {};
@@ -51,6 +58,7 @@ export const computePartyStats = (politicians: Politician[]) => {
         femaleCount: 0,
         totalSpending: 0,
         avgSpending: 0,
+        spendingSampleCount: 0,
         avgAttendance: null,
         attendanceSampleCount: 0,
         regionStats: { Norte: 0, Nordeste: 0, CentroOeste: 0, Sudeste: 0, Sul: 0 },
@@ -62,7 +70,10 @@ export const computePartyStats = (politicians: Politician[]) => {
     g.members.push(pol);
     g.totalMembers += 1;
     if (normalizeSex(pol.sex) === 'F') g.femaleCount += 1;
-    g.totalSpending += pol.stats?.spending || 0;
+    if (hasSpendingData(pol)) {
+      g.totalSpending += pol.stats?.spending || 0;
+      g.spendingSampleCount += 1;
+    }
     const ideology = getIdeology(partyName);
     if (ideology) ideologyGroups[ideology] += 1;
 
@@ -77,7 +88,7 @@ export const computePartyStats = (politicians: Politician[]) => {
 
   Object.values(groups).forEach((g) => {
     g.avgAttendance = g.attendanceSampleCount > 0 ? attendanceSums[g.name] / g.attendanceSampleCount : null;
-    g.avgSpending = g.totalMembers > 0 ? g.totalSpending / g.totalMembers : 0;
+    g.avgSpending = g.spendingSampleCount > 0 ? g.totalSpending / g.spendingSampleCount : 0;
   });
 
   return {

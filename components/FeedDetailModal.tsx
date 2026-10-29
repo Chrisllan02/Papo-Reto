@@ -73,6 +73,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
 
     useEffect(() => {
         let cancelled = false;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- limpa o detalhe anterior antes de buscar o novo item na API
         setLoadError(false);
         setExtraDetails(null);
 

@@ -82,7 +82,7 @@ describe('ai: notícias e conteúdo', () => {
     const content = await generateEducationalContent();
 
     expect(content.isFallback).toBe(true);
-    expect(content.articles.length).toBeGreaterThan(0);
+    expect(content.articles[0]).toMatchObject({ title: 'O Orçamento Público', legislation: 'Art. 165 da Constituição Federal' });
     expect(localStorage.getItem('paporeto_education_articles_v1')).toBeNull();
   });
 

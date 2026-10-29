@@ -63,6 +63,9 @@ interface AppActions {
 
 const AppContext = createContext<{ state: AppState; actions: AppActions } | null>(null);
 
+const LOCATION_AUTO_PROMPT_KEY = 'paporeto_location_auto_prompted_at';
+const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
+
 // --- Provider ---
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Use Custom Hook for Data Loading
@@ -107,8 +110,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const [userLocation, setUserLocation] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
-  const LOCATION_AUTO_PROMPT_KEY = 'paporeto_location_auto_prompted_at';
-  const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
 
   const updateUserLocation = useCallback((uf: string) => {
       const normalized = normalizeLocationUF(uf);
@@ -163,6 +164,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const savedLoc = safeGetItem('paporeto_user_location');
       const normalizedSavedLoc = normalizeLocationUF(savedLoc);
       if (normalizedSavedLoc) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- localização salva lida após montar, junto com a geolocalização
           setUserLocation(normalizedSavedLoc);
           if (normalizedSavedLoc !== savedLoc) {
               safeSetItem('paporeto_user_location', normalizedSavedLoc);
@@ -214,6 +216,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (typeof window === 'undefined' || !window.matchMedia) return;
       const media = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = (event: MediaQueryListEvent) => setDarkMode(event.matches);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- assina o tema do sistema e aplica o valor atual
       setDarkMode(media.matches);
       if (media.addEventListener) {
           media.addEventListener('change', handleChange);
@@ -260,7 +263,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const increaseFontSize = useCallback(() => {
       setFontSizeLevel(prev => {
-          let next = prev;
+          let next: number;
           if (prev >= 1.5) next = 1.5;
           else if (prev >= 1.25) next = 1.5;
           else if (prev >= 1.1) next = 1.25;
@@ -273,7 +276,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const decreaseFontSize = useCallback(() => {
       setFontSizeLevel(prev => {
-          let next = prev;
+          let next: number;
           if (prev <= 0.9) next = 0.9;
           else if (prev <= 1) next = 0.9;
           else if (prev <= 1.1) next = 1;
@@ -365,6 +368,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 };
 
 // Hook Helper
+// eslint-disable-next-line react-refresh/only-export-components -- hook do contexto fica junto do provider
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (!context) {

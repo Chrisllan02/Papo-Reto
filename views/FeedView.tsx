@@ -64,6 +64,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
         return feedItems.filter(item => (item.category || 'activity') === selectedCategory);
     }, [feedItems, selectedCategory]);
     const muralSummary = useMemo(() => {
+        // eslint-disable-next-line react-hooks/purity -- o resumo usa o horário do momento em que os dados chegam
         const now = Date.now();
         const byDateDesc = feedItems
             .filter(item => (parseFeedDate(item.date)?.getTime() ?? Infinity) <= now)

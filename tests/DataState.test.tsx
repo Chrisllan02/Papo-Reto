@@ -19,6 +19,8 @@ describe('DataState', () => {
 
   it('estado vazio não usa região viva', () => {
     render(<DataState title="Vazio" description="Nada aqui." />);
+    expect(screen.getByText('Vazio')).toBeInTheDocument();
+    expect(screen.getByText('Nada aqui.')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

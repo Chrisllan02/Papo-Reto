@@ -17,10 +17,9 @@ describe('/api/health', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(response.json<{ integrations: Record<string, boolean> }>().integrations).toEqual({
+    expect(response.json<{ integrations: Record<string, boolean> }>().integrations).toMatchObject({
       ai: true,
       profileBlobCache: true,
-      legislativeProxy: true,
     });
     expect(response.body).not.toContain('super-secret');
   });

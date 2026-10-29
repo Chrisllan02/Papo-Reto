@@ -353,6 +353,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
         let cancelled = false;
 
         if (!initialCandidate) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia o perfil antes de buscar os dados externos
             setCandidate(null);
             return () => {
                 cancelled = true;
@@ -389,7 +390,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                         }
                     }
                 }
-            } catch {}
+            } catch { /* cache indisponível: segue para a próxima fonte */ }
 
             try {
                 const cachedGithub = await fetchCachedPoliticianProfile(initialCandidate.id);
@@ -403,7 +404,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
                     setIsLoadingDetails(false);
                     return;
                 }
-            } catch {}
+            } catch { /* cache indisponível: segue para a próxima fonte */ }
             
             if (hasFullData || !initialCandidate.hasApiIntegration) {
                 if (cancelled) return;
@@ -446,6 +447,7 @@ export const usePoliticianProfile = (initialCandidate: Politician | null) => {
         return () => {
             cancelled = true;
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega só quando muda o parlamentar, não a cada novo objeto
     }, [initialCandidate?.id]); // Only re-run if the ID changes
 
     return { candidate, isLoadingDetails, loadingStatus };

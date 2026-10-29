@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2, Building2, Landmark, ArrowDown } from 'lucide-react';
+import { Users, Compass, Trophy, UserCheck, Scale, MapPin, ShieldCheck, Info, TrendingUp, Globe, X, MousePointerClick, ChevronDown, ChevronUp, Building2, Landmark, ArrowDown } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
 import { getIdeologyTheme } from '../utils/themeUtils';
@@ -233,7 +233,7 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     
-    let accumulatedPercent = 0;
+    const startPercents = data.map((_, i) => data.slice(0, i).reduce((sum, item) => sum + item.percent, 0));
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
@@ -244,9 +244,8 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
                     
                     {data.map((item, i) => {
                         const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (accumulatedPercent / 100) * 360;
+                        const rotation = (startPercents[i] / 100) * 360;
                         const offset = 0; 
-                        accumulatedPercent += item.percent;
 
                         return (
                             <circle
@@ -576,7 +575,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     const radius = 130; 
     const strokeWidth = 50; // Slightly thinner to show separation
     const totalAngle = 180; 
-    let currentAngle = 0; 
+    const sliceAngle = (seats: number) => (seats / totalSeats) * totalAngle;
+    const startAngles = sortedParties.map((_, i) => sortedParties.slice(0, i).reduce((sum, party) => sum + sliceAngle(party.totalMembers), 0));
 
     // Handle interaction bridging
     const effectiveActive = hoveredParty || activeParty;
@@ -615,17 +615,15 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                         className="dark:stroke-white/5"
                     />
 
-                    {sortedParties.map((party) => {
+                    {sortedParties.map((party, i) => {
                         const seats = party.totalMembers;
-                        const sliceDegrees = (seats / totalSeats) * totalAngle;
+                        const sliceDegrees = sliceAngle(seats);
                         
                         // Dynamic gap: smaller gap for small parties to prevent disappearance
                         const gap = seats > 3 ? 1.5 : (seats > 1 ? 0.8 : 0.2);
                         
-                        const start = currentAngle;
-                        const end = currentAngle + sliceDegrees - (sliceDegrees > gap ? gap : 0);
-                        const nextStart = currentAngle + sliceDegrees;
-                        currentAngle = nextStart;
+                        const start = startAngles[i];
+                        const end = start + sliceDegrees - (sliceDegrees > gap ? gap : 0);
 
                         if (seats === 0) return null;
 
@@ -832,7 +830,7 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
                         </div>
                         <span className="text-[10px] font-black text-gray-700 dark:text-gray-200 whitespace-nowrap">
                             R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            <span className="ml-1 font-bold text-gray-500 dark:text-gray-400">(n={p.totalMembers})</span>
+                            <span className="ml-1 font-bold text-gray-500 dark:text-gray-400">(n={p.spendingSampleCount})</span>
                         </span>
                     </div>
                 ))}
@@ -952,7 +950,7 @@ const GovernmentStructureFlow = () => {
     );
 };
 
-const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
+const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
 
   const { partyStats, ideologyStats } = useMemo(() => computePartyStats(politicians), [politicians]);

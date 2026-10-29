@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import Modal from './Modal';
-import { ChevronRight, X, Sparkles, ScrollText, BrainCircuit, Check, ChevronLeft } from 'lucide-react';
+import { ChevronRight, X, Check, ChevronLeft } from 'lucide-react';
 
 interface OnboardingModalProps {
   onFinish: () => void;
@@ -159,28 +159,22 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onFinish }) => {
   // Renderização do Spotlight (Tour Guiada)
   const isMobile = window.innerWidth < 768;
 
-  let tooltipStyle: React.CSSProperties = {};
-  
-  if (isMobile) {
-      // Mobile: Tooltip sempre acima do alvo (que é a navbar inferior)
-      tooltipStyle = {
+  const tooltipStyle: React.CSSProperties = isMobile
+      ? {
           position: 'fixed',
           left: '50%',
           transform: 'translateX(-50%)',
           bottom: window.innerHeight - targetRect.top + 20,
           width: '90%',
           maxWidth: '350px'
-      };
-  } else {
-      // Desktop: Sidebar na esquerda
-      tooltipStyle = {
+      }
+      : {
           position: 'fixed',
           left: targetRect.right + 24,
           top: targetRect.top + (targetRect.height / 2),
           transform: 'translateY(-50%)',
           width: '320px'
       };
-  }
 
   return (
     <Modal onClose={handleSkip} labelledBy="onboarding-titulo" closeOnBackdrop={false} className="fixed inset-0 z-[100] animate-in fade-in duration-300">

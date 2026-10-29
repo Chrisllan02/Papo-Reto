@@ -4,7 +4,7 @@ import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislati
 import { timeoutSignal } from '../utils/timeoutSignal';
 import { compileTerms, normalizeForMatch } from '../domain/legislative/classification';
 import { BASE_URL_CAMARA, formatBrazilianDate, getBrazilDateString } from './camaraApi';
-import { safeGetItem, safeRemoveItem, safeSetItem, purgeStaleKeys } from './storage';
+import { safeGetItem, safeSetItem, purgeStaleKeys } from './storage';
 
 // Cache Utils
 const NEWS_CACHE_KEY = 'paporeto_news_v24_compact_agenda_cards'; 
@@ -30,7 +30,7 @@ const getCache = (key: string, ttl: number) => {
         const { data, timestamp } = JSON.parse(item);
         if (ttl > 0 && Date.now() - timestamp > ttl) return null;
         return data;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
@@ -269,7 +269,7 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
         else if (lowerText.includes('solene')) context = "Sessão Solene";
         else if (lowerText.includes('oitiva')) context = "Oitiva";
 
-        let explanation = rawText;
+        let explanation: string;
         if (lowerText.includes('oitiva')) explanation = "Reunião para ouvir depoentes (oitiva).";
         else if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
         else if (lowerText.includes('convocada')) explanation = `Reunião convocada. Pauta: ${extractAgendaSubject(rawText)}.`;
@@ -365,7 +365,7 @@ export const generateNewsImage = async (headline: string): Promise<string | null
     try {
         const data = await callAiApi<{ imageDataUrl: string | null }>('generateNewsImage', { headline });
         return data?.imageDataUrl || null;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
@@ -498,7 +498,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
             return bytes;
         }
         return null;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
@@ -508,7 +508,7 @@ export const getSearchContext = async (query: string): Promise<AIResponse | null
     try {
         const data = await callAiApi<AIResponse>('getSearchContext', { query });
         return data || null;
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
@@ -521,14 +521,14 @@ export const generateCampaignImage = async (prompt: string, aspectRatio: string)
     try {
         const data = await callAiApi<{ imageDataUrl: string | null }>('generateCampaignImage', { prompt, aspectRatio });
         return data?.imageDataUrl || null;
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
     try {
         const data = await callAiApi<{ text: string }>('transcribeAudio', { base64Audio, mimeType });
         return data?.text || "";
-    } catch (error) { return ""; }
+    } catch { return ""; }
 };
 
 export const generateEducationalContent = async (): Promise<EducationalContentResult> => {

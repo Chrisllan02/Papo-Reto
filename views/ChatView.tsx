@@ -53,8 +53,8 @@ const ModeButton: React.FC<ModeButtonProps> = ({ m, activeMode, onSelect, icon: 
     );
 };
 
-const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([
+const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
+    const [messages, setMessages] = useState<ChatMessage[]>(() => [
         { 
             id: 'welcome', 
             role: 'model', 

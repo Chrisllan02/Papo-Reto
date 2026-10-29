@@ -151,9 +151,8 @@ describe('/api/bootstrap', () => {
     expect(senator.isBoardMember).toBe(true);
     expect(senator.suplentes).toEqual(['1º Suplente - SUPLENTE TESTE']);
     expect(payload.data.parties).toHaveLength(1);
-    expect(payload.data.articles.length).toBeGreaterThan(0);
-    expect(payload.data.articles[0].id).toBeGreaterThanOrEqual(1000);
-    expect(payload.data.articles[0].sourceUrl).toBeTruthy();
+    expect(payload.data.feedItems[0].sourceUrl).toMatch(/^https:\/\/www\.camara\.leg\.br\//);
+    expect(payload.data.articles[0]).toMatchObject({ id: 1000, sourceUrl: payload.data.feedItems[0].sourceUrl });
   });
 
   it('enriches useful agenda events and drops generic agenda noise', async () => {
