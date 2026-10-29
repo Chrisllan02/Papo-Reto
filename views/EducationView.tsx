@@ -77,7 +77,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
             {/* Hero Header */}
             <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-midnight ${articleTheme.bg}`}>
                 {/* Texture */}
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                <div className="absolute inset-0 opacity-10 texture-overlay mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
                 
                 {/* Nav */}

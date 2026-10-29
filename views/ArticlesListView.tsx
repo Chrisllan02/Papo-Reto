@@ -201,7 +201,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                                     {/* Background Container with Refined Glassmorphism */}
                                     <div className={`absolute inset-0 rounded-[2.5rem] bg-midnight ${theme.bg} shadow-sm group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)] transition-all duration-500 overflow-hidden border border-white/20 dark:border-white/5`}>
                                         {/* Texture Overlay */}
-                                        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                                        <div className="absolute inset-0 opacity-10 texture-overlay mix-blend-overlay"></div>
                                         <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
                                     </div>
                                     

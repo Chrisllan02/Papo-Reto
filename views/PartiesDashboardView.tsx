@@ -181,7 +181,7 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
     ];
 
     return (
-        <div className="w-full flex flex-row items-end justify-between gap-3 h-full px-2 pb-2 overflow-x-auto" aria-label={`Espectro Político: Esquerda ${left}, Centro ${center}, Direita ${right}`}>
+        <div className="w-full flex flex-row items-end justify-between gap-3 h-full px-2 pb-2 overflow-x-auto" role="img" aria-label={`Espectro Político: Esquerda ${left}, Centro ${center}, Direita ${right}`}>
             {data.map((item) => {
                 const heightPct = ((item.count as number) / (maxVal as number)) * 100;
                 const realPct = Math.round((item.count / total) * 100);
@@ -238,7 +238,7 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
     return (
         <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
             <div className="relative w-48 h-48 flex items-center justify-center shrink-0 mb-4">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl">
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl" role="img" aria-label={`${total} representantes: ${data.map(item => `${item.name} ${item.value} (${Math.round(item.percent)}%)`).join(', ')}`}>
                     {/* Fundo */}
                     <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
                     
@@ -548,7 +548,7 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
 
 const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[], onClick: (name: string) => void, activeParty: string | null }) => {
     const [hoveredParty, setHoveredParty] = useState<string | null>(null);
-    const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0) || 513;
+    const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0);
     
     // Sort logic
     const sortedParties = useMemo(() => {
@@ -604,7 +604,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
 
             {/* Graphic Container */}
             <div className="relative w-full max-w-[650px] aspect-[1.8/1] min-h-[220px] flex items-end justify-center mb-6 md:mb-10">
-                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img">
+                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img" aria-label={`Distribuição de ${totalSeats} cadeiras por partido: ${sortedParties.map(p => `${p.name} ${p.totalMembers}`).join(', ')}`}>
                     {/* Background Track */}
                     <path 
                         d={describeArc(centerX, centerY, radius, 0, 180)}
@@ -772,7 +772,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Alta (+90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença constante em sessões deliberativas.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -780,7 +780,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Média (70-90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Frequência regular, com algumas ausências justificadas.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada entre 70% e 90% das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -788,7 +788,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Baixa (-70%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Alto índice de faltas não justificadas ou licenças.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada abaixo de 70% das sessões.</p>
                         </div>
                     </div>
                 </div>
@@ -832,11 +832,12 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
                         </div>
                         <span className="text-[10px] font-black text-gray-700 dark:text-gray-200 whitespace-nowrap">
                             R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            <span className="ml-1 font-bold text-gray-500 dark:text-gray-400">(n={p.totalMembers})</span>
                         </span>
                     </div>
                 ))}
             </div>
-            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Média por parlamentar do partido</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Média por parlamentar do partido; n = parlamentares considerados</p>
         </div>
     );
 };

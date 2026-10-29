@@ -21,14 +21,14 @@ const STEPS: TourStep[] = [
     id: 'feed',
     targetId: 'feed',
     title: 'Mural de Fiscalização',
-    desc: 'Acompanhe votos e gastos em tempo real. Cada centavo e cada decisão, direto da fonte oficial.',
+    desc: 'Acompanhe votos e gastos com dados oficiais atualizados diariamente. Cada centavo e cada decisão, direto da fonte oficial.',
     color: 'text-green-600'
   },
   {
     id: 'explore',
     targetId: 'explore',
     title: 'Raio-X Completo',
-    desc: 'Pesquise qualquer parlamentar e veja histórico, processos e desempenho.',
+    desc: 'Pesquise qualquer parlamentar e veja histórico e desempenho.',
     color: 'text-orange-500'
   },
   {

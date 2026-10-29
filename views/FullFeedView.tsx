@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useDeferredValue } from 'react';
 import { ChevronLeft, Search, Calendar, Filter, X, ExternalLink, ArrowDownUp } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import DataState from '../components/DataState';
@@ -29,6 +29,7 @@ const dateTime = (dateStr?: string) => parseLocalDate(dateStr)?.getTime() ?? nul
 
 const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onBack, onSelectCandidate }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeFilter, setActiveFilter] = useState<TypeFilter>('todos');
@@ -41,7 +42,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         if (activeFilter !== 'todos' && item.type !== activeFilter) return false;
 
         // Filtro de Busca (Texto)
-        const searchLower = searchTerm.toLowerCase();
+        const searchLower = deferredSearchTerm.toLowerCase();
         const matchText = item.title.toLowerCase().includes(searchLower) || 
                           (item.description && item.description.toLowerCase().includes(searchLower)) ||
                           (item.tags && item.tags.some(t => t.toLowerCase().includes(searchLower)));
@@ -73,9 +74,9 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         }
 
         // Relevância (Apenas se houver busca, senão cai no default date_desc)
-        if (sortBy === 'relevance' && searchTerm) {
+        if (sortBy === 'relevance' && deferredSearchTerm) {
             const getScore = (item: FeedItem) => {
-                const term = searchTerm.toLowerCase();
+                const term = deferredSearchTerm.toLowerCase();
                 const title = item.title.toLowerCase();
                 const desc = item.description?.toLowerCase() || '';
                 
@@ -98,7 +99,9 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         return (dateTime(b.date) ?? Number.MIN_SAFE_INTEGER) - (dateTime(a.date) ?? Number.MIN_SAFE_INTEGER);
     });
 
-  }, [feedItems, searchTerm, startDate, endDate, activeFilter, sortBy]);
+  }, [feedItems, deferredSearchTerm, startDate, endDate, activeFilter, sortBy]);
+
+  const politicianById = useMemo(() => new Map(politicians.map(pol => [pol.id, pol])), [politicians]);
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-300">
@@ -213,7 +216,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         <div className="mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredItems.map((item) => {
-                    const candidate = item.politicianId ? politicians.find(p => p.id === item.politicianId) : null;
+                    const candidate = item.politicianId ? politicianById.get(item.politicianId) ?? null : null;
                     const isExpense = item.type === 'despesa';
                     const typeMeta = getFeedTypeMeta(item.type);
 

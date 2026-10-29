@@ -86,6 +86,7 @@ type StatsCardProps = {
   isLoading: boolean;
   mandateInfo: MandateInfo;
   loadingStatus: string;
+  hasSpendingData: boolean;
 };
 
 const getStatusColor = (status: string) => {
@@ -100,14 +101,16 @@ const SocialIcon: React.FC<{ url: string }> = ({ url }) => {
   let label = 'Site';
   let colorClass = 'text-gray-500 hover:text-blue-600';
 
-  if (url.includes('instagram.com')) { Icon = Instagram; label = 'Instagram'; colorClass = 'text-pink-600 hover:text-pink-700'; }
-  else if (url.includes('twitter.com') || url.includes('x.com')) { Icon = Twitter; label = 'Twitter'; colorClass = 'text-blue-400 hover:text-blue-500'; }
-  else if (url.includes('facebook.com')) { Icon = Facebook; label = 'Facebook'; colorClass = 'text-blue-700 hover:text-blue-800'; }
-  else if (url.includes('youtube.com')) { Icon = Youtube; label = 'YouTube'; colorClass = 'text-red-600 hover:text-red-700'; }
-  else if (url.includes('linkedin.com')) { Icon = Linkedin; label = 'LinkedIn'; colorClass = 'text-blue-800 hover:text-blue-900'; }
-
   const href = safeHttpUrl(url);
   if (!href) return null;
+
+  const host = new URL(href).hostname.toLowerCase();
+  const isHost = (domain: string) => host === domain || host.endsWith(`.${domain}`);
+  if (isHost('instagram.com')) { Icon = Instagram; label = 'Instagram'; colorClass = 'text-pink-600 hover:text-pink-700'; }
+  else if (isHost('twitter.com') || isHost('x.com')) { Icon = Twitter; label = 'Twitter'; colorClass = 'text-blue-400 hover:text-blue-500'; }
+  else if (isHost('facebook.com')) { Icon = Facebook; label = 'Facebook'; colorClass = 'text-blue-700 hover:text-blue-800'; }
+  else if (isHost('youtube.com') || host === 'youtu.be') { Icon = Youtube; label = 'YouTube'; colorClass = 'text-red-600 hover:text-red-700'; }
+  else if (isHost('linkedin.com')) { Icon = Linkedin; label = 'LinkedIn'; colorClass = 'text-blue-800 hover:text-blue-900'; }
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl bg-gray-100/50 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${colorClass}`} title={label} aria-label={`${label} (nova aba)`}>
@@ -212,13 +215,13 @@ export const RemunerationWidget = ({ remuneration }: { remuneration: Remuneratio
           {remuneration.housingAllowance > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-gray-500">Auxílio Moradia</span>
-              <span className="text-xs font-bold text-blue-500">+ R$ {remuneration.housingAllowance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs font-bold text-blue-500 dark:text-blue-300">+ R$ {remuneration.housingAllowance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           )}
           {otherBenefits > 0 && (
             <div className="flex justify-between items-center mt-2">
               <span className="text-xs font-bold text-gray-500">Outros Auxílios</span>
-              <span className="text-xs font-bold text-blue-500">+ R$ {otherBenefits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs font-bold text-blue-500 dark:text-blue-300">+ R$ {otherBenefits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           )}
         </div>
@@ -360,7 +363,7 @@ export const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) =>
           <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2">
             <Calendar size={14} className="text-blue-600 dark:text-blue-400" /> Cronologia de Gastos
           </h4>
-          <p className="text-[9px] text-gray-400 mt-1 uppercase tracking-wide opacity-70">Picos Diários e Finais de Semana</p>
+          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wide">Últimos {groupedData.length} dias com gasto registrado</p>
         </div>
       </div>
       <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
@@ -369,11 +372,19 @@ export const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) =>
             const dayOfWeek = data.dateObj.getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const heightPct = Math.max((data.total / maxVal) * 100, 5);
+            const dateLabel = dateStr.split('-').reverse().join('/');
+            const valueLabel = `R$ ${data.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             return (
-              <div key={dateStr} className="flex flex-col items-center gap-2 group relative">
-                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] font-bold py-1 px-2 rounded-lg pointer-events-none whitespace-nowrap z-10">
-                  <span className="block">{dateStr.split('-').reverse().join('/')}</span>
-                  <span className="text-xs">R$ {data.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <div
+                key={dateStr}
+                tabIndex={0}
+                role="img"
+                aria-label={`${dateLabel}: ${valueLabel}${isWeekend ? ', final de semana' : ''}`}
+                className="flex flex-col items-center gap-2 group relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300"
+              >
+                <div aria-hidden="true" className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity bg-black/80 text-white text-[10px] font-bold py-1 px-2 rounded-lg pointer-events-none whitespace-nowrap z-10">
+                  <span className="block">{dateLabel}</span>
+                  <span className="text-xs">{valueLabel}</span>
                   {isWeekend && <span className="block text-orange-300 uppercase text-[9px] mt-0.5">Final de Semana</span>}
                 </div>
                 <div className={`w-3 md:w-4 rounded-t-full transition-all duration-500 relative ${isWeekend ? 'bg-orange-400 dark:bg-orange-500' : 'bg-blue-400 dark:bg-blue-600'}`} style={{ height: `${heightPct}%` }}>
@@ -381,7 +392,7 @@ export const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) =>
                 </div>
                 <div className="flex flex-col items-center">
                   <span className={`text-[9px] font-bold ${isWeekend ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400 dark:text-gray-300'}`}>{data.dateObj.getDate()}</span>
-                  <span className="text-[7px] uppercase font-black text-gray-300 dark:text-gray-400">{data.dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                  <span className="text-[9px] uppercase font-black text-gray-500 dark:text-gray-400">{data.dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
                 </div>
               </div>
             );
@@ -471,7 +482,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
     ? `${candidate.birthCity}${candidate.birthState ? ` / ${candidate.birthState}` : ''}`
     : (candidate.birthState || 'N/A');
   const conditionLabel = candidate.condition || 'N/A';
-  const matchScore = Number.isFinite(candidate.matchScore) ? candidate.matchScore : null;
+  const matchScore = Number.isFinite(candidate.matchScore) && candidate.matchScore > 0 ? candidate.matchScore : null;
   const cabinetLocation = [
     candidate.cabinet?.room ? `Sala ${candidate.cabinet.room}` : null,
     candidate.cabinet?.floor ? `${candidate.cabinet.floor}º andar` : null,
@@ -671,7 +682,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
   );
 };
 
-export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo, loadingStatus }: StatsCardProps) => {
+export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availableYears, commissionGroups, isLoading, mandateInfo, loadingStatus, hasSpendingData }: StatsCardProps) => {
   const sortedYears = [...availableYears].sort((a, b) => a - b);
   const currentYear = new Date().getFullYear();
   const fidelity = displayStats.partyFidelity;
@@ -756,7 +767,7 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
                     }`}
                   >
                     <span className={`text-xs font-black ${isActive ? 'text-white' : ''}`}>{year}</span>
-                    {isCurrent && !isActive && <span className="absolute -bottom-6 text-[9px] font-black uppercase text-blue-500 tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">Atual</span>}
+                    {isCurrent && !isActive && <span className="absolute -bottom-6 text-[9px] font-black uppercase text-blue-500 dark:text-blue-300 tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">Atual</span>}
                     {isActive && <div className="absolute -bottom-1 w-1 h-1 bg-white rounded-full" />}
                   </button>
                 );
@@ -792,6 +803,9 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
                 style={{ width: `${fidelity}%` }}
               />
             </div>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+              {Math.round(fidelity!)}% dos votos alinhados à orientação do partido. Critério: Fiel 90% ou mais, Independente de 60% a 89%, Rebelde abaixo de 60%.
+            </p>
           </div>}
 
           {!hasPresence && !hasFidelity && (
@@ -805,7 +819,7 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide group-hover:text-blue-500 transition-colors">Gastos de Gabinete ({selectedYear === 'total' ? 'Total' : selectedYear})</p>
                 <p className="text-xl font-black text-gray-900 dark:text-white mt-0.5">
-                  R$ {displayStats.spending?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+                  {hasSpendingData ? `R$ ${displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Sem dados da fonte'}
                 </p>
               </div>
               <div className="p-3 bg-green-100/50 dark:bg-green-900/20 text-green-600 rounded-xl">
@@ -838,7 +852,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
           <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
         </div>
         <div>
-          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2">Proposta de Lei</span>
+          <span className="text-[10px] font-black text-blue-500 dark:text-blue-300 uppercase tracking-widest block mb-2">Proposta de Lei</span>
           <h4 className="font-bold text-gray-900 dark:text-white leading-tight mb-2 text-lg">{item.title}</h4>
           <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">{item.description}</p>
         </div>
@@ -862,6 +876,7 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
     const isSim = item.vote.toLowerCase().includes('sim');
     const isNao = item.vote.toLowerCase().includes('não') || item.vote.toLowerCase().includes('nao');
     const isRebel = item.isRebel;
+    const hasOrientation = Boolean(item.partyOrientation?.trim());
     return (
       <article className="glass-panel p-6 rounded-[2.5rem] flex flex-col gap-4 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
         <div className="flex items-start gap-4">
@@ -886,16 +901,21 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
           <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-white/5">
             <span className="text-[10px] font-bold uppercase text-gray-400">Orientação do Partido</span>
             <div className="flex items-center gap-2">
-              {isRebel ? (
+              {hasOrientation && isRebel === true && (
                 <span className="flex items-center gap-1 text-[9px] font-bold uppercase bg-red-100/30 text-red-600 px-2 py-0.5 rounded border border-red-200/50">
                   <AlertTriangle size={10} /> Rebelde
                 </span>
-              ) : (
+              )}
+              {hasOrientation && isRebel === false && (
                 <span className="flex items-center gap-1 text-[9px] font-bold uppercase bg-green-100/30 text-green-600 px-2 py-0.5 rounded border border-green-200/50">
                   <CheckCircle2 size={10} /> Seguiu
                 </span>
               )}
-              <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{item.partyOrientation || 'Liberado'}</span>
+              {hasOrientation ? (
+                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{item.partyOrientation}</span>
+              ) : (
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Orientação não informada</span>
+              )}
             </div>
           </div>
         </div>

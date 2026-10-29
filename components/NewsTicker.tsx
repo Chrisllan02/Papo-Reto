@@ -105,11 +105,11 @@ const NewsTicker: React.FC = () => {
         };
     };
 
-    const theme = getNewsTheme(currentNews.summary.context || "", currentNews.title);
+    const theme = getNewsTheme(currentNews.summary?.context || "", currentNews.title);
     const ThemeIcon = theme.icon;
     const displayTitle = clampText(currentNews.title, 72);
-    const displayContext = clampText(currentNews.summary.context || currentNews.source || 'Atualização', 26);
-    const displaySummary = clampText(currentNews.summary.main, 170);
+    const displayContext = clampText(currentNews.summary?.context || currentNews.source || 'Atualização', 26);
+    const displaySummary = clampText(currentNews.summary?.main ?? '', 170);
     const sourceUrl = safeHttpUrl(currentNews.url);
 
     return (
@@ -127,7 +127,7 @@ const NewsTicker: React.FC = () => {
             <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} transition-all duration-1000`}></div>
             
             {/* Texture Overlay */}
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+            <div className="absolute inset-0 opacity-10 texture-overlay mix-blend-overlay"></div>
             
             {/* Ambient Light */}
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none opacity-50"></div>

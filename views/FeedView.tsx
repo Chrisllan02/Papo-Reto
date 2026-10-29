@@ -24,7 +24,7 @@ const parseFeedDate = (date?: string) => parseLocalDate(date);
 const formatUpdateLabel = (date?: string) => {
     const parsed = parseFeedDate(date);
     if (!parsed) return 'Usando último dado confiável';
-    return `Atualizado em ${parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+    return `Último registro em ${parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
 };
 
 const formatShortDate = (date?: string) => {
@@ -64,7 +64,9 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
         return feedItems.filter(item => (item.category || 'activity') === selectedCategory);
     }, [feedItems, selectedCategory]);
     const muralSummary = useMemo(() => {
-        const byDateDesc = [...feedItems]
+        const now = Date.now();
+        const byDateDesc = feedItems
+            .filter(item => (parseFeedDate(item.date)?.getTime() ?? Infinity) <= now)
             .sort((a, b) => (parseFeedDate(b.date)?.getTime() || 0) - (parseFeedDate(a.date)?.getTime() || 0));
         const latestItem = byDateDesc[0];
         const topCategory = categoryOptions.find(option => option.id !== 'activity') || categoryOptions[0];
@@ -133,7 +135,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                             </span>
                         </h1>
                         <p className="text-sm md:text-base font-medium text-gray-500 dark:text-gray-400">
-                            Fiscalização em tempo real do Congresso.
+                            Fiscalização do Congresso com dados oficiais atualizados diariamente.
                         </p>
                     </div>
                 </header>
@@ -145,7 +147,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={() => muralSummary.priorityItem ? setSelectedFeedItem(muralSummary.priorityItem) : onSeeMore()}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-3">
                             <CalendarClock size={18} />
@@ -164,7 +166,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={() => muralSummary.topCategory && setSelectedCategory(muralSummary.topCategory.id)}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 mb-3">
                             <TrendingUp size={18} />
@@ -183,7 +185,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={() => userLocation ? onGoToExplore(userLocation) : actions.detectLocation()}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 mb-3">
                             <MapPinned size={18} />
@@ -204,7 +206,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={onSeeMore}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 mb-3">
                             <DatabaseZap size={18} />
@@ -212,7 +214,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                         </div>
                         <p className="text-lg font-black text-midnight dark:text-white leading-tight">{muralSummary.latestLabel}</p>
                         <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                            {muralSummary.officialSourceCount}/{feedItems.length} itens com fonte oficial e {muralSummary.datedCount} com data validada. Ver histórico.
+                            {muralSummary.officialSourceCount}/{feedItems.length} itens com fonte oficial e {muralSummary.datedCount} com data informada. Ver histórico.
                         </p>
                     </button>
                 </section>
@@ -304,7 +306,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                             {filteredFeedItems.slice(0, 6).map((item) => (
                                 <FeedCard 
-                                    key={item.id} 
+                                    key={`${item.type}-${item.id}`} 
                                     item={item} 
                                     politicians={politicians} 
                                     onClick={setSelectedFeedItem} 

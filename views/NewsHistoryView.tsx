@@ -129,7 +129,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                 const shareData = {
                     files: [file],
                     title: sharingItem.title,
-                    text: `${sharingItem.summary.context}: ${sharingItem.summary.main}\n\nVia App PapoReto 🇧🇷`
+                    text: `${sharingItem.summary?.context || ''}: ${sharingItem.summary?.main || ''}\n\nVia App PapoReto 🇧🇷`
                 };
 
                 // O navegador pode recusar o compartilhamento (ex.: ativação do usuário expirou durante a geração da imagem).
@@ -143,7 +143,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                     } else if (typeof navigator.share === 'function') {
                         await navigator.share({
                             title: sharingItem.title,
-                            text: `${sharingItem.summary.context}: ${sharingItem.summary.main}\n\nVia App PapoReto 🇧🇷`,
+                            text: `${sharingItem.summary?.context || ''}: ${sharingItem.summary?.main || ''}\n\nVia App PapoReto 🇧🇷`,
                             ...(itemUrl ? { url: itemUrl } : {})
                         });
                     } else {
@@ -181,9 +181,9 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
         if (debouncedQuery) {
             const lowerQ = debouncedQuery.toLowerCase();
             items = items.filter(h => 
-                h.title.toLowerCase().includes(lowerQ) || 
-                h.source.toLowerCase().includes(lowerQ) ||
-                h.summary.main.toLowerCase().includes(lowerQ)
+                (h.title || '').toLowerCase().includes(lowerQ) || 
+                (h.source || '').toLowerCase().includes(lowerQ) ||
+                (h.summary?.main || '').toLowerCase().includes(lowerQ)
             );
         }
 
@@ -192,7 +192,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             items = items.filter(h => {
                 const source = (h.source || '').toLowerCase();
                 const url = (h.url || '').toLowerCase();
-                const context = (h.summary.context || '').toLowerCase();
+                const context = (h.summary?.context || '').toLowerCase();
                 const title = (h.title || '').toLowerCase();
 
                 if (selectedTag === 'Câmara') {
@@ -238,7 +238,8 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                 itemDate = new Date(item.timestamp);
             } else {
                 // Fallback para parse de string (Legado)
-                const datePart = item.time.includes('às') ? item.time.split('às')[0].trim() : item.time.trim();
+                const time = item.time || '';
+                const datePart = time.includes('às') ? time.split('às')[0].trim() : time.trim();
                 const parsed = parseLocalDate(datePart);
                 if (!parsed) {
                     groups['Antigos'].push(item);
@@ -274,7 +275,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
         if (filteredHistory.length === 0) return;
         setIsGeneratingSummary(true);
         try {
-            const headlines = filteredHistory.slice(0, 8).map(h => `- ${h.title} (${h.summary.context})`).join('\n');
+            const headlines = filteredHistory.slice(0, 8).map(h => `- ${h.title} (${h.summary?.context || ''})`).join('\n');
             const prompt = `Atue como um analista político sênior. Com base APENAS nas seguintes manchetes recentes do Congresso, gere um parágrafo único (máximo 50 palavras) resumindo a conjuntura política atual para um jovem da Geração Z. Seja direto e use linguagem acessível.\n\nManchetes:\n${headlines}`;
             
             const response = await chatWithGemini(prompt, 'fast');
@@ -313,14 +314,14 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                     {/* Content */}
                     <div className="space-y-10">
                         <span className="inline-block px-8 py-3 rounded-2xl bg-blue-500 text-white text-2xl font-black uppercase tracking-widest shadow-lg">
-                            {sharingItem.summary.context}
+                            {sharingItem.summary?.context}
                         </span>
                         <h2 className="text-7xl font-black leading-[1.1] tracking-tight drop-shadow-lg">
                             {sharingItem.title}
                         </h2>
                         <div className="w-32 h-3 bg-blue-500 rounded-full"></div>
                         <p className="text-4xl font-medium leading-relaxed text-gray-200 max-w-4xl">
-                            {sharingItem.summary.main}
+                            {sharingItem.summary?.main}
                         </p>
                     </div>
 
@@ -539,14 +540,14 @@ alt=""
                                                                     onClick={(e) => triggerShare(e, item)}
                                                                     aria-label={`Compartilhar notícia: ${item.title}`}
                                                                     className={`p-1.5 rounded-full backdrop-blur-md transition-colors focus-visible:ring-4 focus-visible:ring-white/60 ${
-                                                                        isSharing && sharingItem?.id === item.id
+                                                                        isSharing && sharingItem === item
                                                                         ? 'bg-blue-600 text-white animate-pulse'
                                                                         : 'bg-white/20 hover:bg-white text-white hover:text-black'
                                                                     }`}
                                                                     title="Compartilhar card"
                                                                     disabled={isSharing}
                                                                 >
-                                                                    {isSharing && sharingItem?.id === item.id ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Share2 size={12} aria-hidden="true" />}
+                                                                    {isSharing && sharingItem === item ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Share2 size={12} aria-hidden="true" />}
                                                                 </button>
                                                             </div>
                                                         </>
@@ -564,10 +565,10 @@ alt=""
                                                     {viewMode === 'grid' && (
                                                         <div className="mb-4">
                                                             <span className="inline-block bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-[9px] font-black uppercase px-2 py-0.5 rounded mb-2 border border-blue-100 dark:border-blue-900/30">
-                                                                {item.summary.context}
+                                                                {item.summary?.context}
                                                             </span>
                                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium leading-relaxed line-clamp-4">
-                                                                {item.summary.main}
+                                                                {item.summary?.main}
                                                             </p>
                                                         </div>
                                                     )}
@@ -575,10 +576,10 @@ alt=""
                                                     {viewMode === 'list' && (
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <span className="text-[9px] font-black uppercase bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                                                                {item.summary.context}
+                                                                {item.summary?.context}
                                                             </span>
                                                             <span className="text-[9px] text-gray-400 font-bold truncate">
-                                                                {item.time.split('às')[1] || item.time}
+                                                                {item.time?.split('às')[1] || item.time}
                                                             </span>
                                                         </div>
                                                     )}
@@ -586,7 +587,7 @@ alt=""
                                                     <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-3 border-t border-gray-50 dark:border-white/5' : 'mt-1'}`}>
                                                         {viewMode === 'grid' && (
                                                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
-                                                                {item.time.split('às')[1] || item.time}
+                                                                {item.time?.split('às')[1] || item.time}
                                                             </span>
                                                         )}
                                                         <div className="flex gap-2 ml-auto">
@@ -599,7 +600,7 @@ alt=""
                                                                     title="Compartilhar"
                                                                     disabled={isSharing}
                                                                 >
-                                                                    {isSharing && sharingItem?.id === item.id ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Share2 size={14} aria-hidden="true" />}
+                                                                    {isSharing && sharingItem === item ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Share2 size={14} aria-hidden="true" />}
                                                                 </button>
                                                             )}
                                                             {safeHttpUrl(item.url) && (

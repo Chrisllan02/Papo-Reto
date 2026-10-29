@@ -342,7 +342,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       const hasAttendance = Boolean(displayStats.plenary?.total || displayStats.totalSessions);
       const frontsCount = candidate.fronts?.length || 0;
       const spending = displayStats.spending || 0;
-      return { activitiesCount, attendance, hasAttendance, frontsCount, spending };
+      const hasSourceData = candidate.hasApiIntegration !== false;
+      const hasSpendingData = hasSourceData && (spending > 0 || Boolean(candidate.detailedExpenses?.length) || Boolean(candidate.expensesBreakdown?.length));
+      return { activitiesCount, attendance, hasAttendance, frontsCount, spending, hasSourceData, hasSpendingData };
   }, [candidate, displayStats]);
 
   const getStatusDisplay = () => {
@@ -384,11 +386,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   return (
     <div 
         ref={containerRef}
-        className="w-full h-full overflow-y-auto bg-transparent pb-24 md:pb-12 scroll-smooth will-change-transform"
+        className={`w-full h-full overflow-y-auto bg-transparent pb-24 md:pb-12 scroll-smooth ${translateX !== 0 ? 'will-change-transform' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ transform: `translateX(${translateX}px)`, transition: translateX === 0 ? 'transform 0.3s ease-out' : 'none' }}
+        style={translateX !== 0 ? { transform: `translateX(${translateX}px)`, transition: 'none' } : { transition: 'transform 0.3s ease-out' }}
     >
       {isLoadingDetails && (
           <div role="status" className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
@@ -400,8 +402,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto pt-6 px-safe">
           <div className="relative w-full overflow-hidden rounded-[2.5rem] md:rounded-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
               <div className="absolute inset-0 bg-green-900"></div>
-              <div className="absolute inset-0 opacity-50 mix-blend-overlay"><img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg" alt="" className="w-full h-full object-cover scale-110 brightness-75"/></div>
-              <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-10"></div>
+              <div className="absolute inset-0 opacity-50 mix-blend-overlay" aria-hidden="true"><svg viewBox="0 0 20 14" preserveAspectRatio="xMidYMid slice" className="w-full h-full scale-110 brightness-75"><rect width="20" height="14" fill="#009C3B" /><path d="M10 1.7 18.3 7 10 12.3 1.7 7z" fill="#FFDF00" /><circle cx="10" cy="7" r="3.5" fill="#002776" /></svg></div>
+              <div className="absolute inset-0 opacity-20 texture-overlay mix-blend-overlay z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
               <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
                 <button type="button" onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg focus-visible:ring-4 focus-visible:ring-white/50"><ChevronLeft size={24} aria-hidden="true" /></button>
@@ -447,21 +449,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               <QuickMetric
                   icon={ScrollText}
                   label="Atividades"
-                  value={profileSummary.activitiesCount.toLocaleString('pt-BR')}
+                  value={profileSummary.hasSourceData ? profileSummary.activitiesCount.toLocaleString('pt-BR') : 'Sem dados da fonte'}
                   hint="Propostas, votos, relatorias e discursos"
                   tone="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
               />
               <QuickMetric
                   icon={Flag}
                   label="Frentes"
-                  value={profileSummary.frontsCount.toLocaleString('pt-BR')}
+                  value={profileSummary.hasSourceData ? profileSummary.frontsCount.toLocaleString('pt-BR') : 'Sem dados da fonte'}
                   hint="Temas de atuação parlamentar"
                   tone="bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
               />
               <QuickMetric
                   icon={Wallet}
                   label="Custos"
-                  value={profileSummary.spending > 0 ? profileSummary.spending.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : 'Sem dados'}
+                  value={profileSummary.hasSpendingData ? profileSummary.spending.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : 'Sem dados da fonte'}
                   hint={selectedYear === 'total' ? 'Total disponível' : `Recorte de ${selectedYear}`}
                   tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
               />
@@ -469,7 +471,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
           <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
               <BioCard candidate={candidate} isLoading={isLoadingDetails} />
-              <StatsCard displayStats={displayStats} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availableYears={availableYears} commissionGroups={commissionGroups} isLoading={isLoadingDetails} mandateInfo={mandateInfo} loadingStatus={loadingStatus} />
+              <StatsCard displayStats={displayStats} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availableYears={availableYears} commissionGroups={commissionGroups} isLoading={isLoadingDetails} mandateInfo={mandateInfo} loadingStatus={loadingStatus} hasSpendingData={profileSummary.hasSpendingData} />
           </div>
 
           <div className="min-w-0">
@@ -583,7 +585,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              {isLoadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-[3rem]" /> : (
                                  <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-[3rem] border border-green-200/50 dark:border-green-800/50 text-center shadow-inner dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden group backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2">
                                      <p className="text-[10px] md:text-xs font-black text-green-700 dark:text-green-300 uppercase mb-3 tracking-[0.3em]">{selectedYear === 'total' ? 'Recursos Públicos Utilizados (Total)' : `Recursos Utilizados em ${selectedYear}`}</p>
-                                     <p className="text-4xl md:text-7xl font-black text-green-800 dark:text-green-400 tracking-tighter">R$ {displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                     <p className="text-4xl md:text-7xl font-black text-green-800 dark:text-green-400 tracking-tighter">{profileSummary.hasSpendingData ? `R$ ${displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Sem dados da fonte'}</p>
                                  </div>
                              )}
 

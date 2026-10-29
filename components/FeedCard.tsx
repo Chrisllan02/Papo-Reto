@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Landmark, ArrowRight, Sparkles, CalendarDays, CheckCircle2, Clock3, ExternalLink, Target, Route } from 'lucide-react';
 import { FeedItem, Politician } from '../types';
 import { prefetchPoliticianProfile } from '../services/camaraApi';
@@ -16,7 +16,7 @@ interface FeedCardProps {
 const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     // Usa a categoria pré-calculada ou fallback para 'activity'
     const category = getCategoryIcon(item.category || 'activity');
-    const politician = item.politicianId ? politicians.find(p => p.id === item.politicianId) : null;
+    const politician = useMemo(() => (item.politicianId ? politicians.find(p => p.id === item.politicianId) ?? null : null), [item.politicianId, politicians]);
     const isExpense = item.type === 'despesa';
     const typeMeta = getFeedTypeMeta(item.type);
     const displayTitle = item.type === 'evento' && item.description
@@ -32,8 +32,8 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
                 : 'bg-yellow-50 text-yellow-800 border-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900/40';
     
     // Contexto Didático para uso no Card
-    const didactic = getDidacticContext(item.title, item.description, item.type);
-    const audioScript = buildActivityAudioScript(item, didactic.text, politician);
+    const didactic = useMemo(() => getDidacticContext(item.title, item.description, item.type), [item.title, item.description, item.type]);
+    const audioScript = useMemo(() => buildActivityAudioScript(item, didactic.text, politician), [item, didactic.text, politician]);
     // Show snippet only if meaningful text exists and isn't just repetition
     const showSnippet = didactic.text && didactic.text.length > 10 && !didactic.text.startsWith(item.title.substring(0,20));
     const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,6 +57,10 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
             prefetchTimerRef.current = null;
         }
     };
+
+    useEffect(() => () => {
+        if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    }, []);
 
     return (
         <article 

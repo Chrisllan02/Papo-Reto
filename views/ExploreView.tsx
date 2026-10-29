@@ -126,6 +126,10 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
         }
     };
 
+    useEffect(() => () => {
+        if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    }, []);
+
     return (
         <div 
             onClick={() => onSelect(pol)} 
@@ -203,6 +207,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
     // Refs para Persistência de Scroll
     const partiesListRef = useRef<HTMLDivElement>(null);
     const stateSelectorRef = useRef<HTMLDivElement>(null);
+    const stateSelectorButtonRef = useRef<HTMLButtonElement>(null);
     const scrollPositionRef = useRef(0);
 
     useEffect(() => {
@@ -223,7 +228,9 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         };
 
         const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setIsStateSelectorOpen(false);
+            if (event.key !== 'Escape') return;
+            setIsStateSelectorOpen(false);
+            stateSelectorButtonRef.current?.focus();
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -441,10 +448,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                             value={search}
                             onChange={handleSearch}
                             placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, estado..." : "Buscar partido ou político..."}
-                            className="block w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm"
+                            className="block w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-600 dark:focus:ring-blue-300 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm"
                         />
                         {search && (
-                          <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+                          <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none">
                             <X size={14} aria-hidden="true" />
                           </button>
                         )}
@@ -488,8 +495,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 <div className="relative shrink-0 snap-start" ref={stateSelectorRef}>
                                     <button
                                         type="button"
+                                        ref={stateSelectorButtonRef}
                                         onClick={() => setIsStateSelectorOpen(prev => !prev)}
-                                        aria-haspopup="listbox"
                                         aria-expanded={isStateSelectorOpen}
                                         aria-label="Filtrar por estado"
                                         className="flex h-full min-w-[7.25rem] items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-2 text-xs font-black uppercase text-blue-900 shadow-sm transition-colors hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40"
@@ -518,15 +525,14 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                     </button>
                                                 )}
                                             </div>
-                                            <div className="grid grid-cols-6 gap-1.5" role="listbox" aria-label="Estados do Brasil">
+                                            <div className="grid grid-cols-6 gap-1.5" role="group" aria-label="Estados do Brasil">
                                                 {ESTADOS_BRASIL.map(uf => {
                                                     const active = selectedUF === uf;
                                                     return (
                                                         <button
                                                             key={uf}
                                                             type="button"
-                                                            role="option"
-                                                            aria-selected={active}
+                                                            aria-pressed={active}
                                                             onClick={() => {
                                                                 setSelectedUF(uf);
                                                                 setIsStateSelectorOpen(false);

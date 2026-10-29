@@ -53,6 +53,7 @@ const Sidebar: React.FC = () => {
   const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
   const [showAccessMenu, setShowAccessMenu] = useState(false);
   const accessMenuRef = useRef<HTMLDivElement | null>(null);
+  const accessButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
       if (!showAccessMenu) return;
@@ -63,7 +64,9 @@ const Sidebar: React.FC = () => {
           }
       };
       const handleEscape = (event: KeyboardEvent) => {
-          if (event.key === 'Escape') setShowAccessMenu(false);
+          if (event.key !== 'Escape') return;
+          setShowAccessMenu(false);
+          accessButtonRef.current?.focus();
       };
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
@@ -126,6 +129,7 @@ const Sidebar: React.FC = () => {
       <div ref={accessMenuRef} className="mt-auto pt-4 relative">
          <button 
             type="button"
+            ref={accessButtonRef}
             onClick={() => setShowAccessMenu(!showAccessMenu)}
             className={`flex items-center xl:justify-start justify-center gap-4 p-3.5 rounded-full backdrop-blur-sm transition-all duration-300 w-full group relative border border-white/20 active:scale-95 ${showAccessMenu ? 'bg-white text-black shadow-lg dark:bg-midnight dark:text-white dark:border-white/20 dark:shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'} focus-visible:ring-4 focus-visible:ring-blue-500/40`}
             aria-label="Menu de Configurações"

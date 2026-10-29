@@ -142,6 +142,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
     }, [initialContext]);
 
     // --- AUDIO HANDLING ---
+    const pushErrorMessage = (text: string) => {
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text, isError: true, timestamp: Date.now() }]);
+    };
+
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -179,7 +183,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
         } catch (err) {
             releaseStream();
             console.error("Erro ao acessar microfone", err);
-            alert("Permissão de microfone negada ou indisponível.");
+            pushErrorMessage("Permissão de microfone negada ou indisponível.");
         }
     };
 
@@ -192,8 +196,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
 
     // --- IMAGE GENERATION ---
     const handleGenerateImage = async () => {
+        if (isLoading) return;
         if (!inputValue.trim()) {
-            alert("Digite uma descrição para a imagem primeiro.");
+            setShowImageModal(false);
+            pushErrorMessage("Digite uma descrição para a imagem no campo de mensagem primeiro.");
             return;
         }
         setShowImageModal(false);
@@ -226,7 +232,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
 
     // --- TEXT CHAT ---
     const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
+        if (isLoading || !inputValue.trim()) return;
         
         const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: inputValue, timestamp: Date.now() };
         setMessages(prev => [...prev, userMsg]);
@@ -305,7 +311,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                                             const href = safeHttpUrl(s.uri);
                                             if (!href) return null;
                                             return (
-                                                <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1">
+                                                <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-blue-500 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1">
                                                     <Search size={10} aria-hidden="true" /> {s.title}
                                                 </a>
                                             );
@@ -384,8 +390,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                         <button 
                             type="button"
                             onClick={handleSendMessage}
+                            disabled={isLoading}
                             aria-label="Enviar mensagem"
-                            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/30 focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/30 focus-visible:ring-4 focus-visible:ring-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Send size={18} strokeWidth={2.5} aria-hidden="true" />
                         </button>
@@ -401,7 +408,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                     )}
                 </div>
                 <div className="text-center mt-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">
                         IA opcional • Pode cometer erros
                     </p>
                 </div>

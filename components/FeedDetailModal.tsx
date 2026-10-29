@@ -32,6 +32,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
     const [dragY, setDragY] = useState(0);
     const touchStartY = useRef<number | null>(null);
     const closeBtnRef = useRef<HTMLButtonElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     // Estado para detalhes profundos (fetch on demand)
     const [extraDetails, setExtraDetails] = useState<{
@@ -150,11 +151,21 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
     };
 
     // Gesture Handlers
+    const isContentScrolled = (target: EventTarget) => {
+        const scroller = scrollRef.current;
+        return Boolean(scroller && scroller.contains(target as Node) && scroller.scrollTop > 0);
+    };
+
     const handleTouchStart = (e: React.TouchEvent) => {
-        touchStartY.current = e.touches[0].clientY;
+        touchStartY.current = isContentScrolled(e.target) ? null : e.touches[0].clientY;
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
+        if (touchStartY.current !== null && isContentScrolled(e.target)) {
+            touchStartY.current = null;
+            setDragY(0);
+            return;
+        }
         if (touchStartY.current !== null) {
             const currentY = e.touches[0].clientY;
             const deltaY = currentY - touchStartY.current;
@@ -214,7 +225,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-12 pb-safe">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-8 pt-12 pb-safe">
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <span className={`text-xs font-black uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm ${typeMeta.chipClass}`}>
                             {typeMeta.label}
@@ -357,6 +368,8 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                 </div>
                                 {extraDetails?.closed ? (
                                     <p className="text-xs font-bold text-muted-strong">Tramitação encerrada sem virar lei.</p>
+                                ) : !loadingExtras && !(extraDetails && extraDetails.progress > 0) ? (
+                                    <p className="text-xs font-bold text-muted-strong">Etapa não disponível.</p>
                                 ) : (
                                     <>
                                     <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">

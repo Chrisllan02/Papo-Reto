@@ -6,6 +6,7 @@ import { speakContent } from '../services/ai';
 // Previne vazamento de memória (máximo de 6 contextos por navegador)
 let sharedAudioContext: AudioContext | null = null;
 const generatedAudioCache = new Map<string, Uint8Array>();
+let stopActivePlayer: (() => void) | null = null;
 
 interface AudioPlayerProps {
     text: string;
@@ -20,33 +21,47 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
     const isMountedRef = useRef(true);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
     const prefersSpeechRef = useRef(false);
+    const stopPlaybackRef = useRef(() => {
+        if (sourceNodeRef.current) {
+            try {
+                sourceNodeRef.current.onended = null;
+                sourceNodeRef.current.stop();
+                sourceNodeRef.current.disconnect();
+            } catch {
+                // O áudio já pode ter terminado.
+            }
+            sourceNodeRef.current = null;
+        }
+        if (utteranceRef.current && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            utteranceRef.current.onend = null;
+            utteranceRef.current.onerror = null;
+            window.speechSynthesis.cancel();
+            utteranceRef.current = null;
+        }
+        if (stopActivePlayer === stopPlaybackRef.current) stopActivePlayer = null;
+        if (isMountedRef.current) setIsPlaying(false);
+    });
 
-    // Cleanup Effect: Para o áudio se o componente for desmontado (ex: fechar modal)
+    const claimPlayback = () => {
+        if (stopActivePlayer && stopActivePlayer !== stopPlaybackRef.current) stopActivePlayer();
+        stopActivePlayer = stopPlaybackRef.current;
+    };
+
     useEffect(() => {
         isMountedRef.current = true;
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            const loadVoices = () => {
-                const voices = window.speechSynthesis.getVoices();
-                prefersSpeechRef.current = voices.some(v => v.lang?.toLowerCase().startsWith('pt'));
-            };
+        const stopPlayback = stopPlaybackRef.current;
+        const speech = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
+        const loadVoices = () => {
+            prefersSpeechRef.current = Boolean(speech?.getVoices().some(v => v.lang?.toLowerCase().startsWith('pt')));
+        };
+        if (speech) {
             loadVoices();
-            window.speechSynthesis.onvoiceschanged = loadVoices;
+            speech.addEventListener('voiceschanged', loadVoices);
         }
         return () => {
+            speech?.removeEventListener('voiceschanged', loadVoices);
+            stopPlayback();
             isMountedRef.current = false;
-            if (sourceNodeRef.current) {
-                try {
-                    sourceNodeRef.current.stop();
-                    sourceNodeRef.current.disconnect();
-                } catch (e) {
-                    // Ignora erro se o áudio já tiver parado
-                }
-                sourceNodeRef.current = null;
-            }
-            if (utteranceRef.current && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                utteranceRef.current = null;
-            }
         };
     }, []);
 
@@ -54,15 +69,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
         e.stopPropagation(); // Previne click no card
 
         if (isPlaying) {
-            if (sourceNodeRef.current) {
-                try { sourceNodeRef.current.stop(); } catch (e) {}
-                sourceNodeRef.current = null;
-            }
-            if (utteranceRef.current && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                utteranceRef.current = null;
-            }
-            setIsPlaying(false);
+            stopPlaybackRef.current();
             return;
         }
 
@@ -96,9 +103,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 source.connect(sharedAudioContext.destination);
 
                 source.onended = () => {
+                    sourceNodeRef.current = null;
+                    if (stopActivePlayer === stopPlaybackRef.current) stopActivePlayer = null;
                     if (isMountedRef.current) setIsPlaying(false);
                 };
 
+                claimPlayback();
                 source.start();
                 sourceNodeRef.current = source;
                 setIsPlaying(true);
@@ -112,14 +122,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 if (voice) utterance.voice = voice;
                 utterance.rate = 1.04;
                 utterance.pitch = 1;
-                utterance.onend = () => {
+                const finishSpeech = () => {
+                    utteranceRef.current = null;
+                    if (stopActivePlayer === stopPlaybackRef.current) stopActivePlayer = null;
                     if (isMountedRef.current) setIsPlaying(false);
                 };
-                utterance.onerror = () => {
-                    if (isMountedRef.current) setIsPlaying(false);
-                };
-                utteranceRef.current = utterance;
+                utterance.onend = finishSpeech;
+                utterance.onerror = finishSpeech;
+                claimPlayback();
                 window.speechSynthesis.cancel();
+                utteranceRef.current = utterance;
                 window.speechSynthesis.speak(utterance);
                 setIsPlaying(true);
                 setIsLoading(false);
@@ -160,7 +172,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
                 aria-label={isPlaying ? "Parar áudio" : "Ouvir resumo"}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
                     isPlaying
-                    ? 'bg-orange-500 text-white animate-pulse'
+                    ? 'bg-orange-700 text-white animate-pulse'
                     : 'bg-white/80 dark:bg-white/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-white/20'
                 }`}
             >
@@ -171,7 +183,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
 
     // Estilo Padrão (Modal)
     const buttonClass = isPlaying
-        ? 'bg-orange-500 text-white animate-pulse border-orange-400'
+        ? 'bg-orange-700 text-white animate-pulse border-orange-600'
         : isDarkText
             ? 'bg-white/80 hover:bg-white text-gray-900 border-white/40 shadow-sm'
             : 'bg-white/20 hover:bg-white/30 text-white border-white/20';

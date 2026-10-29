@@ -45,6 +45,7 @@ function App() {
   if (selectedCandidate) {
       content = (
         <ProfileView 
+            key={selectedCandidate.id}
             candidate={selectedCandidate} 
             onBack={() => actions.selectCandidate(null)} 
             onShare={() => {}}
