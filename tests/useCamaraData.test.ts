@@ -16,6 +16,7 @@ describe('useInitialData', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 4000 });
 
     expect(result.current.feedItems).toEqual([]);
+    expect(result.current.error).not.toBeNull();
     expect(localStorage.getItem('paporeto_bootstrap_v6')).toBeNull();
   });
 

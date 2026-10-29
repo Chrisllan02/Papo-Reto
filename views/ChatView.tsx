@@ -131,7 +131,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                     if (isMountedRef.current) setMessages(prev => [...prev, modelMsg]);
                 } catch {
                     if (isMountedRef.current) {
-                        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: FALLBACK_ERROR_TEXT, timestamp: Date.now() }]);
+                        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: FALLBACK_ERROR_TEXT, isError: true, timestamp: Date.now() }]);
                     }
                 } finally {
                     if (isMountedRef.current) setIsLoading(false);
@@ -234,7 +234,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
         setIsLoading(true);
 
         // Prepare history for API (last 10 messages)
-        const history = messages.slice(-10).map(m => ({
+        const history = messages.filter(m => !m.isError).slice(-10).map(m => ({
             role: m.role,
             parts: [{ text: m.text || "" }]
         }));
@@ -256,7 +256,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
             if (isMountedRef.current) setMessages(prev => [...prev, modelMsg]);
         } catch {
             if (isMountedRef.current) {
-                setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: FALLBACK_ERROR_TEXT, timestamp: Date.now() }]);
+                setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: FALLBACK_ERROR_TEXT, isError: true, timestamp: Date.now() }]);
             }
         } finally {
             if (isMountedRef.current) setIsLoading(false);
@@ -292,7 +292,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onBack, initialContext }) => {
                                 <img src={msg.image} alt="Imagem gerada pelo assistente" className="w-full rounded-xl mb-3 border border-white/20 shadow-md" />
                             )}
                             
-                            <div className="prose dark:prose-invert text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                            <div role={msg.isError ? 'alert' : undefined} className={`prose dark:prose-invert text-sm leading-relaxed whitespace-pre-wrap font-medium ${msg.isError ? 'text-red-700 dark:text-red-300' : ''}`}>
                                 {msg.text}
                             </div>
 

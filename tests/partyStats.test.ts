@@ -34,6 +34,11 @@ describe('computePartyStats', () => {
     expect(partyStats[0].attendanceSampleCount).toBe(0);
   });
 
+  it('partido sem classificação não entra na distribuição ideológica', () => {
+    const { ideologyStats } = computePartyStats([pol(1, 'PT', 50), pol(2, 'SEMPARTIDO', 50)]);
+    expect(ideologyStats).toEqual({ Esquerda: 1, Centro: 0, Direita: 0 });
+  });
+
   it('UF desconhecida não cai em nenhuma região', () => {
     const { partyStats } = computePartyStats([pol(1, 'PT', 50, 'XX')]);
     expect(Object.values(partyStats[0].regionStats).reduce((a, b) => a + b, 0)).toBe(0);

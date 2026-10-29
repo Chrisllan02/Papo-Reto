@@ -1,4 +1,6 @@
 import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } from '../../types';
+import { detectLegislativeCategory } from '../../domain/legislative/classification.js';
+import { cleanText, formatPersonName } from '../../domain/legislative/text.js';
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
@@ -40,22 +42,7 @@ export type LegislativeBootstrap = {
 
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-const detectCategory = (text: string): FeedCategory => {
-  const t = normalize(text);
-  if (t.includes('educacao') || t.includes('escola') || t.includes('ensino') || t.includes('fundeb')) return 'education';
-  if (t.includes('saude') || t.includes('sus') || t.includes('medico') || t.includes('hospital') || t.includes('vacina')) return 'health';
-  if (t.includes('economia') || t.includes('tribut') || t.includes('imposto') || t.includes('dinheiro') || t.includes('orcamento') || t.includes('fiscal')) return 'economy';
-  if (t.includes('seguranca') || t.includes('policia') || t.includes('crime') || t.includes('pena') || t.includes('armas')) return 'security';
-  if (t.includes('trabalho') || t.includes('emprego') || t.includes('salario') || t.includes('clt')) return 'work';
-  if (t.includes('ambiente') || t.includes('floresta') || t.includes('animais') || t.includes('clima') || t.includes('agua')) return 'environment';
-  if (t.includes('justica') || t.includes('lei') || t.includes('direito') || t.includes('codigo') || t.includes('constituicao')) return 'justice';
-  return 'activity';
-};
-
-const formatText = (text: string) => {
-  if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-};
+const detectCategory = (text: string): FeedCategory => detectLegislativeCategory(text);
 
 const sentenceCase = (text: string) => {
   const cleaned = text.trim().replace(/\s+/g, ' ');
@@ -440,6 +427,18 @@ const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   return normalizeSex(data?.dados?.sexo);
 };
 
+const deputyRole = (sex?: SexCode) => (sex === 'F' ? 'Deputada Federal' : sex === 'M' ? 'Deputado Federal' : 'Deputado(a) Federal');
+
+const fetchLegislatureMandate = async (legislatureId: unknown) => {
+  const id = Number(legislatureId);
+  if (!Number.isInteger(id) || id <= 0) return { start: '', end: '' };
+  const data = await fetchJson<{ dados?: { dataInicio?: string; dataFim?: string } }>(
+    `${BASE_URL_CAMARA}/legislaturas/${id}`,
+    DEPUTY_DETAIL_TIMEOUT_MS
+  );
+  return { start: data?.dados?.dataInicio || '', end: data?.dados?.dataFim || '' };
+};
+
 const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politician[]> => {
   const missingInitial = deputies.filter((deputy) => !normalizeSex(deputy.sex));
   if (missingInitial.length === 0) return deputies;
@@ -452,7 +451,7 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     return {
       ...deputy,
       sex,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
     };
   });
 
@@ -493,22 +492,23 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     return {
       ...deputy,
       sex,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
     };
   });
 };
 
 const fetchDeputados = async (): Promise<Politician[]> => {
   const data = await fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/deputados?ordem=ASC&ordenarPor=nome`);
+  const mandate = data?.dados?.length ? await fetchLegislatureMandate(data.dados[0].idLegislatura) : { start: '', end: '' };
   const deputies = (data?.dados || []).map((d) => {
     const sex = normalizeSex(d.sexo);
     return {
       id: d.id,
-      name: formatText(d.nome),
+      name: formatPersonName(d.nome),
       party: d.siglaPartido,
       state: d.siglaUf,
       photo: d.urlFoto,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
       sex,
       email: d.email,
       stats: {
@@ -522,7 +522,7 @@ const fetchDeputados = async (): Promise<Politician[]> => {
         spending: 0,
         partyFidelity: undefined,
       },
-      mandate: { start: '2023-02-01', end: '2027-01-31' },
+      mandate: { ...mandate },
       hasApiIntegration: true,
       votes: {},
     } as Politician;
@@ -554,14 +554,14 @@ const fetchSenadores = async (): Promise<Politician[]> => {
 
     return [{
       id,
-      name: formatText(name),
+      name: formatPersonName(name),
       party,
       partyShort: party,
       state,
       photo: getXmlTag(block, 'UrlFotoParlamentar'),
-      role: sex === 'F' ? 'Senadora' : 'Senador',
+      role: sex === 'F' ? 'Senadora' : sex === 'M' ? 'Senador' : 'Senador(a)',
       sex,
-      civilName: formatText(getXmlTag(block, 'NomeCompletoParlamentar')),
+      civilName: formatPersonName(getXmlTag(block, 'NomeCompletoParlamentar')),
       email: getXmlTag(block, 'EmailParlamentar'),
       cabinet: { phone: getXmlTag(block, 'NumeroTelefone') },
       officialPage: getXmlTag(block, 'UrlPaginaParlamentar'),
@@ -601,7 +601,7 @@ const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> 
     sigla: p.sigla,
     nome: p.nome,
     uri: p.uri,
-    ideology: PARTY_FALLBACK[p.sigla]?.ideology || 'Centro',
+    ideology: PARTY_FALLBACK[p.sigla]?.ideology,
   } as Party));
 
   if (parties.length > 0) return { parties, fallback: false };
@@ -633,14 +633,16 @@ const formatBrazilianDate = (value?: string | null): string | undefined => {
   return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString('pt-BR');
 };
 
-const fetchFeed = async (): Promise<FeedItem[]> => {
-  const dateVotes = new Date();
-  dateVotes.setDate(dateVotes.getDate() - 30);
-  const dateStrVotes = dateVotes.toISOString().split('T')[0];
+const brasiliaDateDaysAgo = (days: number) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+};
 
-  const dateLimit = new Date();
-  dateLimit.setDate(dateLimit.getDate() - 7);
-  const dateStr = dateLimit.toISOString().split('T')[0];
+const fetchFeed = async (): Promise<{ items: FeedItem[]; warnings: string[] }> => {
+  const dateStrVotes = brasiliaDateDaysAgo(30);
+  const dateStr = brasiliaDateDaysAgo(7);
 
   const [votesData, propsData, eventsData] = await Promise.all([
     fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=15`),
@@ -656,7 +658,7 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
       type: 'voto',
       title: `${v.siglaOrgao} ${v.uri ? v.uri.split('/').pop() : ''}`,
       date: formatBrazilianDate(v.dataHoraRegistro),
-      description: formatText(v.descricao),
+      description: cleanText(v.descricao),
       originalDescription: cleanOfficialText(v.descricao),
       summary: insight.summary,
       whyItMatters: insight.whyItMatters,
@@ -666,7 +668,7 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
         ? `https://www.camara.leg.br/propostas-legislativas/${propId}`
         : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(v.descricao)}`,
       category: insight.category,
-      candidateId: propId ? parseInt(propId, 10) : undefined,
+      propositionId: propId ? parseInt(propId, 10) : undefined,
       organ: v.siglaOrgao,
       approval: v.aprovacao,
       eventUrl: v.uriEvento,
@@ -678,10 +680,11 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     const insight = buildLegislativeInsight('proposition', p.ementa);
     return {
       id: p.id,
-      type: 'voto',
+      type: 'proposicao',
       title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
       date: formatBrazilianDate(p.dataApresentacao),
-      description: formatText(p.ementa),
+      description: cleanText(p.ementa),
+      propositionId: p.id,
       originalDescription: cleanOfficialText(p.ementa),
       summary: insight.summary,
       whyItMatters: insight.whyItMatters,
@@ -698,22 +701,31 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     .map(buildEventItem)
     .filter((item): item is FeedItem => Boolean(item));
 
-  return [...votes, ...propositions, ...events]
+  const warnings = [
+    votesData ? '' : 'camara_votes_unavailable',
+    propsData ? '' : 'camara_propositions_unavailable',
+    eventsData ? '' : 'camara_events_unavailable',
+  ].filter(Boolean);
+
+  const items = [...votes, ...propositions, ...events]
     .sort((a, b) => {
       const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0;
       const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0;
       return (b.priority || 0) - (a.priority || 0) || dateB - dateA || (b.id - a.id);
     })
     .slice(0, 30);
+
+  return { items, warnings };
 };
 
 export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap> => {
-  const [deputados, senadores, feedItems, partiesResult] = await Promise.all([
+  const [deputados, senadores, feedResult, partiesResult] = await Promise.all([
     fetchDeputados(),
     fetchSenadores(),
     fetchFeed(),
     fetchParties(),
   ]);
+  const feedItems = feedResult.items;
   const parties = partiesResult.parties;
   const partiesFallback = partiesResult.fallback;
   const generatedAt = new Date().toISOString();
@@ -722,6 +734,7 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
     deputados.length === 0 ? 'camara_deputados_unavailable' : '',
     senadores.length === 0 ? 'senado_senadores_unavailable' : '',
     feedItems.length === 0 ? 'camara_feed_unavailable' : '',
+    ...(feedItems.length > 0 ? feedResult.warnings : []),
     articles.length === 0 ? 'education_articles_unavailable' : '',
     partiesFallback ? 'camara_parties_using_fallback' : '',
   ].filter(Boolean);

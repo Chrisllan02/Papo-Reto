@@ -159,22 +159,14 @@ describe('/api/camara', () => {
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
-  it('forwards a whitelisted client Accept and replaces arbitrary ones', async () => {
+  it('uses a fixed Accept per upstream host, ignoring the client header', async () => {
     const fetchMock = vi.fn().mockImplementation(async () => jsonUpstream());
     vi.stubGlobal('fetch', fetchMock);
-    const url = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
 
-    await proxy(url, { accept: 'text/xml' });
-    await proxy(url, { accept: 'application/xml;q=0.9, application/json;q=0.5' });
-    await proxy(url, { accept: 'text/xml, text/html' });
-    await proxy(url, { accept: '*/*' });
+    await proxy('https://legis.senado.leg.br/dadosabertos/senador/lista/atual', { accept: 'application/json' });
+    await proxy('https://dadosabertos.camara.leg.br/api/v2/deputados', { accept: 'text/xml' });
 
-    expect(fetchMock.mock.calls.map(call => call[1].headers.Accept)).toEqual([
-      'text/xml',
-      'application/xml;q=0.9, application/json;q=0.5',
-      'application/json',
-      'application/json',
-    ]);
+    expect(fetchMock.mock.calls.map(call => call[1].headers.Accept)).toEqual(['text/xml', 'application/json']);
   });
 
   it('normalizes senate XML responses to application/xml', async () => {

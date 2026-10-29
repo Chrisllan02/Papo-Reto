@@ -91,6 +91,15 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                 glow: 'from-emerald-500/10'
             };
         }
+        if (!ideology) {
+            return {
+                accent: 'bg-slate-400',
+                dot: 'bg-slate-400',
+                ring: 'border-slate-100 dark:border-slate-800/40',
+                badge: 'bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-800/25 dark:text-slate-200 dark:border-slate-700/50',
+                glow: 'from-slate-400/10'
+            };
+        }
         return {
             accent: 'bg-amber-500',
             dot: 'bg-amber-500',
@@ -183,7 +192,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                                     <h3 className="relative mb-3 min-h-[2.5em] text-sm font-black capitalize leading-tight text-midnight line-clamp-2 dark:text-white">{pol.name}</h3>
                                     
                                     <div className={`relative mx-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ${cardTheme.badge}`}>
-                                        <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology}`}></div>
+                                        <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology || 'Não classificado'}`}></div>
                                         <p className="text-xs font-bold uppercase">{pol.party}</p>
                                     </div>
                                 </div>

@@ -57,6 +57,8 @@ export const writeServerCache = async <T>(key: string, data: T) => {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
   });
 
   return { persisted: true };

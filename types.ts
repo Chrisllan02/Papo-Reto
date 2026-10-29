@@ -184,7 +184,7 @@ export interface Remuneration {
 
 export interface Speech {
   date: string;
-  summary: string;
+  summary?: string;
   transcription?: string; // NOVO: Texto completo
   type: string;
   phase?: string; // NOVO: Pequeno Expediente, Grande Expediente, Ordem do Dia
@@ -291,11 +291,12 @@ export type FeedCategory = 'education' | 'health' | 'economy' | 'security' | 'wo
 
 export interface FeedItem {
   id: number;
-  type: 'voto' | 'despesa' | 'educacao' | 'evento';
+  type: 'voto' | 'proposicao' | 'despesa' | 'educacao' | 'evento';
   title: string;
   date?: string;
   action?: string;
-  candidateId?: number;
+  politicianId?: number;
+  propositionId?: number;
   description?: string;
   content?: string;
   amount?: string;
@@ -346,9 +347,9 @@ export interface LegislativeEvent {
   endTime?: string;
   title: string; // descriptionType
   description: string;
-  location: string;
+  location?: string;
   status: string; // Em andamento, Encerrada, Convocada
-  type: string;
+  type?: string;
   sourceUrl?: string;
   agendaDocumentUrl?: string;
   organs?: string[];
@@ -376,6 +377,7 @@ export interface ChatMessage {
   text?: string;
   image?: string; // Base64 url
   isThinking?: boolean;
+  isError?: boolean;
   groundingMetadata?: {
     search?: { uri: string; title: string }[];
     maps?: { uri: string; title: string; source: string }[];

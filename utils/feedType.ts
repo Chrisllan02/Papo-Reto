@@ -1,4 +1,4 @@
-import { Banknote, Calendar, Landmark, Lightbulb, type LucideIcon } from 'lucide-react';
+import { Banknote, Calendar, FileText, Landmark, Lightbulb, type LucideIcon } from 'lucide-react';
 import type { FeedItem } from '../types';
 
 export interface FeedTypeMeta {
@@ -19,6 +19,13 @@ const FEED_TYPE_META: Record<FeedItem['type'], FeedTypeMeta> = {
     chipClass: 'bg-nuit/10 text-nuit dark:bg-blue-900/30 dark:text-blue-200',
     headerClass: 'bg-nuit',
     iconClass: 'text-nuit',
+  },
+  proposicao: {
+    label: 'Proposição',
+    Icon: FileText,
+    chipClass: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-200',
+    headerClass: 'bg-teal-700',
+    iconClass: 'text-teal-700',
   },
   despesa: {
     label: 'Despesa',

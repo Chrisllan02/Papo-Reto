@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { head, put } from '@vercel/blob';
 import { hasBearerToken } from './lib/auth.js';
 import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
+import { formatPersonName } from '../domain/legislative/text.js';
 
 type VercelRequest = IncomingMessage & { query?: Record<string, string | string[]>; body?: any; method?: string; };
 
@@ -97,11 +98,6 @@ const readBody = async (req: VercelRequest) => {
 
 const pathForId = (id: string) => `politicians/${id}.json`;
 
-const formatText = (text?: string | null) => {
-  if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-};
-
 const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
   if (!value) return undefined;
   const cleaned = value.trim().toUpperCase();
@@ -142,7 +138,9 @@ async function writeToBlob(pathname: string, payload: any) {
   const blob = await put(pathname, JSON.stringify(payload, null, 2), {
     access: 'public',
     contentType: 'application/json',
-    addRandomSuffix: false
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
   });
   return blob;
 }
@@ -172,13 +170,13 @@ async function buildOfficialPoliticianCache(id: string) {
   const sex = normalizeSex(data.sexo);
   return normalizePayload({
     id: Number(id),
-    name: formatText(data.ultimoStatus?.nomeEleitoral || data.nomeCivil),
+    name: formatPersonName(data.ultimoStatus?.nomeEleitoral || data.nomeCivil),
     party: data.ultimoStatus?.siglaPartido,
     state: data.ultimoStatus?.siglaUf,
     photo: data.ultimoStatus?.urlFoto,
-    role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+    role: sex === 'F' ? 'Deputada Federal' : sex === 'M' ? 'Deputado Federal' : 'Deputado(a) Federal',
     sex,
-    civilName: formatText(data.nomeCivil),
+    civilName: formatPersonName(data.nomeCivil),
     birthDate: data.dataNascimento,
     birthCity: data.municipioNascimento,
     birthState: data.ufNascimento,

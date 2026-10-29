@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler, { mergeWithPreviousBootstrap, refreshLegislativeBootstrap } from '../api/bootstrap';
+import { buildLegislativeBootstrap } from '../api/lib/legislativeBootstrap';
 import { clearServerCacheForTests } from '../api/lib/serverCache';
 import { createJsonResponse } from './testUtils';
 
@@ -25,6 +26,25 @@ describe('/api/bootstrap', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
+  });
+
+  it('proposição sai com tipo e id próprios, ementa sem perder siglas e nome em caixa de título', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/deputados?')) return jsonResponse({ dados: [{ id: 1, nome: 'MARIA DO ROSÁRIO', siglaPartido: 'PT', siglaUf: 'RS', sexo: 'F' }] });
+      if (url.includes('/proposicoes?')) {
+        return jsonResponse({ dados: [{ id: 2196833, siglaTipo: 'PEC', numero: 45, ano: 2019, ementa: 'Altera a PEC 45/2019 do SUS', dataApresentacao: '2026-05-20T10:00:00' }] });
+      }
+      return jsonResponse({ dados: [] });
+    }));
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const { data } = response.json<{ data: { politicians: any[]; feedItems: any[] } }>();
+    const proposition = data.feedItems.find((item) => item.id === 2196833);
+    expect(proposition).toMatchObject({ type: 'proposicao', propositionId: 2196833, description: 'Altera a PEC 45/2019 do SUS' });
+    expect(proposition.candidateId).toBeUndefined();
+    expect(data.politicians.find((politician) => politician.id === 1).name).toBe('Maria do Rosário');
   });
 
   it('builds and caches initial legislative data', async () => {
@@ -581,6 +601,63 @@ describe('/api/bootstrap', () => {
       await Promise.all([refreshLegislativeBootstrap(), refreshLegislativeBootstrap(), refreshLegislativeBootstrap()]);
 
       expect(upstreamCalls(fetchMock)).toBe(1);
+    });
+
+    it('keeps the previous official parties when the party fetch fell back to the fixed list', () => {
+      const previous: any = {
+        politicians: [], feedItems: [], articles: [], warnings: [], partial: false,
+        parties: [{ id: 36844, sigla: 'PT', nome: 'Partido dos Trabalhadores', uri: 'x' }],
+        sources: { camaraParties: { ok: true, count: 1, fallback: false } },
+      };
+      const next: any = {
+        ...previous,
+        parties: [{ id: 1000, sigla: 'PT', nome: 'Partido dos Trabalhadores', uri: '' }],
+        warnings: ['camara_parties_using_fallback'],
+        partial: true,
+        sources: { camaraParties: { ok: false, count: 1, fallback: true } },
+      };
+
+      const merged = mergeWithPreviousBootstrap(next, previous);
+
+      expect(merged.parties).toEqual(previous.parties);
+      expect(merged.warnings).toEqual(['parties_from_previous_cache']);
+      expect(merged.partial).toBe(false);
+    });
+
+    it('builds official data without inventing labels, dates or categories', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-29T01:30:00Z'));
+      const fetchMock = vi.fn(async (url: string) => {
+        if (url.includes('/deputados?')) {
+          return jsonResponse({ dados: [{ id: 1, nome: 'ALEX TESTE', siglaPartido: 'NOVOPART', siglaUf: 'SP', idLegislatura: 57 }] });
+        }
+        if (url.endsWith('/legislaturas/57')) return jsonResponse({ dados: { id: 57, dataInicio: '2023-02-01', dataFim: '2027-01-31' } });
+        if (url.includes('/partidos?')) return jsonResponse({ dados: [{ id: 10, sigla: 'NOVOPART', nome: 'Novo Partido', uri: 'x' }] });
+        if (url.includes('/votacoes?')) {
+          return jsonResponse({ dados: [{ id: '1', siglaOrgao: 'PLEN', uri: 'x/votacoes/1', descricao: 'Aprovado apenas o requerimento sobre a eleicao e a suspensao da sessao' }] });
+        }
+        if (url.includes('/proposicoes?')) return jsonResponse({ dados: [] });
+        if (url.includes('/eventos?')) return new Response('', { status: 500 });
+        if (url.includes('legis.senado.leg.br')) {
+          return xmlResponse('<L><Parlamentar><CodigoParlamentar>99</CodigoParlamentar><NomeParlamentar>ANA</NomeParlamentar><SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar><UfParlamentar>RJ</UfParlamentar></Parlamentar></L>');
+        }
+        return new Response('', { status: 404 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const data = await buildLegislativeBootstrap();
+      const calledUrls = fetchMock.mock.calls.map((call) => String(call[0]));
+
+      expect(calledUrls.some((url) => url.includes('/proposicoes?') && url.includes('dataApresentacaoInicio=2026-10-21&'))).toBe(true);
+      expect(calledUrls.some((url) => url.includes('/votacoes?') && url.includes('dataInicio=2026-09-28&'))).toBe(true);
+      expect(data.feedItems[0].category).toBe('activity');
+      expect(data.warnings).toContain('camara_events_unavailable');
+      expect(data.partial).toBe(true);
+      expect(data.parties[0].ideology).toBeUndefined();
+      const deputy = data.politicians.find((politician) => politician.id === 1)!;
+      expect(deputy.role).toBe('Deputado(a) Federal');
+      expect(deputy.mandate).toEqual({ start: '2023-02-01', end: '2027-01-31' });
+      expect(data.politicians.find((politician) => politician.id === 99)!.role).toBe('Senador(a)');
     });
   });
 });

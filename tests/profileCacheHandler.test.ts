@@ -138,7 +138,7 @@ describe('/api/profile-cache', () => {
     );
     expect(put).toHaveBeenCalledWith(
       'politicians/30.json',
-      expect.stringContaining('"civilName": "Maria teste"'),
+      expect.stringContaining('"civilName": "Maria Teste"'),
       expect.objectContaining({ access: 'public', addRandomSuffix: false })
     );
     expect(put).toHaveBeenCalledWith('politicians/30.json', expect.not.stringContaining('ignored'), expect.anything());

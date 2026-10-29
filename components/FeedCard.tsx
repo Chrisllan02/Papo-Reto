@@ -16,7 +16,7 @@ interface FeedCardProps {
 const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
     // Usa a categoria pré-calculada ou fallback para 'activity'
     const category = getCategoryIcon(item.category || 'activity');
-    const politician = item.candidateId ? politicians.find(p => p.id === item.candidateId) : null;
+    const politician = item.politicianId ? politicians.find(p => p.id === item.politicianId) : null;
     const isExpense = item.type === 'despesa';
     const typeMeta = getFeedTypeMeta(item.type);
     const displayTitle = item.type === 'evento' && item.description

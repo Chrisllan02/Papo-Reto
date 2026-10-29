@@ -64,7 +64,7 @@ export const computePartyStats = (politicians: Politician[]) => {
     if (normalizeSex(pol.sex) === 'F') g.femaleCount += 1;
     g.totalSpending += pol.stats?.spending || 0;
     const ideology = getIdeology(partyName);
-    ideologyGroups[ideology] = (ideologyGroups[ideology] || 0) + 1;
+    if (ideology) ideologyGroups[ideology] += 1;
 
     if (hasRealAttendance(pol)) {
       attendanceSums[partyName] += pol.stats.attendancePct;

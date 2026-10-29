@@ -14,11 +14,12 @@ interface FullFeedViewProps {
   onSelectCandidate: (pol: Politician) => void;
 }
 
-type TypeFilter = 'todos' | 'voto' | 'despesa' | 'evento';
+type TypeFilter = 'todos' | 'voto' | 'proposicao' | 'despesa' | 'evento';
 
 const TYPE_FILTERS: Array<{ id: TypeFilter; label: string }> = [
   { id: 'todos', label: 'Todos' },
   { id: 'voto', label: 'Votações' },
+  { id: 'proposicao', label: 'Proposições' },
   { id: 'despesa', label: 'Despesas' },
   { id: 'evento', label: 'Eventos' },
 ];
@@ -212,7 +213,7 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
         <div className="mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredItems.map((item) => {
-                    const candidate = item.candidateId ? politicians.find(p => p.id === item.candidateId) : null;
+                    const candidate = item.politicianId ? politicians.find(p => p.id === item.politicianId) : null;
                     const isExpense = item.type === 'despesa';
                     const typeMeta = getFeedTypeMeta(item.type);
 

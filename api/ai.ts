@@ -110,6 +110,36 @@ const assertBodySize = (body: unknown) => {
 const cleanText = (value: unknown, maxChars: number) =>
   typeof value === 'string' ? value.trim().slice(0, maxChars) : '';
 
+const AI_UNAVAILABLE_TEXT = 'A integração de IA não está configurada neste ambiente. Os dados legislativos e fontes oficiais continuam disponíveis.';
+
+const CHAT_SYSTEM_INSTRUCTION = [
+  'Você é o assistente do Papo Reto, plataforma de transparência política.',
+  'Responda só sobre o Congresso Nacional, política pública brasileira e cidadania; para outros assuntos, explique educadamente que não pode ajudar.',
+  'Escreva em português do Brasil, com linguagem simples e direta.',
+  'Seja neutro: não declare preferência por partido, político ou ideologia e não faça campanha.',
+  'Nunca invente fatos, números, votos ou leis; se não souber, diga que não sabe.',
+  'Sempre que possível, recomende a fonte oficial (camara.leg.br, senado.leg.br, planalto.gov.br ou tse.jus.br).',
+].join(' ');
+
+const parseEducationalArticles = (raw: string): EducationalArticle[] => {
+  const normalized = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(normalized);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((item) => {
+    const title = typeof item?.title === 'string' ? item.title.trim() : '';
+    const text = typeof item?.text === 'string' ? item.text.trim() : '';
+    if (!title || !text) return [];
+    const topic = typeof item?.topic === 'string' ? item.topic.trim() : '';
+    const impact = typeof item?.impact === 'string' ? item.impact.trim() : '';
+    return [{ title, text, topic, ...(impact ? { impact } : {}) }];
+  });
+};
+
 const normalizeHistory = (history: unknown) => {
   if (!Array.isArray(history)) return [];
   return history.slice(-MAX_HISTORY_ITEMS).flatMap((item) => {
@@ -121,7 +151,8 @@ const normalizeHistory = (history: unknown) => {
       .trim()
       .slice(0, MAX_TEXT_CHARS);
     if (!text) return [];
-    return [{ role: item?.role === 'model' ? 'model' : 'user', parts: [{ text }] }];
+    if (item?.role !== 'user' && item?.role !== 'model') return [];
+    return [{ role: item.role, parts: [{ text }] }];
   });
 };
 
@@ -233,15 +264,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'transcribeAudio') {
       return jsonResponse(res, 200, { ok: true, data: { text: '' } });
     }
-    if (action === 'getSearchContext' || action === 'chatWithGemini') {
-      return jsonResponse(res, 200, {
-        ok: true,
-        data: {
-          text: 'A integração de IA não está configurada neste ambiente. Os dados legislativos e fontes oficiais continuam disponíveis.',
-          searchSources: [],
-          mapSources: [],
-        },
-      });
+    if (action === 'getSearchContext') {
+      return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT, sources: [] } });
+    }
+    if (action === 'chatWithGemini') {
+      return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT, searchSources: [], mapSources: [] } });
     }
     return jsonResponse(res, 200, { ok: true, data: null });
   }
@@ -263,7 +290,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   title: { type: Type.STRING },
                   text: { type: Type.STRING },
                   topic: { type: Type.STRING },
-                  legislation: { type: Type.STRING },
                   impact: { type: Type.STRING }
                 },
                 required: ['title', 'text', 'topic']
@@ -277,12 +303,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
         }
 
-        const normalized = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
-        const parsed = JSON.parse(normalized) as EducationalArticle[];
-        if (!Array.isArray(parsed) || parsed.length === 0) {
-          return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
-        }
-        return jsonResponse(res, 200, { ok: true, data: parsed });
+        const articles = parseEducationalArticles(raw);
+        return jsonResponse(res, 200, { ok: true, data: articles.length > 0 ? articles : staticEducationalContent });
       }
 
       case 'generateNewsImage': {
@@ -333,7 +355,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!query) return jsonResponse(res, 400, { error: 'Missing query.' });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Pesquise sobre: "${query}"...`,
+          contents: `Pesquise e resuma em português do Brasil, em linguagem simples, o que fontes confiáveis dizem sobre: "${query}". Traga só fatos verificáveis, com tom neutro e sem opinião, e cite a fonte de cada informação. Se não encontrar informação confiável, diga isso claramente em vez de supor.`,
           config: { tools: [{ googleSearch: {} }] }
         });
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -359,7 +381,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           case 'thinking': model = 'gemini-3-pro-preview'; config = { maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 4096 } }; break;
         }
         const contents = [...history, { role: 'user', parts: [{ text: message }] }];
-        const response = await ai.models.generateContent({ model, contents, config: { ...config, tools: tools.length > 0 ? tools : undefined } });
+        const response = await ai.models.generateContent({ model, contents, config: { ...config, systemInstruction: CHAT_SYSTEM_INSTRUCTION, tools: tools.length > 0 ? tools : undefined } });
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const searchSources = groundingChunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
         const mapSources = groundingChunks.filter((c: any) => c.maps).map((c: any) => ({ uri: c.maps.uri, title: c.maps.title, source: c.maps.placeAnswerSources?.[0]?.reviewSnippets?.[0]?.snippet || 'Localização' }));

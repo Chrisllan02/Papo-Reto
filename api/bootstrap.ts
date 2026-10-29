@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { waitUntil } from '@vercel/functions';
 import { buildLegislativeBootstrap, withGeneratedEducationalArticles, type LegislativeBootstrap } from './lib/legislativeBootstrap.js';
 import { isCronAuthorized } from './lib/auth.js';
 import { readServerCache, writeServerCache } from './lib/serverCache.js';
@@ -58,7 +59,8 @@ const isSenator = (politician: { role?: string }) => /^senador/i.test(politician
 export const mergeWithPreviousBootstrap = (next: LegislativeBootstrap, previous: LegislativeBootstrap): LegislativeBootstrap => {
   const keepSenate = !next.sources?.senadoSenadores?.ok && Boolean(previous.sources?.senadoSenadores?.ok);
   const keepFeed = !next.sources?.camaraFeed?.ok && Boolean(previous.sources?.camaraFeed?.ok);
-  if (!keepSenate && !keepFeed) return next;
+  const keepParties = Boolean(next.sources?.camaraParties?.fallback) && Boolean(previous.sources?.camaraParties?.ok);
+  if (!keepSenate && !keepFeed && !keepParties) return next;
 
   const merged: LegislativeBootstrap = { ...next, sources: { ...next.sources } };
   let warnings = [...(next.warnings || [])];
@@ -78,6 +80,12 @@ export const mergeWithPreviousBootstrap = (next: LegislativeBootstrap, previous:
     merged.sources.camaraFeed = previous.sources.camaraFeed;
     if (previous.sources.educationArticles) merged.sources.educationArticles = previous.sources.educationArticles;
     warnings = [...warnings.filter((warning) => warning !== 'camara_feed_unavailable' && warning !== 'education_articles_unavailable'), 'feed_from_previous_cache'];
+  }
+
+  if (keepParties) {
+    merged.parties = previous.parties;
+    merged.sources.camaraParties = previous.sources.camaraParties;
+    warnings = [...warnings.filter((warning) => warning !== 'camara_parties_using_fallback'), 'parties_from_previous_cache'];
   }
 
   merged.warnings = warnings;
@@ -109,7 +117,7 @@ const refreshInBackground = () => {
   const now = Date.now();
   if (inflightRefresh || now - lastBackgroundRefreshAt < BACKGROUND_REFRESH_COOLDOWN_MS) return;
   lastBackgroundRefreshAt = now;
-  refreshLegislativeBootstrap().catch(() => undefined);
+  waitUntil(refreshLegislativeBootstrap().catch(() => undefined));
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -161,7 +169,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       createBootstrapResponse(cache.persisted ? 'refresh:blob' : 'refresh:memory', data),
       shouldRefresh ? 'no-store' : undefined
     );
-  } catch {
+  } catch (error: any) {
+    console.error('[api/bootstrap] request failed', { name: error?.name, message: String(error?.message || '').slice(0, 200) });
     return jsonResponse(res, 502, { ok: false, error: 'Bootstrap refresh failed.' });
   }
 }

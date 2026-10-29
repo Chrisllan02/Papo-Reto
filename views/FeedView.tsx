@@ -75,10 +75,10 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
             : [];
         const politicianById = new Map(politicians.map(pol => [pol.id, pol]));
         const localFeedItems = userLocation
-            ? feedItems.filter(item => item.candidateId && politicianById.get(item.candidateId)?.state === userLocation)
+            ? feedItems.filter(item => item.politicianId && politicianById.get(item.politicianId)?.state === userLocation)
             : [];
         const eventsCount = feedItems.filter(item => item.type === 'evento').length;
-        const votesCount = feedItems.filter(item => item.type === 'voto').length;
+        const votesCount = feedItems.filter(item => item.type === 'voto' || item.type === 'proposicao').length;
         const officialSourceCount = feedItems.filter(item => item.sourceUrl).length;
         const datedCount = feedItems.filter(item => Boolean(parseFeedDate(item.date))).length;
 
@@ -116,7 +116,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
             {selectedFeedItem && (
                 <FeedDetailModal 
                     item={selectedFeedItem} 
-                    politician={politicians.find(p => p.id === selectedFeedItem.candidateId)}
+                    politician={politicians.find(p => p.id === selectedFeedItem.politicianId)}
                     onClose={() => setSelectedFeedItem(null)}
                     onGoToProfile={onSelectCandidate}
                 />

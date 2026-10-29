@@ -256,7 +256,7 @@ export const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
             <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{event.title}</h4>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{event.description}</p>
             <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              <span className="flex items-center gap-1"><MapPin size={10} /> {event.location}</span>
+              {event.location && <span className="flex items-center gap-1"><MapPin size={10} /> {event.location}</span>}
               {event.type && <span className="flex items-center gap-1"><Tag size={10} /> {event.type}</span>}
               {event.endTime && <span className="flex items-center gap-1"><Clock size={10} /> Até {new Date(event.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
             </div>
@@ -929,8 +929,8 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
   if (type === 'speech') {
     const hasAudio = !!item.urlAudio;
     const hasVideo = !!item.urlVideo;
-    const phase = item.phase || 'Plenário';
-    const isHighRelevance = phase.toLowerCase().includes('ordem do dia') || phase.toLowerCase().includes('grande expediente');
+    const phase = item.phase?.toLowerCase() || '';
+    const isHighRelevance = phase.includes('ordem do dia') || phase.includes('grande expediente');
 
     return (
       <article className="glass-panel p-6 rounded-[2.5rem] group hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
@@ -944,13 +944,15 @@ export const ActivityCard: React.FC<{ item: ProfileActivityItem }> = ({ item }) 
               <span className="text-xs font-bold text-gray-500">{formatLocalDate(item.date, undefined, 'Data não informada')}</span>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${isHighRelevance ? 'bg-orange-100/50 text-orange-700 border-orange-200' : 'bg-gray-100/50 text-gray-600 border-gray-200'}`}>
-            {phase}
-          </div>
+          {item.phase && (
+            <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${isHighRelevance ? 'bg-orange-100/50 text-orange-700 border-orange-200' : 'bg-gray-100/50 text-gray-600 border-gray-200'}`}>
+              {item.phase}
+            </div>
+          )}
         </div>
         <div className="relative mb-6">
           <p className={`text-sm md:text-base text-gray-700 dark:text-gray-300 italic leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
-            "{item.transcription || item.summary}"
+            {item.transcription || item.summary ? `"${item.transcription || item.summary}"` : 'Resumo não informado.'}
           </p>
           {item.transcription && !expanded && (
             <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-black/80 to-transparent pointer-events-none" />

@@ -58,6 +58,7 @@ const entryTimestamp = (key: string): number => {
 };
 
 // Grava o valor; se a cota estourar, libera as entradas mais antigas com o prefixo e tenta de novo.
+// Se mesmo assim não couber, devolve as entradas removidas: nunca apaga o cache por um item que não cabe.
 export const safeSetItemWithEviction = (key: string, value: string, evictPrefix: string): boolean => {
     if (safeSetItem(key, value)) return true;
 
@@ -66,10 +67,20 @@ export const safeSetItemWithEviction = (key: string, value: string, evictPrefix:
         .map(candidate => ({ key: candidate, timestamp: entryTimestamp(candidate) }))
         .sort((a, b) => a.timestamp - b.timestamp);
 
+    const needed = key.length + value.length;
+    const removed: Array<{ key: string; value: string }> = [];
+    let freed = 0;
     for (const candidate of candidates) {
+        if (freed >= needed) break;
+        const previous = safeGetItem(candidate.key);
+        if (previous === null) continue;
         safeRemoveItem(candidate.key);
+        removed.push({ key: candidate.key, value: previous });
+        freed += candidate.key.length + previous.length;
         if (safeSetItem(key, value)) return true;
     }
+
+    removed.forEach(entry => safeSetItem(entry.key, entry.value));
     return false;
 };
 

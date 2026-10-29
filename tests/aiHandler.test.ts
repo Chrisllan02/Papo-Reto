@@ -95,6 +95,12 @@ describe('/api/ai', () => {
       expect(response.statusCode).toBe(200);
     });
 
+    it('returns search fallback sources in the shape the client reads', async () => {
+      const response = await call({ action: 'getSearchContext', query: 'reforma tributaria' });
+
+      expect(response.json<{ data: { sources: unknown[] } }>().data.sources).toEqual([]);
+    });
+
     it('enforces the 2MB body limit even when the body was already parsed', async () => {
       const response = await call({ action: 'transcribeAudio', base64Audio: 'A'.repeat(2_100_000) });
 
@@ -118,6 +124,27 @@ describe('/api/ai', () => {
       expect(response.body).not.toContain('AIza');
     });
 
+    it('falls back to the static articles when the model returns malformed JSON', async () => {
+      generateContentMock.mockResolvedValue({ text: '[{"title": "Sem fim"' });
+
+      const response = await call({ action: 'generateEducationalContent' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json<{ data: { title: string }[] }>().data.map((item) => item.title)).toContain('O Papel do STF');
+    });
+
+    it('keeps only well-formed model articles and drops unverifiable legislation', async () => {
+      generateContentMock.mockResolvedValue({ text: JSON.stringify([
+        { title: 'Voto', text: 'Como funciona o voto.', topic: 'Eleições', legislation: 'Art. 999 inventado' },
+        { title: 'Sem texto', topic: 'X' },
+        { title: 42, text: 'número' },
+      ]) });
+
+      const response = await call({ action: 'generateEducationalContent' });
+
+      expect(response.json<{ data: unknown[] }>().data).toEqual([{ title: 'Voto', text: 'Como funciona o voto.', topic: 'Eleições' }]);
+    });
+
     it('does not log the request body when a call fails', async () => {
       const logSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       generateContentMock.mockRejectedValue(new Error('boom'));
@@ -127,9 +154,9 @@ describe('/api/ai', () => {
       expect(JSON.stringify(logSpy.mock.calls)).not.toContain('privada');
     });
 
-    it('normalizes chat history to at most 10 text-only turns', async () => {
+    it('normalizes chat history to the last 10 text-only user/model turns', async () => {
       const history = Array.from({ length: 15 }, (_, index) => ({
-        role: index % 2 ? 'model' : 'system',
+        role: index % 3 === 0 ? 'system' : index % 2 ? 'model' : 'user',
         parts: [
           { text: `${index}:${'x'.repeat(5000)}` },
           { inlineData: { mimeType: 'image/png', data: 'AAAA' } },
@@ -141,7 +168,8 @@ describe('/api/ai', () => {
 
       expect(response.statusCode).toBe(200);
       const request = generateContentMock.mock.calls[0][0];
-      expect(request.contents).toHaveLength(11);
+      expect(request.contents).toHaveLength(8);
+      expect(request.contents.some((turn: any) => /^(6|9|12):/.test(turn.parts[0].text))).toBe(false);
       for (const turn of request.contents) {
         expect(['user', 'model']).toContain(turn.role);
         expect(Object.keys(turn.parts[0])).toEqual(['text']);

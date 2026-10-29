@@ -43,11 +43,11 @@ interface PartyCardProps {
   onSelect: (name: string) => void;
 }
 
-const IDEOLOGY_SECTION_ORDER: Array<'Direita' | 'Centro' | 'Esquerda'> = ['Direita', 'Centro', 'Esquerda'];
+const UNCLASSIFIED_IDEOLOGY = 'Não classificado';
+const IDEOLOGY_SECTION_ORDER = ['Direita', 'Centro', 'Esquerda', UNCLASSIFIED_IDEOLOGY];
 
 const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
-    const ideology = group.ideology || 'Centro';
-    const theme = getIdeologyTheme(ideology);
+    const theme = getIdeologyTheme(group.ideology);
     
     const badgeLabel = group.name;
     const previewMembers = group.members.slice(0, 4);
@@ -339,7 +339,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         return Object.values(groups)
             .map(group => {
                 const officialName = group.officialData?.nome || group.name;
-                const ideology = group.officialData?.ideology || getIdeology(group.name);
+                const ideology = group.officialData?.ideology || getIdeology(group.name) || UNCLASSIFIED_IDEOLOGY;
                 const logo = group.officialData?.urlLogo || group.officialData?.logo;
                 const matchesIdeology = selectedIdeology === 'Todos' || ideology === selectedIdeology;
                 const visible = matchesIdeology && group.members.length > 0;
@@ -564,12 +564,12 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                 const theme = getIdeologyTheme(section.ideology);
 
                                 return (
-                                    <section key={section.ideology} className="space-y-4" aria-labelledby={`section-${section.ideology}`}>
+                                    <section key={section.ideology} className="space-y-4" aria-labelledby={`section-${section.ideology.replace(/\s+/g, '-')}`}>
                                         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between px-1">
                                             <div className="flex items-center gap-3">
                                                 <span className={`h-10 w-2 rounded-full ${theme.iconBg}`} aria-hidden="true" />
                                                 <div>
-                                                    <h2 id={`section-${section.ideology}`} className="text-xl md:text-2xl font-black text-gray-950 dark:text-white tracking-tight">
+                                                    <h2 id={`section-${section.ideology.replace(/\s+/g, '-')}`} className="text-xl md:text-2xl font-black text-gray-950 dark:text-white tracking-tight">
                                                         {section.ideology}
                                                     </h2>
                                                     <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">

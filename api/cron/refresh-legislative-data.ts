@@ -46,7 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       generatedAt: data.generatedAt,
     });
-  } catch {
+  } catch (error: any) {
+    console.error('[api/cron/refresh-legislative-data] refresh failed', { name: error?.name, message: String(error?.message || '').slice(0, 200) });
     return jsonResponse(res, 502, { ok: false, error: 'Refresh failed.' });
   }
 }

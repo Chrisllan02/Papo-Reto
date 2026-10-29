@@ -48,7 +48,7 @@ function App() {
             candidate={selectedCandidate} 
             onBack={() => actions.selectCandidate(null)} 
             onShare={() => {}}
-            feedItems={feedItems.filter(f => f.candidateId === selectedCandidate.id)}
+            feedItems={feedItems.filter(f => f.politicianId === selectedCandidate.id)}
             allPoliticians={politicians}
             onUpdate={actions.updatePolitician}
             isFollowing={false}

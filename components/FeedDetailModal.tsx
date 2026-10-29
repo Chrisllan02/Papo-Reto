@@ -20,9 +20,11 @@ interface FeedDetailModalProps {
 
 const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onClose, onGoToProfile }) => {
     const isVote = item.type === 'voto';
+    const isProposition = item.type === 'proposicao';
+    const hasTramitacao = isVote || isProposition;
     const isExpense = item.type === 'despesa';
     const isEvent = item.type === 'evento';
-    const isLightBg = !isVote && !isExpense; 
+    const isLightBg = !hasTramitacao && !isExpense; 
     const typeMeta = getFeedTypeMeta(item.type);
     const sourceUrl = safeHttpUrl(item.sourceUrl);
 
@@ -37,6 +39,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
         fullTextUrl?: string;
         progress: number;
         label: string;
+        closed?: boolean;
         guests?: string[];
         participants?: string[];
         requests?: string[];
@@ -100,20 +103,11 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                     label: '' 
                 }))
                 .catch(fail);
-        } else if (isVote) {
-            // Busca detalhes de Proposição
-            let propId = item.id;
-            // Tenta extrair ID da proposição da URL ou do próprio item se for voto derivado
-            if (item.sourceUrl && item.sourceUrl.includes('propostas-legislativas/')) {
-                const parts = item.sourceUrl.split('/');
-                const idStr = parts[parts.length - 1];
-                if (!isNaN(parseInt(idStr))) {
-                    propId = parseInt(idStr);
-                }
-            }
-            
-            // Só busca se o ID parecer ser de uma proposição (geralmente > 10000)
-            if (propId > 10000) {
+        } else if (hasTramitacao) {
+            const idFromUrl = Number(/propostas-legislativas\/(\d+)/.exec(item.sourceUrl || '')?.[1]);
+            const propId = item.propositionId ?? (idFromUrl || (isProposition ? item.id : undefined));
+
+            if (propId) {
                 setLoadingExtras(true);
                 fetchProposicaoDetails(propId).then(finish).catch(fail);
             } else {
@@ -126,7 +120,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
         return () => {
             cancelled = true;
         };
-    }, [item, isEvent, isVote, retryKey]);
+    }, [item, isEvent, hasTramitacao, isProposition, retryKey]);
 
     useEffect(() => {
         if (!shareFeedback) return;
@@ -346,7 +340,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                     )}
 
                     {/* --- TRAMITÔMETRO E EXTRAS DO PROJETO (PARA VOTOS) --- */}
-                    {isVote && (
+                    {hasTramitacao && (
                         <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-bottom-2">
                             {/* Barra de Progresso */}
                             <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-3xl border border-gray-100 dark:border-white/10">
@@ -361,24 +355,30 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                         </span>
                                     )}
                                 </div>
-                                <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
-                                    <div 
-                                        className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 ease-out relative"
-                                        style={{ width: `${extraDetails ? extraDetails.progress : 0}%` }}
-                                    >
-                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50 animate-pulse"></div>
+                                {extraDetails?.closed ? (
+                                    <p className="text-xs font-bold text-muted-strong">Tramitação encerrada sem virar lei.</p>
+                                ) : (
+                                    <>
+                                    <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 ease-out relative"
+                                            style={{ width: `${extraDetails ? extraDetails.progress : 0}%` }}
+                                        >
+                                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50 animate-pulse"></div>
+                                        </div>
+                                        {/* Steps Markers */}
+                                        <div className="absolute inset-0 flex justify-between px-1">
+                                            {[10, 30, 60, 80, 100].map(step => (
+                                                <div key={step} className={`w-0.5 h-full ${extraDetails && extraDetails.progress >= step ? 'bg-white/30' : 'bg-gray-300/30'}`}></div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    {/* Steps Markers */}
-                                    <div className="absolute inset-0 flex justify-between px-1">
-                                        {[10, 30, 60, 80, 100].map(step => (
-                                            <div key={step} className={`w-0.5 h-full ${extraDetails && extraDetails.progress >= step ? 'bg-white/30' : 'bg-gray-300/30'}`}></div>
-                                        ))}
+                                    <div className="flex justify-between mt-2 text-[9px] font-bold text-subtle uppercase tracking-wide">
+                                        <span>Início</span>
+                                        <span>Sanção</span>
                                     </div>
-                                </div>
-                                <div className="flex justify-between mt-2 text-[9px] font-bold text-subtle uppercase tracking-wide">
-                                    <span>Início</span>
-                                    <span>Sanção</span>
-                                </div>
+                                    </>
+                                )}
                             </div>
 
                             {/* Autores & Inteiro Teor */}

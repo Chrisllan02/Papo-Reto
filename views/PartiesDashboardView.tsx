@@ -558,8 +558,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
             const ideB = getIdeology(b.name);
             
             // Explicitly typed as number to avoid arithmetic errors
-            const valA: number = orderMap[ideA] || 0;
-            const valB: number = orderMap[ideB] || 0;
+            const valA: number = (ideA && orderMap[ideA]) || 4;
+            const valB: number = (ideB && orderMap[ideB]) || 4;
             
             if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;

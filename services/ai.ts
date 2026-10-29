@@ -14,7 +14,9 @@ const AI_REQUEST_TIMEOUT_MS = 60000;
 const NEWS_FETCH_TIMEOUT_MS = 10000;
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
 const EDUCATION_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
-let educationalContentInFlight: Promise<GeneratedArticle[]> | null = null;
+let educationalContentInFlight: Promise<EducationalContentResult> | null = null;
+const generatedNewsImages = new Map<string, string>();
+const newsImagesInFlight = new Set<string>();
 
 purgeStaleKeys(/^paporeto_news_v\d+_/, key => key === NEWS_CACHE_KEY);
 purgeStaleKeys(/^paporeto_news_history_v\d+_/, key => key === NEWS_HISTORY_KEY);
@@ -39,9 +41,12 @@ const setCache = (key: string, data: any) => {
     }
 };
 
+const isValidArticle = (item: any): item is GeneratedArticle =>
+    Boolean(item) && typeof item.title === 'string' && item.title.trim() !== '' && typeof item.text === 'string' && item.text.trim() !== '';
+
 const getCachedEducationalContent = (): GeneratedArticle[] | null => {
     const data = getCache(EDUCATION_CACHE_KEY, EDUCATION_CACHE_TTL);
-    return Array.isArray(data) ? data : null;
+    return Array.isArray(data) ? data.filter(isValidArticle) : null;
 };
 
 const setCachedEducationalContent = (data: GeneratedArticle[]) => {
@@ -103,6 +108,18 @@ export interface AIResponse {
 
 export interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
+}
+
+export interface EducationalContentResult {
+    articles: GeneratedArticle[];
+    isFallback: boolean;
+}
+
+export class AiUnavailableError extends Error {
+    constructor() {
+        super('Assistente indisponível');
+        this.name = 'AiUnavailableError';
+    }
 }
 
 // --- MOTOR DE TRADUÇÃO JORNALÍSTICA (REGEX) ---
@@ -354,9 +371,35 @@ export const generateNewsImage = async (headline: string): Promise<string | null
 };
 
 // --- FETCH REAL API DATA ---
+// A imagem gerada (base64) fica só em memória, por id da notícia: não bloqueia a lista nem é regerada a cada atualização.
+const withGeneratedImage = (news: NewsArticle[]): NewsArticle[] => {
+    const lead = news[0];
+    if (!lead?.id) return news;
+    const image = generatedNewsImages.get(lead.id);
+    if (image) return [{ ...lead, imageUrl: image }, ...news.slice(1)];
+    if (!newsImagesInFlight.has(lead.id)) {
+        const leadId = lead.id;
+        newsImagesInFlight.add(leadId);
+        void generateNewsImage(lead.title)
+            .then(generated => { if (generated) generatedNewsImages.set(leadId, generated); })
+            .finally(() => newsImagesInFlight.delete(leadId));
+    }
+    return news;
+};
+
+const readDados = async (result: PromiseSettledResult<Response>): Promise<any[]> => {
+    if (result.status !== 'fulfilled' || !result.value.ok) return [];
+    try {
+        const json = await result.value.json();
+        return Array.isArray(json?.dados) ? json.dados : [];
+    } catch {
+        return [];
+    }
+};
+
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    if (cachedNews && cachedNews.length > 0) return cachedNews;
+    if (cachedNews && cachedNews.length > 0) return withGeneratedImage(cachedNews);
 
     try {
         const buildFetchConfig = () => ({
@@ -373,7 +416,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             fetch(getLegislativeApiUrl(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`), buildFetchConfig())
         ]);
 
-        const combinedData: NewsArticle[] = [];
+        const combinedData: Array<{ key: string; article: NewsArticle }> = [];
 
         const createNewsObject = (item: any, type: 'voto' | 'evento' | 'proposicao', rawDateStr?: string): NewsArticle => {
             const parsedTime = rawDateStr ? new Date(rawDateStr).getTime() : NaN;
@@ -382,13 +425,23 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             const title = generateJournalisticTitle(item.descricao || item.ementa || item.descricaoTipo, type);
             const smartImage = getSmartImage(title + " " + (item.descricao || ""));
 
+            const voteProposition = type === 'voto' ? item.uriProposicaoObjeto?.split('/').pop() : undefined;
+            const voteEvent = type === 'voto' ? item.uriEvento?.split('/').pop() : undefined;
+            const url = type === 'evento'
+                ? (item.id ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${item.id}` : 'https://www.camara.leg.br/eventos-sessoes-e-reunioes')
+                : type === 'proposicao'
+                    ? `https://www.camara.leg.br/propostas-legislativas/${item.id}`
+                    : voteProposition
+                        ? `https://www.camara.leg.br/propostas-legislativas/${voteProposition}`
+                        : voteEvent
+                            ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${voteEvent}`
+                            : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao || '')}`;
+
             return {
                 id: item.id ? item.id.toString() : generateId(),
                 title: title,
-                source: type === 'voto' ? "Plenário" : type === 'evento' ? "Agenda" : "Protocolo",
-                url: type === 'evento' 
-                    ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes` 
-                    : (type === 'proposicao' ? `https://www.camara.leg.br/propostas-legislativas/${item.id}` : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`),
+                source: type === 'voto' ? (item.siglaOrgao || "Câmara dos Deputados") : type === 'evento' ? "Agenda" : "Protocolo",
+                url,
                 time: formatBrazilianDate(rawDateStr, { withYear: false }) || '',
                 timestamp,
                 summary: generateStructuredSummary(item.descricao || item.ementa || item.descricaoTipo, type),
@@ -396,25 +449,23 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
             };
         };
 
-        if (votacoesRes.status === 'fulfilled' && votacoesRes.value.ok) {
-            const json = await votacoesRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'voto', d.dataHoraRegistro)));
-        }
-
-        if (proposicoesRes.status === 'fulfilled' && proposicoesRes.value.ok) {
-            const json = await proposicoesRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'proposicao', d.dataApresentacao)));
-        }
-
-        if (eventosRes.status === 'fulfilled' && eventosRes.value.ok) {
-            const json = await eventosRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'evento', d.dataHoraInicio)));
+        const sources: Array<[PromiseSettledResult<Response>, 'voto' | 'proposicao' | 'evento', string]> = [
+            [votacoesRes, 'voto', 'dataHoraRegistro'],
+            [proposicoesRes, 'proposicao', 'dataApresentacao'],
+            [eventosRes, 'evento', 'dataHoraInicio']
+        ];
+        for (const [result, type, dateField] of sources) {
+            const rows = await readDados(result);
+            rows.forEach((d: any) => {
+                const article = createNewsObject(d, type, d[dateField]);
+                combinedData.push({ key: `${type}:${article.id}`, article });
+            });
         }
 
         if (combinedData.length === 0) return getEmergencyNews();
 
         const uniqueMap = new Map<string, NewsArticle>();
-        combinedData.forEach(item => uniqueMap.set(item.title + item.time, item));
+        combinedData.forEach(({ key, article }) => uniqueMap.set(key, article));
         
         const sortedNews = Array.from(uniqueMap.values())
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
@@ -422,16 +473,11 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
 
         if (sortedNews.length === 0) return sortedNews;
 
-        // Cache e histórico guardam só as imagens semânticas (URLs); a imagem gerada (base64) vale só para esta exibição.
+        // Cache e histórico guardam só as imagens semânticas (URLs).
         setCache(NEWS_CACHE_KEY, sortedNews);
         saveToHistory(sortedNews);
 
-        try {
-            const generatedImage = await generateNewsImage(sortedNews[0].title);
-            if (generatedImage) return [{ ...sortedNews[0], imageUrl: generatedImage }, ...sortedNews.slice(1)];
-        } catch (err) { }
-
-        return sortedNews;
+        return withGeneratedImage(sortedNews);
 
     } catch (error: any) {
         console.warn("News Fetch Error:", error);
@@ -466,13 +512,9 @@ export const getSearchContext = async (query: string): Promise<AIResponse | null
 };
 
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
-    try {
-        const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
-        if (data) return data;
-        return { text: "⚠️ Sistema offline. Verifique a conexão." };
-    } catch {
-        return { text: "Erro ao processar mensagem." };
-    }
+    const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
+    if (!data || typeof data.text !== 'string') throw new AiUnavailableError();
+    return data;
 };
 
 export const generateCampaignImage = async (prompt: string, aspectRatio: string): Promise<string | null> => {
@@ -489,9 +531,9 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string = 'a
     } catch (error) { return ""; }
 };
 
-export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
+export const generateEducationalContent = async (): Promise<EducationalContentResult> => {
     const cached = getCachedEducationalContent();
-    if (cached && cached.length > 0) return cached;
+    if (cached && cached.length > 0) return { articles: cached, isFallback: false };
 
     if (educationalContentInFlight) return educationalContentInFlight;
 
@@ -521,15 +563,16 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
 
     educationalContentInFlight = (async () => {
         try {
-            const data = await callAiApi<GeneratedArticle[]>('generateEducationalContent');
-            if (Array.isArray(data) && data.length > 0) {
-                setCachedEducationalContent(data);
-                return data;
+            const data = await callAiApi<unknown[]>('generateEducationalContent');
+            const articles = Array.isArray(data) ? data.filter(isValidArticle) : [];
+            if (articles.length > 0) {
+                setCachedEducationalContent(articles);
+                return { articles, isFallback: false };
             }
-            return staticContent;
         } catch {
-            return staticContent;
+            // IA indisponível: cai no conteúdo estático, que não é cacheado.
         }
+        return { articles: staticContent, isFallback: true };
     })();
 
     try {

@@ -37,6 +37,28 @@ describe('storage seguro', () => {
     expect(localStorage.getItem('other_key')).toBe('keep-me');
   });
 
+  it('não apaga o cache inteiro por um item que não cabe', () => {
+    const limit = 400;
+    const realSet = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      let total = value.length;
+      for (let i = 0; i < this.length; i++) {
+        const k = this.key(i)!;
+        if (k !== key) total += (this.getItem(k) || '').length;
+      }
+      if (total > limit) throw new DOMException('full', 'QuotaExceededError');
+      realSet.call(this, key, value);
+    });
+
+    const entry = (timestamp: number) => JSON.stringify({ data: 'x'.repeat(60), timestamp });
+    safeSetItem('pre_a', entry(1));
+    safeSetItem('pre_b', entry(2));
+
+    expect(safeSetItemWithEviction('pre_huge', 'y'.repeat(1000), 'pre_')).toBe(false);
+    expect(localStorage.getItem('pre_a')).toBe(entry(1));
+    expect(localStorage.getItem('pre_b')).toBe(entry(2));
+  });
+
   it('remove só as versões antigas de uma família de chaves', () => {
     localStorage.setItem('paporeto_cache_v7_a', '1');
     localStorage.setItem('paporeto_cache_v8_official_a', '1');

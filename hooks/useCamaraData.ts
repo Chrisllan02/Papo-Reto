@@ -268,6 +268,7 @@ export const useInitialData = () => {
                 } else {
                     setPoliticians(POLITICIANS_DB);
                     setArticles(EDUCATION_CAROUSEL as EducationalArticle[]);
+                    setError("Não foi possível carregar a lista de parlamentares. Tente novamente mais tarde.");
                 }
 
             } catch (err) {
@@ -295,8 +296,8 @@ export const useInitialData = () => {
 
         try {
             const { generateEducationalContent } = await import('../services/ai');
-            const eduContent = await generateEducationalContent();
-            if (!eduContent || eduContent.length === 0) return;
+            const { articles: eduContent, isFallback } = await generateEducationalContent();
+            if (eduContent.length === 0) return;
 
             const mapArticleStyle = (index: number, topic: string) => {
                 const styles = [
@@ -329,6 +330,7 @@ export const useInitialData = () => {
             }));
 
             setArticles(newArticles);
+            if (isFallback) return;
             setEducationalContentLoaded(true);
             updateBootstrapCacheArticles(newArticles);
         } catch (error) {
