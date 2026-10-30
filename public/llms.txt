@@ -1,0 +1,22 @@
+# Papo Reto
+
+> Plataforma de transparência política que traduz dados do Congresso Nacional para linguagem simples, direta e acessível a todo cidadão brasileiro.
+
+Idioma: português do Brasil (pt-BR). Acesso gratuito, sem cadastro.
+
+## O que o Papo Reto faz
+
+- Mostra deputados e senadores, partidos, proposições e votações.
+- Explica em palavras simples o que cada projeto significa (conteúdo didático e glossário).
+- Nunca inventa dados: quando uma informação não existe na fonte oficial, ela aparece como ausente.
+- Sempre que possível, aponta o link da fonte oficial do dado.
+
+## Fontes de dados oficiais
+
+- Câmara dos Deputados, Dados Abertos: https://dadosabertos.camara.leg.br
+- Senado Federal, Dados Abertos: https://legis.senado.leg.br/dadosabertos
+
+## Links
+
+- Aplicativo: https://papo-reto-beige.vercel.app/
+- Repositório: https://github.com/Chrisllan02/Papo-Reto

@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
-import { ArrowRight, ChevronLeft, BookOpen, Scale, AlertCircle, CheckCircle2, Lightbulb, Banknote, ScrollText, ExternalLink, RefreshCw } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Scale, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { EducationalArticle } from '../types';
+import { getArticleTheme, renderIcon } from '../utils/articleTheme';
+import { safeHttpUrl } from '../utils/url';
 
 interface EducationViewProps {
   educationId: number;
@@ -8,25 +10,6 @@ interface EducationViewProps {
   onBack: () => void;
   onSelectArticle: (id: number) => void;
 }
-
-const ARTICLE_THEMES = [
-  { bg: 'bg-gradient-to-br from-picture to-midnight', text: 'text-picture' },
-  { bg: 'bg-gradient-to-br from-nuit to-midnight', text: 'text-nuit' },
-  { bg: 'bg-gradient-to-br from-blue-700 to-midnight', text: 'text-blue-600' },
-  { bg: 'bg-gradient-to-br from-emerald-700 to-slate-950', text: 'text-emerald-700' },
-  { bg: 'bg-gradient-to-br from-orange-700 to-orange-950', text: 'text-orange-600' },
-  { bg: 'bg-gradient-to-br from-slate-800 to-midnight', text: 'text-slate-700' }
-];
-
-const getArticleTheme = (topic: string | undefined, index: number) => {
-  const normalized = (topic || '').toLowerCase();
-  if (normalized.includes('educ')) return ARTICLE_THEMES[1];
-  if (normalized.includes('legis') || normalized.includes('lei') || normalized.includes('congresso')) return ARTICLE_THEMES[0];
-  if (normalized.includes('econom') || normalized.includes('orçamento') || normalized.includes('tribut')) return ARTICLE_THEMES[2];
-  if (normalized.includes('segurança')) return ARTICLE_THEMES[4];
-  if (normalized.includes('saúde') || normalized.includes('ambiente')) return ARTICLE_THEMES[3];
-  return ARTICLE_THEMES[index % ARTICLE_THEMES.length];
-};
 
 const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, onBack, onSelectArticle }) => {
   const article = useMemo(() => articles.find(a => a.id === educationId), [articles, educationId]);
@@ -87,14 +70,6 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
   const nextIndex = nextItem ? articles.findIndex(a => a.id === nextItem.id) : -1;
   const nextTheme = nextItem ? getArticleTheme(nextItem.topic, nextIndex) : null;
 
-  const renderIcon = (iconName: string, size: number, className: string) => {
-      switch(iconName) {
-          case 'Banknote': return <Banknote size={size} className={className}/>;
-          case 'ScrollText': return <ScrollText size={size} className={className}/>;
-          default: return <Lightbulb size={size} className={className}/>;
-      }
-  };
-
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto animate-in slide-in-from-right duration-300">
         
@@ -102,16 +77,18 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
             {/* Hero Header */}
             <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-midnight ${articleTheme.bg}`}>
                 {/* Texture */}
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                <div className="absolute inset-0 opacity-10 texture-overlay mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
                 
                 {/* Nav */}
                 <div className="relative z-10 flex justify-between items-start">
                     <button 
+                        type="button"
                         onClick={onBack}
-                        className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors"
+                        aria-label="Voltar para o Guia Cidadão"
+                        className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors focus-visible:ring-4 focus-visible:ring-white/50"
                     >
-                        <ChevronLeft size={24}/>
+                        <ChevronLeft size={24} aria-hidden="true" />
                     </button>
                     <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20 drop-shadow-md">
                         {article.topic}
@@ -142,7 +119,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                     {article.legislation && (
                         <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-3xl border border-blue-100 dark:border-blue-900/30">
                             <div className="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-black uppercase text-xs tracking-widest">
-                                <Scale size={16}/> Legislação
+                                <Scale size={16} aria-hidden="true" /> Legislação
                             </div>
                             <p className="text-blue-900 dark:text-blue-200 font-bold text-sm leading-relaxed">
                                 {article.legislation}
@@ -153,7 +130,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                     {article.impact && (
                         <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-3xl border border-orange-100 dark:border-orange-900/30">
                             <div className="flex items-center gap-2 mb-3 text-orange-600 dark:text-orange-400 font-black uppercase text-xs tracking-widest">
-                                <AlertCircle size={16}/> Impacto na sua vida
+                                <AlertCircle size={16} aria-hidden="true" /> Impacto na sua vida
                             </div>
                             <p className="text-orange-900 dark:text-orange-200 font-bold text-sm leading-relaxed">
                                 {article.impact}
@@ -165,21 +142,21 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                 {(article.sourceUrl || article.generatedAt) && (
                     <div className="mb-12 rounded-3xl border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/10 p-6">
                         <div className="flex items-center gap-2 mb-3 text-green-700 dark:text-green-300 font-black uppercase text-xs tracking-widest">
-                            <RefreshCw size={16} />
-                            Conteúdo gerado pelo cron
+                            <RefreshCw size={16} aria-hidden="true" />
+                            Conteúdo atualizado automaticamente todos os dias
                         </div>
                         <p className="text-sm font-bold leading-relaxed text-green-900 dark:text-green-100 mb-4">
                             Este material foi montado automaticamente a partir de movimentações legislativas recentes e pode mudar conforme novas pautas entram no Congresso.
                         </p>
-                        {article.sourceUrl && (
+                        {safeHttpUrl(article.sourceUrl) && (
                             <a
-                                href={article.sourceUrl}
+                                href={safeHttpUrl(article.sourceUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 rounded-2xl bg-white/70 dark:bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-green-800 dark:text-green-100 border border-green-100 dark:border-green-800 hover:bg-white dark:hover:bg-white/15 transition-colors"
                             >
                                 Fonte oficial
-                                <ExternalLink size={13} />
+                                <ExternalLink size={13} aria-hidden="true" />
                             </a>
                         )}
                     </div>
@@ -194,7 +171,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                         <button 
                             type="button"
                             onClick={() => onSelectArticle(nextItem.id)}
-                            className={`w-full group ${nextTheme?.bg || 'bg-gradient-to-r from-nuit to-midnight'} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left`}
+                            className={`w-full group ${nextTheme?.bg || 'bg-gradient-to-r from-nuit to-midnight'} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left focus-visible:ring-4 focus-visible:ring-blue-500/40`}
                         >
                             <div className="glass-panel rounded-[2.3rem] p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
@@ -207,7 +184,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                                     </div>
                                 </div>
                                 <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
-                                    <ArrowRight size={18}/>
+                                    <ArrowRight size={18} aria-hidden="true" />
                                 </div>
                             </div>
                         </button>

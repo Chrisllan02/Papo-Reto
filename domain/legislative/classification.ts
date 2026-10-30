@@ -1,40 +1,32 @@
 import type { FeedCategory } from '../../types';
 
-export const detectLegislativeCategory = (text: string): FeedCategory => {
-  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+export const normalizeForMatch = (text: string) =>
+  (text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-  if (t.includes('educacao') || t.includes('escola') || t.includes('ensino') || t.includes('fundeb')) {
-    return 'education';
-  }
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  if (t.includes('saude') || t.includes('sus') || t.includes('medico') || t.includes('hospital') || t.includes('vacina')) {
-    return 'health';
-  }
-
-  if (t.includes('economia') || t.includes('tribut') || t.includes('imposto') || t.includes('dinheiro') || t.includes('orcamento') || t.includes('fiscal')) {
-    return 'economy';
-  }
-
-  if (t.includes('seguranca') || t.includes('policia') || t.includes('crime') || t.includes('pena') || t.includes('armas')) {
-    return 'security';
-  }
-
-  if (t.includes('trabalho') || t.includes('emprego') || t.includes('salário') || t.includes('clt')) {
-    return 'work';
-  }
-
-  if (t.includes('ambiente') || t.includes('floresta') || t.includes('animais') || t.includes('clima') || t.includes('agua')) {
-    return 'environment';
-  }
-
-  if (t.includes('justica') || t.includes('lei') || t.includes('direito') || t.includes('codigo') || t.includes('constituicao')) {
-    return 'justice';
-  }
-
-  return 'activity';
+// Termos sem acento. Termo terminado em "*" casa como prefixo de palavra; os demais, como palavra inteira.
+export const compileTerms = (terms: string[]): RegExp => {
+  const alternatives = terms.map(term => (
+    term.endsWith('*') ? `${escapeRegExp(term.slice(0, -1))}[a-z0-9]*` : escapeRegExp(term)
+  ));
+  return new RegExp(`\\b(?:${alternatives.join('|')})\\b`);
 };
 
-export const formatLegislativeText = (text: string) => {
-  if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+const CATEGORY_RULES: Array<{ category: FeedCategory; pattern: RegExp }> = [
+  { category: 'education', pattern: compileTerms(['educa*', 'escola*', 'ensino*', 'fundeb']) },
+  { category: 'health', pattern: compileTerms(['saude*', 'sus', 'medic*', 'hospital*', 'vacina*']) },
+  { category: 'economy', pattern: compileTerms(['econom*', 'tribut*', 'imposto*', 'dinheiro', 'orcament*', 'fiscal', 'fiscais']) },
+  { category: 'security', pattern: compileTerms(['seguranc*', 'policia*', 'crime*', 'criminal*', 'pena', 'penas', 'penal', 'penais', 'arma', 'armas']) },
+  { category: 'work', pattern: compileTerms(['trabalh*', 'emprego*', 'salario*', 'clt']) },
+  { category: 'environment', pattern: compileTerms(['ambient*', 'floresta*', 'animal', 'animais', 'clima*', 'agua', 'aguas']) },
+  { category: 'justice', pattern: compileTerms(['justic*', 'lei', 'leis', 'direito*', 'codigo*', 'constituicao', 'constitucional']) },
+];
+
+export const detectLegislativeCategory = (text: string): FeedCategory => {
+  const t = normalizeForMatch(text);
+  for (const rule of CATEGORY_RULES) {
+    if (rule.pattern.test(t)) return rule.category;
+  }
+  return 'activity';
 };

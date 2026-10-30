@@ -1,52 +1,52 @@
 
 import { NewsArticle } from '../types';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
+import { timeoutSignal } from '../utils/timeoutSignal';
+import { compileTerms, normalizeForMatch } from '../domain/legislative/classification';
+import { BASE_URL_CAMARA, formatBrazilianDate, getBrazilDateString } from './camaraApi';
+import { safeGetItem, safeSetItem, purgeStaleKeys } from './storage';
 
 // Cache Utils
 const NEWS_CACHE_KEY = 'paporeto_news_v24_compact_agenda_cards'; 
 const NEWS_HISTORY_KEY = 'paporeto_news_history_v5_ids'; 
 const NEWS_CACHE_TTL = 1000 * 60 * 5; // 5 Minutos
+const AI_REQUEST_TIMEOUT_MS = 60000;
+const NEWS_FETCH_TIMEOUT_MS = 10000;
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
 const EDUCATION_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
-let educationalContentInFlight: Promise<GeneratedArticle[]> | null = null;
+let educationalContentInFlight: Promise<EducationalContentResult> | null = null;
+const generatedNewsImages = new Map<string, string>();
+const newsImagesInFlight = new Set<string>();
+
+purgeStaleKeys(/^paporeto_news_v\d+_/, key => key === NEWS_CACHE_KEY);
+purgeStaleKeys(/^paporeto_news_history_v\d+_/, key => key === NEWS_HISTORY_KEY);
+purgeStaleKeys(/^paporeto_education_articles_v\d+$/, key => key === EDUCATION_CACHE_KEY);
+purgeStaleKeys(/^paporeto_img_cache_v\d+$/, () => false);
 
 const getCache = (key: string, ttl: number) => {
     try {
-        const item = localStorage.getItem(key);
+        const item = safeGetItem(key);
         if (!item) return null;
         const { data, timestamp } = JSON.parse(item);
         if (ttl > 0 && Date.now() - timestamp > ttl) return null;
         return data;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
 
 const setCache = (key: string, data: any) => {
-    try {
-        localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch (e) {
-        console.warn('Cache full, clearing old keys');
-        try {
-            localStorage.removeItem('paporeto_img_cache_v2'); 
-            localStorage.removeItem('paporeto_news_v20_dynamic'); 
-            localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
-        } catch(err) {
-            console.error("Critical storage error", err);
-        }
+    if (!safeSetItem(key, JSON.stringify({ data, timestamp: Date.now() }))) {
+        console.warn('Cache cheio ou indisponível:', key);
     }
 };
 
+const isValidArticle = (item: any): item is GeneratedArticle =>
+    Boolean(item) && typeof item.title === 'string' && item.title.trim() !== '' && typeof item.text === 'string' && item.text.trim() !== '';
+
 const getCachedEducationalContent = (): GeneratedArticle[] | null => {
-    try {
-        const item = localStorage.getItem(EDUCATION_CACHE_KEY);
-        if (!item) return null;
-        const { data, timestamp } = JSON.parse(item);
-        if (Date.now() - timestamp > EDUCATION_CACHE_TTL) return null;
-        return Array.isArray(data) ? data : null;
-    } catch {
-        return null;
-    }
+    const data = getCache(EDUCATION_CACHE_KEY, EDUCATION_CACHE_TTL);
+    return Array.isArray(data) ? data.filter(isValidArticle) : null;
 };
 
 const setCachedEducationalContent = (data: GeneratedArticle[]) => {
@@ -59,7 +59,8 @@ const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): 
         const response = await fetch(`${apiOrigin}/api/ai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, ...payload })
+            body: JSON.stringify({ action, ...payload }),
+            signal: timeoutSignal(AI_REQUEST_TIMEOUT_MS)
         });
         if (!response.ok) return null;
         const json = await response.json();
@@ -84,17 +85,20 @@ const SEMANTIC_IMAGES_MAP: Record<string, string> = {
     brazil: "https://images.unsplash.com/photo-1590333748338-d629e4564ad9?q=80&w=800&auto=format&fit=crop"
 };
 
+const SMART_IMAGE_RULES: Array<{ pattern: RegExp, image: string }> = [
+    { pattern: compileTerms(['economia', 'orcamento*', 'gasto*', 'dinheiro', 'tribut*', 'imposto*', 'financ*', 'dolar', 'bolsa']), image: SEMANTIC_IMAGES_MAP.economy },
+    { pattern: compileTerms(['saude', 'medic*', 'hospital*', 'doenca*', 'vacina*', 'sus', 'pandemia']), image: SEMANTIC_IMAGES_MAP.health },
+    { pattern: compileTerms(['educacao*', 'escola*', 'ensino', 'aluno*', 'universidade*', 'professor*']), image: SEMANTIC_IMAGES_MAP.education },
+    { pattern: compileTerms(['seguranca', 'policia*', 'crime*', 'arma', 'armas', 'violencia', 'prisao']), image: SEMANTIC_IMAGES_MAP.security },
+    { pattern: compileTerms(['ambiente', 'floresta*', 'clima*', 'agua', 'aguas', 'natureza', 'sustent*', 'amazonia']), image: SEMANTIC_IMAGES_MAP.environment },
+    { pattern: compileTerms(['tecnologia*', 'internet', 'digital', 'inovacao', 'rede social', 'redes sociais', 'ia', 'cyber*']), image: SEMANTIC_IMAGES_MAP.tech },
+    { pattern: compileTerms(['justica', 'lei', 'leis', 'stf', 'julgamento', 'direito*', 'tribunal', 'juridic*']), image: SEMANTIC_IMAGES_MAP.justice },
+    { pattern: compileTerms(['congresso', 'camara', 'senado', 'plenario', 'parlamentar*', 'deputad*', 'politica*']), image: SEMANTIC_IMAGES_MAP.congress },
+];
+
 const getSmartImage = (text: string): string => {
-    const t = text.toLowerCase();
-    if (t.match(/economia|orçamento|gasto|dinheiro|tribut|imposto|finança|dólar|bolsa/)) return SEMANTIC_IMAGES_MAP.economy;
-    if (t.match(/saúde|médico|hospital|doença|vacina|sus|pandemia/)) return SEMANTIC_IMAGES_MAP.health;
-    if (t.match(/educação|escola|ensino|aluno|universidade|professor/)) return SEMANTIC_IMAGES_MAP.education;
-    if (t.match(/segurança|polícia|crime|armas|violência|prisão/)) return SEMANTIC_IMAGES_MAP.security;
-    if (t.match(/ambiente|floresta|clima|água|natureza|sustent|amazônia/)) return SEMANTIC_IMAGES_MAP.environment;
-    if (t.match(/tecnologia|internet|digital|inovação|rede social|ia|cyber/)) return SEMANTIC_IMAGES_MAP.tech;
-    if (t.match(/justiça|lei|stf|julgamento|direito|tribunal|jurídico/)) return SEMANTIC_IMAGES_MAP.justice;
-    if (t.match(/congresso|câmara|senado|plenário|parlamentar|deputado|política/)) return SEMANTIC_IMAGES_MAP.congress;
-    return SEMANTIC_IMAGES_MAP.brazil;
+    const t = normalizeForMatch(text);
+    return SMART_IMAGE_RULES.find(rule => rule.pattern.test(t))?.image ?? SEMANTIC_IMAGES_MAP.brazil;
 };
 
 export interface AIResponse {
@@ -106,25 +110,37 @@ export interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
 }
 
+export interface EducationalContentResult {
+    articles: GeneratedArticle[];
+    isFallback: boolean;
+}
+
+export class AiUnavailableError extends Error {
+    constructor() {
+        super('Assistente indisponível');
+        this.name = 'AiUnavailableError';
+    }
+}
+
 // --- MOTOR DE TRADUÇÃO JORNALÍSTICA (REGEX) ---
 const TITLE_RULES: Array<{ regex: RegExp, template: string }> = [
-    { regex: /oitivas? de testemunhas?/i, template: "CPI: Depoimento de Testemunhas" },
-    { regex: /e votação de propostas/i, template: "Comissão: Votação de Projetos" },
-    { regex: /audiência pública/i, template: "Debate Público na Câmara" },
-    { regex: /reunião deliberativa/i, template: "Comissão: Votação de Pauta" },
-    { regex: /sessão deliberativa/i, template: "Plenário: Decisão sobre Leis" },
+    { regex: /oitivas? de testemunhas?/i, template: "Oitiva de Testemunhas" },
+    { regex: /e votação de propostas/i, template: "Votação de Propostas" },
+    { regex: /audiência pública/i, template: "Audiência Pública" },
+    { regex: /reunião deliberativa/i, template: "Reunião Deliberativa" },
+    { regex: /sessão deliberativa/i, template: "Sessão Deliberativa" },
     { regex: /seminário/i, template: "Seminário Legislativo" },
-    { regex: /aprovado o requerimento de urgência/i, template: "Urgência Aprovada: Votação Acelerada" },
-    { regex: /mantido o texto/i, template: "Veto Preservado: Lei Mantida" },
-    { regex: /rejeitado o texto/i, template: "Veto Derrubado: Lei Alterada" },
-    { regex: /encaminhada à publicação/i, template: "Projeto Protocolado Oficialmente" },
-    { regex: /aprovada a redação final/i, template: "Texto Final Aprovado na Câmara" },
-    { regex: /designado relator/i, template: "Relator Escolhido para o Projeto" },
-    { regex: /novo despacho/i, template: "Nova Fase na Tramitação" },
-    { regex: /retirado de pauta/i, template: "Votação Adiada: Retirado de Pauta" },
-    { regex: /rejeitado o requerimento/i, template: "Proposta Negada pelo Plenário" },
-    { regex: /aprovado o projeto/i, template: "Aprovado: Projeto Segue" },
-    { regex: /transformado na lei/i, template: "Sanção: Nova Lei em Vigor" }
+    { regex: /aprovado o requerimento de urgência/i, template: "Urgência Aprovada" },
+    { regex: /mantido o texto/i, template: "Texto Mantido" },
+    { regex: /rejeitado o texto/i, template: "Texto Rejeitado" },
+    { regex: /encaminhada à publicação/i, template: "Encaminhada à Publicação" },
+    { regex: /aprovada a redação final/i, template: "Redação Final Aprovada" },
+    { regex: /designado relator/i, template: "Relator Designado" },
+    { regex: /novo despacho/i, template: "Novo Despacho" },
+    { regex: /retirado de pauta/i, template: "Retirado de Pauta" },
+    { regex: /rejeitado o requerimento/i, template: "Requerimento Rejeitado" },
+    { regex: /aprovado o projeto/i, template: "Projeto Aprovado" },
+    { regex: /transformado na lei/i, template: "Transformado em Lei" }
 ];
 
 const cleanLegislativeText = (rawText: string) => rawText
@@ -251,12 +267,12 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
         else if (lowerText.includes('comissão')) context = "Debate em Comissão";
         else if (lowerText.includes('audiência')) context = "Audiência Pública";
         else if (lowerText.includes('solene')) context = "Sessão Solene";
-        else if (lowerText.includes('oitiva')) context = "Investigação/CPI";
+        else if (lowerText.includes('oitiva')) context = "Oitiva";
 
-        let explanation = rawText;
-        if (lowerText.includes('oitiva')) explanation = "Deputados ouvem testemunhas e investigados em comissão.";
+        let explanation: string;
+        if (lowerText.includes('oitiva')) explanation = "Reunião para ouvir depoentes (oitiva).";
         else if (lowerText.includes('cancelada')) explanation = "Esta sessão ou reunião foi cancelada da pauta do dia.";
-        else if (lowerText.includes('convocada')) explanation = "Reunião convocada para debater pautas prioritárias.";
+        else if (lowerText.includes('convocada')) explanation = `Reunião convocada. Pauta: ${extractAgendaSubject(rawText)}.`;
         else {
             const agendaSubject = extractAgendaSubject(rawText);
             explanation = `Discussão pública sobre ${agendaSubject}. Acompanhe os impactos e próximos encaminhamentos.`;
@@ -269,7 +285,7 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
 
     if (type === 'proposicao') {
         let context = "Projeto de Lei";
-        if (lowerText.includes('pec')) context = "Proposta Constitucional";
+        if (/\bpec\b/.test(lowerText)) context = "Proposta Constitucional";
         else if (lowerText.includes('requerimento')) context = "Requerimento";
         else if (lowerText.includes('medida provisória')) context = "Medida Provisória";
 
@@ -283,16 +299,17 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
 
     if (lowerText.includes('urgência')) {
         context = "Regime de Urgência";
-        explanation = `Aprovação para acelerar o projeto, pulando etapas de comissões.`;
+        if (/\baprovad[oa]\b/.test(lowerText)) {
+            explanation = `Aprovação para acelerar o projeto, pulando etapas de comissões.`;
+        }
     } else if (lowerText.includes('medida provisória')) {
         context = "Medida Provisória";
         explanation = `Análise de norma presidencial com força de lei imediata.`;
-    } else if (lowerText.includes('pec')) {
-        context = "Mudança na Constituição";
-        explanation = `Votação de Emenda Constitucional (PEC). Exige quórum alto.`;
-    } else if (lowerText.includes('aprovado')) {
-        context = "Aprovado no Plenário";
-        explanation = `Os deputados deram sinal verde para a proposta.`;
+    } else if (/\bpec\b/.test(lowerText)) {
+        context = "Proposta de Emenda à Constituição";
+        explanation = `PEC: exige 3/5 dos votos em dois turnos em cada Casa.`;
+    } else if (/\baprovad[oa]\b/.test(lowerText)) {
+        context = "Aprovado";
     }
 
     if (explanation.length > 200) explanation = explanation.substring(0, 197) + "...";
@@ -301,16 +318,20 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
 }
 
 // --- GESTÃO DE HISTÓRICO ---
+const withoutInlineImage = (article: NewsArticle): NewsArticle => {
+    if (!article.imageUrl?.startsWith('data:')) return article;
+    return { ...article, imageUrl: getSmartImage(`${article.title} ${article.summary?.main || ''}`) };
+};
+
 const saveToHistory = (newArticles: NewsArticle[]) => {
     try {
         const currentHistory = getNewsHistory();
-        let allArticles = [...newArticles, ...currentHistory];
+        let allArticles = [...newArticles, ...currentHistory].map(withoutInlineImage);
 
-        const seenSignatures = new Set();
+        const seenSignatures = new Set<string>();
         allArticles = allArticles.filter(item => {
-            if (!item.title) return false;
-            if (item.id && item.id.startsWith('emergency-')) return false;
-            const sig = `${item.title.trim()}|${item.time.trim()}`;
+            if (!item.title || !item.timestamp) return false;
+            const sig = item.id ? `id:${item.id}` : `sig:${item.title.trim()}|${(item.time || '').trim()}`;
             if (seenSignatures.has(sig)) return false;
             seenSignatures.add(sig);
             return true;
@@ -319,10 +340,7 @@ const saveToHistory = (newArticles: NewsArticle[]) => {
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
         const now = Date.now();
 
-        allArticles = allArticles.filter(item => {
-            if (item.timestamp) return (now - item.timestamp) < THIRTY_DAYS_MS;
-            return true;
-        });
+        allArticles = allArticles.filter(item => (now - (item.timestamp as number)) < THIRTY_DAYS_MS);
 
         allArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         setCache(NEWS_HISTORY_KEY, allArticles.slice(0, 300));
@@ -335,35 +353,11 @@ export const getNewsHistory = (): NewsArticle[] => {
     return raw.filter(item => item && typeof item.title === 'string');
 };
 
-export const clearNewsHistory = (): void => {
-    try { localStorage.removeItem(NEWS_HISTORY_KEY); } catch (e) { console.error(e); }
-};
-
 export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
 
+// Sem notícia verificável não exibimos nada: a UI trata a lista vazia.
 export function getEmergencyNews(): NewsArticle[] {
-    return [
-        { 
-            id: 'emergency-1',
-            title: "Sessão Deliberativa na Câmara", 
-            source: "Agência Câmara", 
-            url: "https://www.camara.leg.br", 
-            time: "Hoje", 
-            timestamp: Date.now(),
-            summary: { context: "Atividade em Plenário", main: "Deputados debatem pautas prioritárias para o país em sessão deliberativa." },
-            imageUrl: SEMANTIC_IMAGES_MAP.congress 
-        },
-        { 
-            id: 'emergency-2',
-            title: "Votações no Senado Federal", 
-            source: "Agência Senado", 
-            url: "https://www12.senado.leg.br", 
-            time: "Hoje", 
-            timestamp: Date.now(),
-            summary: { context: "Senado em Ação", main: "Senadores analisam medidas provisórias e projetos de lei em tramitação." },
-            imageUrl: SEMANTIC_IMAGES_MAP.brazil
-        }
-    ];
+    return [];
 }
 
 // --- GERAÇÃO DE IMAGEM DE NOTÍCIA (GOOGLE GEMINI) ---
@@ -371,89 +365,119 @@ export const generateNewsImage = async (headline: string): Promise<string | null
     try {
         const data = await callAiApi<{ imageDataUrl: string | null }>('generateNewsImage', { headline });
         return data?.imageDataUrl || null;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
 
 // --- FETCH REAL API DATA ---
+// A imagem gerada (base64) fica só em memória, por id da notícia: não bloqueia a lista nem é regerada a cada atualização.
+const withGeneratedImage = (news: NewsArticle[]): NewsArticle[] => {
+    const lead = news[0];
+    if (!lead?.id) return news;
+    const image = generatedNewsImages.get(lead.id);
+    if (image) return [{ ...lead, imageUrl: image }, ...news.slice(1)];
+    if (!newsImagesInFlight.has(lead.id)) {
+        const leadId = lead.id;
+        newsImagesInFlight.add(leadId);
+        void generateNewsImage(lead.title)
+            .then(generated => { if (generated) generatedNewsImages.set(leadId, generated); })
+            .finally(() => newsImagesInFlight.delete(leadId));
+    }
+    return news;
+};
+
+const readDados = async (result: PromiseSettledResult<Response>): Promise<any[]> => {
+    if (result.status !== 'fulfilled' || !result.value.ok) return [];
+    try {
+        const json = await result.value.json();
+        return Array.isArray(json?.dados) ? json.dados : [];
+    } catch {
+        return [];
+    }
+};
+
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    if (cachedNews && cachedNews.length > 0) return cachedNews;
+    if (cachedNews && cachedNews.length > 0) return withGeneratedImage(cachedNews);
 
     try {
-        const headers = { 'Accept': 'application/json' };
-        const fetchConfig = { headers, cache: 'no-store' as RequestCache };
+        const buildFetchConfig = () => ({
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store' as RequestCache,
+            signal: timeoutSignal(NEWS_FETCH_TIMEOUT_MS)
+        });
 
-        const dateLimit = new Date();
-        dateLimit.setDate(dateLimit.getDate() - 30);
-        const dateStr = dateLimit.toISOString().split('T')[0];
+        const dateStr = getBrazilDateString(30);
 
         const [votacoesRes, eventosRes, proposicoesRes] = await Promise.allSettled([
-            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStr}&itens=5`), fetchConfig),
-            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=5`), fetchConfig),
-            fetch(getLegislativeApiUrl(`https://dadosabertos.camara.leg.br/api/v2/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`), fetchConfig)
+            fetch(getLegislativeApiUrl(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStr}&itens=5`), buildFetchConfig()),
+            fetch(getLegislativeApiUrl(`${BASE_URL_CAMARA}/eventos?ordem=DESC&ordenarPor=dataHoraInicio&dataInicio=${dateStr}&itens=5`), buildFetchConfig()),
+            fetch(getLegislativeApiUrl(`${BASE_URL_CAMARA}/proposicoes?ordem=DESC&ordenarPor=id&dataApresentacaoInicio=${dateStr}&itens=10`), buildFetchConfig())
         ]);
 
-        const combinedData: NewsArticle[] = [];
+        const combinedData: Array<{ key: string; article: NewsArticle }> = [];
 
-        const createNewsObject = (item: any, type: 'voto' | 'evento' | 'proposicao', rawDateStr: string): NewsArticle => {
-            const dateObj = new Date(rawDateStr);
+        const createNewsObject = (item: any, type: 'voto' | 'evento' | 'proposicao', rawDateStr?: string): NewsArticle => {
+            const parsedTime = rawDateStr ? new Date(rawDateStr).getTime() : NaN;
+            const timestamp = Number.isNaN(parsedTime) ? undefined : parsedTime;
             // USA O NOVO GERADOR DE TÍTULOS JORNALÍSTICOS AQUI
             const title = generateJournalisticTitle(item.descricao || item.ementa || item.descricaoTipo, type);
             const smartImage = getSmartImage(title + " " + (item.descricao || ""));
 
+            const voteProposition = type === 'voto' ? item.uriProposicaoObjeto?.split('/').pop() : undefined;
+            const voteEvent = type === 'voto' ? item.uriEvento?.split('/').pop() : undefined;
+            const url = type === 'evento'
+                ? (item.id ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${item.id}` : 'https://www.camara.leg.br/eventos-sessoes-e-reunioes')
+                : type === 'proposicao'
+                    ? `https://www.camara.leg.br/propostas-legislativas/${item.id}`
+                    : voteProposition
+                        ? `https://www.camara.leg.br/propostas-legislativas/${voteProposition}`
+                        : voteEvent
+                            ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${voteEvent}`
+                            : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao || '')}`;
+
             return {
                 id: item.id ? item.id.toString() : generateId(),
                 title: title,
-                source: type === 'voto' ? "Plenário" : type === 'evento' ? "Agenda" : "Protocolo",
-                url: type === 'evento' 
-                    ? `https://www.camara.leg.br/eventos-sessoes-e-reunioes` 
-                    : (type === 'proposicao' ? `https://www.camara.leg.br/propostas-legislativas/${item.id}` : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(item.descricao)}`),
-                time: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                timestamp: dateObj.getTime(),
+                source: type === 'voto' ? (item.siglaOrgao || "Câmara dos Deputados") : type === 'evento' ? "Agenda" : "Protocolo",
+                url,
+                time: formatBrazilianDate(rawDateStr, { withYear: false }) || '',
+                timestamp,
                 summary: generateStructuredSummary(item.descricao || item.ementa || item.descricaoTipo, type),
                 imageUrl: smartImage
             };
         };
 
-        if (votacoesRes.status === 'fulfilled' && votacoesRes.value.ok) {
-            const json = await votacoesRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'voto', d.dataHoraRegistro)));
-        }
-
-        if (proposicoesRes.status === 'fulfilled' && proposicoesRes.value.ok) {
-            const json = await proposicoesRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'proposicao', d.dataApresentacao || new Date().toISOString())));
-        }
-
-        if (eventosRes.status === 'fulfilled' && eventosRes.value.ok) {
-            const json = await eventosRes.value.json();
-            if (json.dados) combinedData.push(...json.dados.map((d: any) => createNewsObject(d, 'evento', d.dataHoraInicio)));
+        const sources: Array<[PromiseSettledResult<Response>, 'voto' | 'proposicao' | 'evento', string]> = [
+            [votacoesRes, 'voto', 'dataHoraRegistro'],
+            [proposicoesRes, 'proposicao', 'dataApresentacao'],
+            [eventosRes, 'evento', 'dataHoraInicio']
+        ];
+        for (const [result, type, dateField] of sources) {
+            const rows = await readDados(result);
+            rows.forEach((d: any) => {
+                const article = createNewsObject(d, type, d[dateField]);
+                combinedData.push({ key: `${type}:${article.id}`, article });
+            });
         }
 
         if (combinedData.length === 0) return getEmergencyNews();
 
-        const uniqueMap = new Map();
-        combinedData.forEach(item => uniqueMap.set(item.title + item.time, item));
+        const uniqueMap = new Map<string, NewsArticle>();
+        combinedData.forEach(({ key, article }) => uniqueMap.set(key, article));
         
         const sortedNews = Array.from(uniqueMap.values())
-            .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0))
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
             .slice(0, 8);
 
-        if (sortedNews.length > 0) {
-            const topNews = sortedNews[0];
-            if (!topNews.imageUrl?.startsWith('data:image')) {
-                try {
-                    const generatedImage = await generateNewsImage(topNews.title);
-                    if (generatedImage) topNews.imageUrl = generatedImage;
-                } catch (err) { }
-            }
-        }
+        if (sortedNews.length === 0) return sortedNews;
 
+        // Cache e histórico guardam só as imagens semânticas (URLs).
         setCache(NEWS_CACHE_KEY, sortedNews);
         saveToHistory(sortedNews);
-        return sortedNews;
+
+        return withGeneratedImage(sortedNews);
 
     } catch (error: any) {
         console.warn("News Fetch Error:", error);
@@ -474,7 +498,7 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
             return bytes;
         }
         return null;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
@@ -484,45 +508,32 @@ export const getSearchContext = async (query: string): Promise<AIResponse | null
     try {
         const data = await callAiApi<AIResponse>('getSearchContext', { query });
         return data || null;
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
-    try {
-        const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
-        if (data) return data;
-        return { text: "⚠️ Sistema offline. Verifique a conexão." };
-    } catch (error: any) {
-        if (checkQuotaError(error)) return { text: "⚠️ Limite de uso da IA atingido." };
-        return { text: "Erro ao processar mensagem." };
-    }
+    const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
+    if (!data || typeof data.text !== 'string') throw new AiUnavailableError();
+    return data;
 };
 
 export const generateCampaignImage = async (prompt: string, aspectRatio: string): Promise<string | null> => {
     try {
         const data = await callAiApi<{ imageDataUrl: string | null }>('generateCampaignImage', { prompt, aspectRatio });
         return data?.imageDataUrl || null;
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
     try {
         const data = await callAiApi<{ text: string }>('transcribeAudio', { base64Audio, mimeType });
         return data?.text || "";
-    } catch (error) { return ""; }
+    } catch { return ""; }
 };
 
-const checkQuotaError = (error: any): boolean => {
-    if (!error) return false;
-    if (error.status === 429 || error.code === 429) return true;
-    if (error.error && (error.error.code === 429 || error.error.status === 'RESOURCE_EXHAUSTED')) return true;
-    const msg = error.message || JSON.stringify(error);
-    return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota');
-};
-
-export const generateEducationalContent = async (): Promise<GeneratedArticle[]> => {
+export const generateEducationalContent = async (): Promise<EducationalContentResult> => {
     const cached = getCachedEducationalContent();
-    if (cached && cached.length > 0) return cached;
+    if (cached && cached.length > 0) return { articles: cached, isFallback: false };
 
     if (educationalContentInFlight) return educationalContentInFlight;
 
@@ -552,17 +563,16 @@ export const generateEducationalContent = async (): Promise<GeneratedArticle[]> 
 
     educationalContentInFlight = (async () => {
         try {
-            const data = await callAiApi<GeneratedArticle[]>('generateEducationalContent');
-            if (Array.isArray(data) && data.length > 0) {
-                setCachedEducationalContent(data);
-                return data;
+            const data = await callAiApi<unknown[]>('generateEducationalContent');
+            const articles = Array.isArray(data) ? data.filter(isValidArticle) : [];
+            if (articles.length > 0) {
+                setCachedEducationalContent(articles);
+                return { articles, isFallback: false };
             }
-            setCachedEducationalContent(staticContent);
-            return staticContent;
         } catch {
-            setCachedEducationalContent(staticContent);
-            return staticContent;
+            // IA indisponível: cai no conteúdo estático, que não é cacheado.
         }
+        return { articles: staticContent, isFallback: true };
     })();
 
     try {

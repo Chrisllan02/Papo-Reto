@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 
+import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
+
 type VercelRequest = IncomingMessage & {
   query?: Record<string, string | string[]>;
   method?: string;
@@ -20,11 +22,25 @@ class RequestError extends Error {
   }
 }
 
-const ALLOWED_HOSTS = new Set([
-  'dadosabertos.camara.leg.br',
-  'legis.senado.leg.br',
+const ALLOWED_UPSTREAMS = new Map([
+  ['dadosabertos.camara.leg.br', { pathPrefix: '/api/v2/', accept: 'application/json' }],
+  ['legis.senado.leg.br', { pathPrefix: '/dadosabertos/', accept: 'text/xml' }],
 ]);
 const MAX_UPSTREAM_BYTES = 2_000_000;
+const UPSTREAM_TIMEOUT_MS = 15_000;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT = 600;
+const isRateLimited = createRateLimiter(RATE_WINDOW_MS);
+
+const resolveContentType = (upstreamContentType: string | null) => {
+  const [mime, ...params] = (upstreamContentType || '').split(';');
+  const charset = params.map((param) => param.trim()).find((param) => /^charset=[\w-]+$/i.test(param));
+  const suffix = charset ? `; ${charset}` : '';
+  const type = mime.trim().toLowerCase();
+  if (type === 'application/json') return `application/json${suffix}`;
+  if (type === 'application/xml' || type === 'text/xml') return `application/xml${suffix}`;
+  return null;
+};
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 
@@ -82,6 +98,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
   }
 
+  if (isRateLimited(getClientBucket(req), RATE_LIMIT)) {
+    return jsonResponse(res, 429, { error: 'Too many requests.' });
+  }
+
   const rawUrl = getRequestedUrl(req);
   if (!rawUrl || rawUrl.length > 2_000) {
     return jsonResponse(res, 400, { error: 'Invalid URL.' });
@@ -94,36 +114,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 400, { error: 'Invalid URL.' });
   }
 
-  if (target.protocol !== 'https:' || !ALLOWED_HOSTS.has(target.hostname)) {
+  const upstreamRule = ALLOWED_UPSTREAMS.get(target.hostname);
+  if (target.protocol !== 'https:' || !upstreamRule || target.port !== '' || target.username || target.password) {
     return jsonResponse(res, 400, { error: 'Unsupported host.' });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+  if (!target.pathname.startsWith(upstreamRule.pathPrefix) || /%(2f|5c)/i.test(target.pathname)) {
+    return jsonResponse(res, 400, { error: 'Unsupported path.' });
+  }
 
   try {
     const upstream = await fetch(target.toString(), {
       headers: {
-        Accept: req.headers.accept || 'application/json, text/xml;q=0.9, */*;q=0.8',
+        Accept: upstreamRule.accept,
         'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
       },
-      signal: controller.signal,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
-    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    if (upstream.status >= 300 && upstream.status < 400) {
+      return jsonResponse(res, 502, { error: 'Unexpected upstream response.' });
+    }
+
+    const contentType = resolveContentType(upstream.headers.get('content-type'));
+    if (!contentType) {
+      return jsonResponse(res, 502, { error: 'Unexpected upstream response.' });
+    }
+
     const body = await readLimitedBody(upstream);
 
     res.status?.(upstream.status);
     res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
     res.setHeader('Cache-Control', upstream.ok ? 'public, s-maxage=300, stale-while-revalidate=3600' : 'no-store');
     res.end(body);
   } catch (error: any) {
     if (error instanceof RequestError) {
       return jsonResponse(res, error.statusCode, { error: error.message });
     }
-    const aborted = error?.name === 'AbortError';
+    const aborted = error?.name === 'AbortError' || error?.name === 'TimeoutError';
     return jsonResponse(res, aborted ? 504 : 502, { error: aborted ? 'Upstream timeout.' : 'Upstream request failed.' });
-  } finally {
-    clearTimeout(timeoutId);
   }
 }

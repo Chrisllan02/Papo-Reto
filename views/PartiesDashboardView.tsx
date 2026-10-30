@@ -1,9 +1,11 @@
 
 import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, TrendingDown, UserCheck, Scale, MapPin, ShieldCheck, HelpCircle, Calendar, Info, TrendingUp, Minus, Check, AlertTriangle, Unlock, Globe, PieChart, ChevronRight, X, Grid, MousePointerClick, ChevronDown, ChevronUp, Loader2, Building2, Landmark, ArrowDown } from 'lucide-react';
+import { Users, Compass, Trophy, UserCheck, Scale, MapPin, ShieldCheck, Info, TrendingUp, Globe, X, MousePointerClick, ChevronDown, ChevronUp, Building2, Landmark, ArrowDown } from 'lucide-react';
 import { Politician, FeedItem, Party } from '../types';
 import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
 import { getIdeologyTheme } from '../utils/themeUtils';
+import { computePartyStats, summarizeAttendance, PartyStats } from '../utils/partyStats';
+import { REGION_STATES } from '../utils/regions';
 
 interface PartiesDashboardViewProps {
   politicians: Politician[];
@@ -11,38 +13,6 @@ interface PartiesDashboardViewProps {
   feedItems?: FeedItem[];
   onSelectCandidate?: (pol: Politician) => void;
 }
-
-interface RegionStats {
-    Norte: number;
-    Nordeste: number;
-    CentroOeste: number;
-    Sudeste: number;
-    Sul: number;
-}
-
-interface PartyStats {
-  name: string;
-  totalMembers: number;
-  femaleCount: number; 
-  totalSpending: number;
-  avgSpending: number;
-  avgAttendance: number; // Dado Híbrido (Real ou Projetado)
-  isProjected: boolean; // Flag para indicar se é dado projetado
-  regionStats: RegionStats;
-  members: Politician[];
-}
-
-const getRegion = (uf: string): keyof RegionStats => {
-    const cleanUF = uf ? uf.trim().toUpperCase() : 'DF';
-    const regions: Record<string, keyof RegionStats> = {
-        'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
-        'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste',
-        'DF': 'CentroOeste', 'GO': 'CentroOeste', 'MT': 'CentroOeste', 'MS': 'CentroOeste',
-        'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
-        'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'
-    };
-    return regions[cleanUF] || 'Sudeste'; 
-};
 
 // --- WIDGET DE REPRESENTAÇÃO FEMININA ---
 const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[] }) => {
@@ -211,7 +181,7 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
     ];
 
     return (
-        <div className="w-full flex flex-row items-end justify-between gap-3 h-full px-2 pb-2 overflow-x-auto" aria-label={`Espectro Político: Esquerda ${left}, Centro ${center}, Direita ${right}`}>
+        <div className="w-full flex flex-row items-end justify-between gap-3 h-full px-2 pb-2 overflow-x-auto" role="img" aria-label={`Espectro Político: Esquerda ${left}, Centro ${center}, Direita ${right}`}>
             {data.map((item) => {
                 const heightPct = ((item.count as number) / (maxVal as number)) * 100;
                 const realPct = Math.round((item.count / total) * 100);
@@ -248,11 +218,11 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
 
 // --- WIDGET MOSAICO DE REGIÕES (Otimizado Mobile) ---
 const REGIONS_STRUCT = [
-    { name: 'Norte', states: ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400' },
-    { name: 'Nordeste', states: ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'], color: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30 text-orange-700 dark:text-orange-400' },
-    { name: 'Centro-Oeste', states: ['DF', 'GO', 'MT', 'MS'], color: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
-    { name: 'Sudeste', states: ['ES', 'MG', 'RJ', 'SP'], color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-700 dark:text-blue-400' },
-    { name: 'Sul', states: ['PR', 'RS', 'SC'], color: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
+    { name: 'Norte', states: REGION_STATES['Norte'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400' },
+    { name: 'Nordeste', states: REGION_STATES['Nordeste'], color: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30 text-orange-700 dark:text-orange-400' },
+    { name: 'Centro-Oeste', states: REGION_STATES['Centro-Oeste'], color: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
+    { name: 'Sudeste', states: REGION_STATES['Sudeste'], color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-700 dark:text-blue-400' },
+    { name: 'Sul', states: REGION_STATES['Sul'], color: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
 ];
 
 // --- NOVO COMPONENTE: PIE CHART DE PARTIDOS ---
@@ -263,20 +233,19 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     
-    let accumulatedPercent = 0;
+    const startPercents = data.map((_, i) => data.slice(0, i).reduce((sum, item) => sum + item.percent, 0));
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
             <div className="relative w-48 h-48 flex items-center justify-center shrink-0 mb-4">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl">
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl" role="img" aria-label={`${total} representantes: ${data.map(item => `${item.name} ${item.value} (${Math.round(item.percent)}%)`).join(', ')}`}>
                     {/* Fundo */}
                     <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
                     
                     {data.map((item, i) => {
                         const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (accumulatedPercent / 100) * 360;
+                        const rotation = (startPercents[i] / 100) * 360;
                         const offset = 0; 
-                        accumulatedPercent += item.percent;
 
                         return (
                             <circle
@@ -578,7 +547,7 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
 
 const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[], onClick: (name: string) => void, activeParty: string | null }) => {
     const [hoveredParty, setHoveredParty] = useState<string | null>(null);
-    const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0) || 513;
+    const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0);
     
     // Sort logic
     const sortedParties = useMemo(() => {
@@ -588,8 +557,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
             const ideB = getIdeology(b.name);
             
             // Explicitly typed as number to avoid arithmetic errors
-            const valA: number = orderMap[ideA] || 0;
-            const valB: number = orderMap[ideB] || 0;
+            const valA: number = (ideA && orderMap[ideA]) || 4;
+            const valB: number = (ideB && orderMap[ideB]) || 4;
             
             if (valA !== valB) return valA - valB;
             return b.totalMembers - a.totalMembers;
@@ -606,7 +575,8 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     const radius = 130; 
     const strokeWidth = 50; // Slightly thinner to show separation
     const totalAngle = 180; 
-    let currentAngle = 0; 
+    const sliceAngle = (seats: number) => (seats / totalSeats) * totalAngle;
+    const startAngles = sortedParties.map((_, i) => sortedParties.slice(0, i).reduce((sum, party) => sum + sliceAngle(party.totalMembers), 0));
 
     // Handle interaction bridging
     const effectiveActive = hoveredParty || activeParty;
@@ -622,7 +592,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                      </div>
                      <div>
                         <h3 id="hemicycle-title" className="font-bold text-gray-900 dark:text-white text-lg md:text-xl leading-tight">Distribuição de Cadeiras</h3>
-                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Composição do Congresso</p>
+                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Composição da Câmara</p>
                      </div>
                  </div>
                  <div className="flex gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10 backdrop-blur-sm">
@@ -634,7 +604,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
 
             {/* Graphic Container */}
             <div className="relative w-full max-w-[650px] aspect-[1.8/1] min-h-[220px] flex items-end justify-center mb-6 md:mb-10">
-                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img">
+                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img" aria-label={`Distribuição de ${totalSeats} cadeiras por partido: ${sortedParties.map(p => `${p.name} ${p.totalMembers}`).join(', ')}`}>
                     {/* Background Track */}
                     <path 
                         d={describeArc(centerX, centerY, radius, 0, 180)}
@@ -645,17 +615,15 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                         className="dark:stroke-white/5"
                     />
 
-                    {sortedParties.map((party) => {
+                    {sortedParties.map((party, i) => {
                         const seats = party.totalMembers;
-                        const sliceDegrees = (seats / totalSeats) * totalAngle;
+                        const sliceDegrees = sliceAngle(seats);
                         
                         // Dynamic gap: smaller gap for small parties to prevent disappearance
                         const gap = seats > 3 ? 1.5 : (seats > 1 ? 0.8 : 0.2);
                         
-                        const start = currentAngle;
-                        const end = currentAngle + sliceDegrees - (sliceDegrees > gap ? gap : 0);
-                        const nextStart = currentAngle + sliceDegrees;
-                        currentAngle = nextStart;
+                        const start = startAngles[i];
+                        const end = start + sliceDegrees - (sliceDegrees > gap ? gap : 0);
 
                         if (seats === 0) return null;
 
@@ -726,14 +694,17 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
 
 // --- DATA INTEGRITY FIX: Attendance Card (Substitutes Fake Cohesion) ---
 const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedParty?: string | null }) => {
-    // Uses Calculated Average Attendance with Deterministic Fallback Support
-    const avgOverall = data.reduce((acc, p) => acc + p.avgAttendance, 0) / (data.length || 1);
+    // Apenas presença real: quem não tem dado não entra na média nem é estimado
+    const overall = summarizeAttendance(data);
     const stats = selectedParty ? data.find(p => p.name === selectedParty) : null;
-    const value = stats ? stats.avgAttendance : avgOverall;
-    
-    // Check if data is mostly projected (estimated) or real
-    const isProjected = stats ? stats.isProjected : data.length > 0 && data.every(p => p.isProjected);
-    const displayValue = value > 0 ? value : 0; // Ensure non-negative
+    const value = stats ? stats.avgAttendance : overall.average;
+    const sampleCount = stats ? stats.attendanceSampleCount : overall.sample;
+    const totalCount = stats ? stats.totalMembers : overall.total;
+    const hasData = value !== null && sampleCount > 0;
+    const displayValue = hasData ? value : 0;
+    const coverageLabel = hasData
+        ? `Presença real de ${sampleCount} de ${totalCount} deputados`
+        : 'Dados insuficientes';
 
     // Configurações do Visual
     const radius = 80;
@@ -741,7 +712,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
     const offset = circumference - (displayValue / 100) * circumference;
     
     const getStatus = (score: number) => {
-        if (score === 0) return { label: 'Aguardando Dados', color: 'text-gray-400', bg: 'bg-gray-100/50 dark:bg-white/5' };
+        if (!hasData) return { label: 'Dados insuficientes', color: 'text-gray-500', bg: 'bg-gray-100/50 dark:bg-white/5' };
         if (score >= 90) return { label: 'Assiduidade Alta', color: 'text-green-500', bg: 'bg-green-100/50 dark:bg-green-900/20' };
         if (score >= 70) return { label: 'Assiduidade Média', color: 'text-blue-500', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; 
         return { label: 'Assiduidade Baixa', color: 'text-red-500', bg: 'bg-red-100/50 dark:bg-red-900/20' };
@@ -762,8 +733,8 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                         <h3 className="font-bold text-gray-900 dark:text-white text-xl md:text-2xl leading-tight">Assiduidade Média</h3>
                         <p className="text-xs md:text-sm text-gray-500 font-bold uppercase tracking-wide flex items-center gap-1">
                             Presença em Sessões 
-                            {isProjected && <span className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 px-1.5 rounded text-[9px]">Estimada</span>}
                         </p>
+                        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">{coverageLabel}</p>
                     </div>
                 </div>
             </div>
@@ -775,13 +746,13 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                     <svg className="w-full h-full transform -rotate-90 drop-shadow-xl" viewBox="0 0 200 200">
                         <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="2 4" className="text-gray-200 dark:text-gray-800" />
                         {/* Background Ghost Arc */}
-                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="16" strokeDasharray={`2 ${circumference}`} strokeDashoffset={-(circumference * (avgOverall / 100))} className="text-gray-400 dark:text-gray-600 opacity-30" transform={`rotate(0 100 100)`} />
+                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="16" strokeDasharray={`2 ${circumference}`} strokeDashoffset={-(circumference * ((overall.average ?? 0) / 100))} className="text-gray-400 dark:text-gray-600 opacity-30" transform={`rotate(0 100 100)`} />
                         {/* Value Arc */}
                         <circle cx="100" cy="100" r={radius} fill="none" strokeLinecap="round" strokeWidth="12" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayValue >= 90 ? 'text-green-500' : displayValue >= 70 ? 'text-blue-500' : 'text-red-500'}`} stroke="currentColor" />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
-                            {displayValue.toFixed(0)}<span className="text-2xl align-top opacity-50">%</span>
+                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top opacity-50">%</span></> : <span className="text-base">Sem dados</span>}
                         </span>
                         <div className={`mt-2 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider backdrop-blur-sm border border-white/10 ${status.bg} ${status.color}`}>
                             {status.label}
@@ -799,7 +770,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Alta (+90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença constante em sessões deliberativas.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -807,7 +778,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Média (70-90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Frequência regular, com algumas ausências justificadas.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada entre 70% e 90% das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -815,7 +786,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Baixa (-70%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Alto índice de faltas não justificadas ou licenças.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada abaixo de 70% das sessões.</p>
                         </div>
                     </div>
                 </div>
@@ -859,11 +830,12 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
                         </div>
                         <span className="text-[10px] font-black text-gray-700 dark:text-gray-200 whitespace-nowrap">
                             R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            <span className="ml-1 font-bold text-gray-500 dark:text-gray-400">(n={p.spendingSampleCount})</span>
                         </span>
                     </div>
                 ))}
             </div>
-            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Média por parlamentar do partido</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Média por parlamentar do partido; n = parlamentares considerados</p>
         </div>
     );
 };
@@ -978,65 +950,10 @@ const GovernmentStructureFlow = () => {
     );
 };
 
-const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians, parties = [], onSelectCandidate }) => {
+const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians }) => {
   const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
 
-  const { partyStats, ideologyStats } = useMemo(() => {
-    const groups: Record<string, PartyStats> = {};
-    const ideologyGroups: Record<string, number> = { 'Esquerda': 0, 'Centro': 0, 'Direita': 0 };
-
-    politicians.forEach(pol => {
-        const partyName = pol.party ? pol.party.trim().toUpperCase() : 'OUTROS';
-        if (!groups[partyName]) {
-            groups[partyName] = {
-                name: partyName,
-                totalMembers: 0,
-                femaleCount: 0,
-                totalSpending: 0,
-                avgSpending: 0,
-                avgAttendance: 0,
-                isProjected: false,
-                regionStats: { Norte: 0, Nordeste: 0, CentroOeste: 0, Sudeste: 0, Sul: 0 },
-                members: []
-            };
-        }
-        const g = groups[partyName];
-        g.members.push(pol);
-        g.totalMembers += 1;
-        if (normalizeSex(pol.sex) === 'F') g.femaleCount += 1;
-        g.totalSpending += pol.stats.spending || 0;
-        const ideology = getIdeology(partyName);
-        ideologyGroups[ideology] += 1;
-        
-        // --- LOGIC FIX: Deterministic Projection if Real Data is Missing ---
-        // Se o dado real estiver zerado (não visitado), usamos um valor determinístico baseado no ID para projeção
-        // Isso evita que o gráfico quebre ou fique vazio, mantendo a sensação de dados vivos.
-        const attendance = pol.stats.attendancePct > 0 
-            ? pol.stats.attendancePct 
-            : (80 + (pol.id % 20)); // Projetado: 80% a 99%
-        
-        if (pol.stats.attendancePct === 0) g.isProjected = true;
-        
-        g.avgAttendance += attendance;
-        g.regionStats[getRegion(pol.state)] += 1;
-    });
-
-    Object.values(groups).forEach(g => {
-        if (g.totalMembers > 0) {
-            g.avgAttendance /= g.totalMembers;
-        }
-    });
-
-    Object.values(groups).forEach(g => {
-        g.avgAttendance = g.totalMembers > 0 ? g.avgAttendance / g.totalMembers : 0;
-        g.avgSpending = g.totalMembers > 0 ? g.totalSpending / g.totalMembers : 0;
-    });
-
-    return {
-        partyStats: Object.values(groups).filter(g => g.totalMembers > 0),
-        ideologyStats: ideologyGroups,
-    };
-  }, [politicians]);
+  const { partyStats, ideologyStats } = useMemo(() => computePartyStats(politicians), [politicians]);
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12">

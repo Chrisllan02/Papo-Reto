@@ -134,15 +134,11 @@ const writeSvg = async (filename, config) => {
 const main = async () => {
   await mkdir(OUT_DIR, { recursive: true });
 
-  const [pkg, health, initialBootstrap] = await Promise.all([
+  const [pkg, health, bootstrap] = await Promise.all([
     readJson('package.json'),
     fetchJson(`${APP_URL}/api/health`),
     fetchJson(`${APP_URL}/api/bootstrap`),
   ]);
-
-  const bootstrap = initialBootstrap?.data?.politicians?.length
-    ? initialBootstrap
-    : await fetchJson(`${APP_URL}/api/bootstrap?refresh=1`) || initialBootstrap;
 
   const integrations = health?.integrations || {};
   const data = bootstrap?.data || {};
@@ -163,7 +159,6 @@ const main = async () => {
     rows: [
       { label: 'Aplicação', value: health?.ok ? 'online' : 'verificar', status: { color: health?.ok ? '#16a34a' : '#ef4444' }, hint: '/api/health' },
       { label: 'Proxy legislativo', value: normalizeStatus(integrations.legislativeProxy).label, status: normalizeStatus(integrations.legislativeProxy), hint: 'Câmara e Senado via BFF' },
-      { label: 'IA', value: integrations.ai ? 'configurada' : 'fallback', status: normalizeStatus(integrations.ai), hint: 'Provedor opcional' },
     ],
   });
 

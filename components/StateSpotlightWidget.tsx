@@ -31,7 +31,12 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
     };
 
     useEffect(() => {
-        if (!politicians || politicians.length === 0) return;
+        if (!politicians || politicians.length === 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza a lista do estado com os dados carregados
+            setStatePoliticians([]);
+            setIsLoading(false);
+            return;
+        }
 
         const updateState = (uf: string, local: boolean) => {
             setSelectedState(uf);
@@ -50,6 +55,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
             } else {
                 const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean))) as string[];
                 if (states.length > 0) updateState(states[Math.floor(Math.random() * states.length)], false);
+                else setIsLoading(false);
             }
         } else {
             const states = Array.from(new Set(politicians.map(p => p.state).filter(Boolean))) as string[];
@@ -60,8 +66,11 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                 } else {
                     setIsLoading(false);
                 }
+            } else {
+                setIsLoading(false);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sorteia o estado só na carga; a troca manual não pode refazer o sorteio
     }, [politicians, userLocation]);
 
     const getIdeologyStyle = (party: string) => {
@@ -84,6 +93,15 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                 glow: 'from-emerald-500/10'
             };
         }
+        if (!ideology) {
+            return {
+                accent: 'bg-slate-400',
+                dot: 'bg-slate-400',
+                ring: 'border-slate-100 dark:border-slate-800/40',
+                badge: 'bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-800/25 dark:text-slate-200 dark:border-slate-700/50',
+                glow: 'from-slate-400/10'
+            };
+        }
         return {
             accent: 'bg-amber-500',
             dot: 'bg-amber-500',
@@ -93,7 +111,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
         };
     };
 
-    if (isLoading) return <div className="h-64 w-full glass-surface rounded-[2.5rem] animate-pulse mb-8"></div>;
+    if (isLoading) return <div className="h-64 w-full glass-surface rounded-[2.5rem] animate-pulse mb-8" aria-hidden="true"></div>;
     if (statePoliticians.length === 0) return null;
 
     return (
@@ -104,7 +122,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-2xl shadow-lg backdrop-blur-md ${isLocal ? 'bg-picture/90 text-white' : 'bg-spring/90 text-midnight'}`}>
-                            {isLocal ? <LocateFixed size={22} /> : <MapPin size={22} />}
+                            {isLocal ? <LocateFixed size={22} aria-hidden="true" /> : <MapPin size={22} aria-hidden="true" />}
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-midnight dark:text-white leading-none mb-1">
@@ -116,8 +134,9 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                         </div>
                     </div>
                     <button 
+                        type="button"
                         onClick={() => onGoToExplore(selectedState)}
-                        className="px-5 py-2.5 glass-surface rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm active:scale-95 transition-all"
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 px-5 py-2.5 glass-surface rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm active:scale-95 transition-all"
                     >
                         Ver Todos
                     </button>
@@ -127,11 +146,12 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     
                     {/* Botão Scroll Esquerda (Desktop) */}
                     <button 
+                        type="button"
                         onClick={() => scroll('left')}
-                        aria-label="Rolar para esquerda"
-                        className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 duration-300"
+                        aria-label="Rolar para a esquerda"
+                        className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 focus-visible:opacity-100 focus-visible:ring-4 focus-visible:ring-blue-500/40 duration-300"
                     >
-                        <ChevronLeft size={24} />
+                        <ChevronLeft size={24} aria-hidden="true" />
                     </button>
 
                     {/* Container Scrollável */}
@@ -147,14 +167,23 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                             return (
                                 <div 
                                     key={pol.id} 
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Ver perfil de ${pol.name}, ${pol.party} de ${pol.state}`}
                                     onClick={() => onSelectCandidate(pol)}
-                                    className={`group/card relative snap-center shrink-0 w-52 md:w-56 min-h-[220px] overflow-hidden rounded-[1.75rem] border bg-white/90 p-5 text-center shadow-[0_16px_28px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(15,23,42,0.16)] active:scale-[0.99] dark:bg-white/[0.06] dark:shadow-[0_18px_34px_rgba(0,0,0,0.45)] cursor-pointer ${cardTheme.ring}`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            onSelectCandidate(pol);
+                                        }
+                                    }}
+                                    className={`group/card relative snap-center shrink-0 w-52 md:w-56 min-h-[220px] overflow-hidden rounded-[1.75rem] border bg-white/90 p-5 text-center shadow-[0_16px_28px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(15,23,42,0.16)] active:scale-[0.99] dark:bg-white/[0.06] dark:shadow-[0_18px_34px_rgba(0,0,0,0.45)] cursor-pointer focus-visible:ring-4 focus-visible:ring-blue-500/40 ${cardTheme.ring}`}
                                 >
                                     <div className={`absolute inset-x-0 top-0 h-1.5 ${cardTheme.accent}`} aria-hidden="true"></div>
                                     <div className={`absolute inset-0 bg-gradient-to-br ${cardTheme.glow} via-transparent to-transparent opacity-80`} aria-hidden="true"></div>
                                     <div className="relative mx-auto mb-4 mt-2 h-24 w-24">
                                         <div className={`h-full w-full overflow-hidden rounded-full bg-slate-100 shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-transform duration-300 group-hover/card:scale-[1.04] dark:bg-slate-800 ${isSenator ? 'border-[3px] border-amber-400 dark:border-amber-500 ring-4 ring-amber-400/20' : 'border-[4px] border-white dark:border-slate-700'}`}>
-                                            <img src={pol.photo} alt={pol.name} className="w-full h-full object-cover" loading="lazy" />
+                                            <img src={pol.photo} alt="" className="w-full h-full object-cover" loading="lazy" />
                                         </div>
                                         {isSenator && (
                                             <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/20 bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-white shadow-lg whitespace-nowrap">
@@ -165,7 +194,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                                     <h3 className="relative mb-3 min-h-[2.5em] text-sm font-black capitalize leading-tight text-midnight line-clamp-2 dark:text-white">{pol.name}</h3>
                                     
                                     <div className={`relative mx-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ${cardTheme.badge}`}>
-                                        <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology}`}></div>
+                                        <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology || 'Não classificado'}`}></div>
                                         <p className="text-xs font-bold uppercase">{pol.party}</p>
                                     </div>
                                 </div>
@@ -175,11 +204,12 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
 
                     {/* Botão Scroll Direita (Desktop) */}
                     <button 
+                        type="button"
                         onClick={() => scroll('right')}
-                        aria-label="Rolar para direita"
-                        className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 duration-300"
+                        aria-label="Rolar para a direita"
+                        className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full glass-surface shadow-lg hover:scale-110 active:scale-95 transition-all text-midnight dark:text-white opacity-0 group-hover/scroll:opacity-100 focus-visible:opacity-100 focus-visible:ring-4 focus-visible:ring-blue-500/40 duration-300"
                     >
-                        <ChevronRight size={24} />
+                        <ChevronRight size={24} aria-hidden="true" />
                     </button>
 
                 </div>

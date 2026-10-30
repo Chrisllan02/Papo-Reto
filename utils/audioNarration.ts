@@ -7,7 +7,7 @@ const cleanText = (value?: string | null) => {
     return value
         .replace(/https?:\/\/\S+/g, '')
         .replace(/\s+/g, ' ')
-        .replace(/\bn[ºo]\.?\s*/gi, 'número ')
+        .replace(/\bn(?:[º°]|o\.)\s*(?=\d)/gi, 'número ')
         .replace(/\bPLP\b/g, 'Projeto de Lei Complementar')
         .replace(/\bPL\b/g, 'Projeto de Lei')
         .replace(/\bPEC\b/g, 'Proposta de Emenda à Constituição')

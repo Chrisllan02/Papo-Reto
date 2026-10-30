@@ -1,6 +1,6 @@
 
-export const getIdeologyTheme = (ideology: string) => {
-    const ideo = ideology?.toLowerCase() || 'centro';
+export const getIdeologyTheme = (ideology?: string) => {
+    const ideo = ideology?.toLowerCase();
     
     if (ideo === 'esquerda') {
         return {
@@ -36,7 +36,23 @@ export const getIdeologyTheme = (ideology: string) => {
         };
     }
     
-    // Centro
+    if (ideo !== 'centro') {
+        return {
+            bg: 'bg-slate-50/90 dark:bg-slate-800/40',
+            border: 'border-slate-200 dark:border-slate-700/40',
+            iconBg: 'bg-slate-600',
+            text: 'text-slate-950 dark:text-slate-100',
+            badgeBg: 'bg-slate-100 dark:bg-slate-800/60',
+            badgeText: 'text-slate-800 dark:text-slate-300',
+            label: 'N/C',
+            baseColor: '#94A3B8',
+            activeClass: 'bg-slate-700 text-white shadow-md shadow-slate-700/20',
+            trackBg: 'bg-slate-100/50 dark:bg-slate-800/30',
+            fillColorClass: 'bg-slate-500',
+            textColorClass: 'text-slate-700 dark:text-slate-300'
+        };
+    }
+
     return {
         bg: 'bg-amber-50/90 dark:bg-amber-900/35',
         border: 'border-amber-200 dark:border-amber-900/30',

@@ -62,8 +62,9 @@ const main = async () => {
   await capture(page, 'partidos');
 
   await page.getByRole('button', { name: /CANDIDATOS/i }).click();
-  await page.getByText('Adriana ventura', { exact: true }).waitFor({ timeout: 30_000 });
-  await page.getByText('Adriana ventura', { exact: true }).click();
+  const firstPolitician = page.getByRole('button', { name: /^Ver perfil de / }).first();
+  await firstPolitician.waitFor({ timeout: 30_000 });
+  await firstPolitician.click();
   await page.getByText('Ficha Parlamentar', { exact: true }).waitFor({ timeout: 45_000 });
   await page.waitForTimeout(3_000);
   await capture(page, 'perfil');

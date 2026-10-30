@@ -12,8 +12,9 @@ const fetchWithTimeout = async (path, options = {}) => {
   for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    let response;
     try {
-      return await fetch(new URL(path, APP_URL), {
+      response = await fetch(new URL(path, APP_URL), {
         ...options,
         signal: controller.signal,
         headers: {
@@ -23,11 +24,14 @@ const fetchWithTimeout = async (path, options = {}) => {
       });
     } catch (error) {
       lastError = error;
-      if (attempt < RETRIES) {
-        await delay(RETRY_DELAY_MS);
-      }
     } finally {
       clearTimeout(timeout);
+    }
+    if (response && (response.status < 500 || attempt === RETRIES)) {
+      return response;
+    }
+    if (attempt < RETRIES) {
+      await delay(RETRY_DELAY_MS);
     }
   }
   throw lastError;
@@ -69,7 +73,7 @@ const main = async () => {
   assert(blockedProxy.status === 400, `Proxy host guard returned ${blockedProxy.status}`);
 
   const cron = await fetchWithTimeout('/api/cron/refresh-legislative-data');
-  assert(cron.status === 401 || cron.ok, `Cron guard returned unexpected status ${cron.status}`);
+  assert(cron.status === 401, `Cron guard expected 401, received ${cron.status}`);
 
   console.log(JSON.stringify({
     ok: true,

@@ -1,10 +1,12 @@
 import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } from '../../types';
+import { detectLegislativeCategory } from '../../domain/legislative/classification.js';
+import { cleanText, formatPersonName } from '../../domain/legislative/text.js';
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
-const CAMARA_PROXY_BASE_URL = 'https://papo-reto-beige.vercel.app/api/camara';
+const APP_ORIGIN = (process.env.APP_PUBLIC_URL || 'https://papo-reto-beige.vercel.app').replace(/\/+$/, '');
+const CAMARA_PROXY_BASE_URL = `${APP_ORIGIN}/api/camara`;
 const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
-const SENADO_PROXY_URL = `https://papo-reto-beige.vercel.app/api/camara?url=${encodeURIComponent(SENADO_URL)}`;
 const UPSTREAM_TIMEOUT_MS = 15000;
 const SENADO_TIMEOUT_MS = 12000;
 const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
@@ -40,22 +42,7 @@ export type LegislativeBootstrap = {
 
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-const detectCategory = (text: string): FeedCategory => {
-  const t = normalize(text);
-  if (t.includes('educacao') || t.includes('escola') || t.includes('ensino') || t.includes('fundeb')) return 'education';
-  if (t.includes('saude') || t.includes('sus') || t.includes('medico') || t.includes('hospital') || t.includes('vacina')) return 'health';
-  if (t.includes('economia') || t.includes('tribut') || t.includes('imposto') || t.includes('dinheiro') || t.includes('orcamento') || t.includes('fiscal')) return 'economy';
-  if (t.includes('seguranca') || t.includes('policia') || t.includes('crime') || t.includes('pena') || t.includes('armas')) return 'security';
-  if (t.includes('trabalho') || t.includes('emprego') || t.includes('salario') || t.includes('clt')) return 'work';
-  if (t.includes('ambiente') || t.includes('floresta') || t.includes('animais') || t.includes('clima') || t.includes('agua')) return 'environment';
-  if (t.includes('justica') || t.includes('lei') || t.includes('direito') || t.includes('codigo') || t.includes('constituicao')) return 'justice';
-  return 'activity';
-};
-
-const formatText = (text: string) => {
-  if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-};
+const detectCategory = (text: string): FeedCategory => detectLegislativeCategory(text);
 
 const sentenceCase = (text: string) => {
   const cleaned = text.trim().replace(/\s+/g, ' ');
@@ -144,13 +131,13 @@ const buildEventItem = (event: any): FeedItem | null => {
     id: event.id,
     type: 'evento',
     title,
-    date: new Date(event.dataHoraInicio).toLocaleDateString('pt-BR'),
+    date: formatBrazilianDate(event.dataHoraInicio),
     description: summary,
     originalDescription,
     summary,
     whyItMatters,
     nextStep,
-    status: 'Tramitação',
+    status: event.situacao || undefined,
     sourceUrl: `https://www.camara.leg.br/eventos-sessoes-e-reunioes/evento/${event.id}`,
     category: detectCategory(`${topic} ${originalDescription}`),
     organ,
@@ -370,15 +357,13 @@ const getCamaraProxyUrl = (url: string) => {
 };
 
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1, allowProxyFallback = true): Promise<T | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+        'User-Agent': `PapoReto/1.0 (+${APP_ORIGIN})`,
       },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       if (retries > 0 && (res.status >= 500 || res.status === 429)) {
@@ -396,28 +381,22 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retrie
     const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
     if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
 const fetchText = async (url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<string | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
         Accept: 'text/xml, application/xml;q=0.9, */*;q=0.8',
-        'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
+        'User-Agent': `PapoReto/1.0 (+${APP_ORIGIN})`,
       },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     return await res.text();
   } catch {
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
@@ -448,6 +427,18 @@ const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   return normalizeSex(data?.dados?.sexo);
 };
 
+const deputyRole = (sex?: SexCode) => (sex === 'F' ? 'Deputada Federal' : sex === 'M' ? 'Deputado Federal' : 'Deputado(a) Federal');
+
+const fetchLegislatureMandate = async (legislatureId: unknown) => {
+  const id = Number(legislatureId);
+  if (!Number.isInteger(id) || id <= 0) return { start: '', end: '' };
+  const data = await fetchJson<{ dados?: { dataInicio?: string; dataFim?: string } }>(
+    `${BASE_URL_CAMARA}/legislaturas/${id}`,
+    DEPUTY_DETAIL_TIMEOUT_MS
+  );
+  return { start: data?.dados?.dataInicio || '', end: data?.dados?.dataFim || '' };
+};
+
 const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politician[]> => {
   const missingInitial = deputies.filter((deputy) => !normalizeSex(deputy.sex));
   if (missingInitial.length === 0) return deputies;
@@ -460,7 +451,7 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     return {
       ...deputy,
       sex,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
     };
   });
 
@@ -501,22 +492,23 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     return {
       ...deputy,
       sex,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
     };
   });
 };
 
 const fetchDeputados = async (): Promise<Politician[]> => {
   const data = await fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/deputados?ordem=ASC&ordenarPor=nome`);
+  const mandate = data?.dados?.length ? await fetchLegislatureMandate(data.dados[0].idLegislatura) : { start: '', end: '' };
   const deputies = (data?.dados || []).map((d) => {
     const sex = normalizeSex(d.sexo);
     return {
       id: d.id,
-      name: formatText(d.nome),
+      name: formatPersonName(d.nome),
       party: d.siglaPartido,
       state: d.siglaUf,
       photo: d.urlFoto,
-      role: sex === 'F' ? 'Deputada Federal' : 'Deputado Federal',
+      role: deputyRole(sex),
       sex,
       email: d.email,
       stats: {
@@ -530,7 +522,7 @@ const fetchDeputados = async (): Promise<Politician[]> => {
         spending: 0,
         partyFidelity: undefined,
       },
-      mandate: { start: '2023-02-01', end: '2027-01-31' },
+      mandate: { ...mandate },
       hasApiIntegration: true,
       votes: {},
     } as Politician;
@@ -540,12 +532,13 @@ const fetchDeputados = async (): Promise<Politician[]> => {
 };
 
 const fetchSenadores = async (): Promise<Politician[]> => {
-  const xml = await fetchText(SENADO_PROXY_URL, SENADO_TIMEOUT_MS) || await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
+  const xml = await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
   if (!xml) return [];
 
   const blocks = xml.match(/<Parlamentar>[\s\S]*?<\/Parlamentar>/g) || [];
-  return blocks.map((block) => {
-    const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar')) || Math.floor(Math.random() * 1_000_000);
+  return blocks.flatMap((block) => {
+    const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar'));
+    if (!Number.isInteger(id) || id <= 0) return [];
     const name = getXmlTag(block, 'NomeParlamentar') || getXmlTag(block, 'NomeCompletoParlamentar');
     const party = getXmlTag(block, 'SiglaPartidoParlamentar');
     const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
@@ -559,16 +552,16 @@ const fetchSenadores = async (): Promise<Politician[]> => {
       return [participation, suplenteName].filter(Boolean).join(' - ');
     }).filter(Boolean);
 
-    return {
+    return [{
       id,
-      name: formatText(name),
+      name: formatPersonName(name),
       party,
       partyShort: party,
       state,
       photo: getXmlTag(block, 'UrlFotoParlamentar'),
-      role: sex === 'F' ? 'Senadora' : 'Senador',
+      role: sex === 'F' ? 'Senadora' : sex === 'M' ? 'Senador' : 'Senador(a)',
       sex,
-      civilName: formatText(getXmlTag(block, 'NomeCompletoParlamentar')),
+      civilName: formatPersonName(getXmlTag(block, 'NomeCompletoParlamentar')),
       email: getXmlTag(block, 'EmailParlamentar'),
       cabinet: { phone: getXmlTag(block, 'NumeroTelefone') },
       officialPage: getXmlTag(block, 'UrlPaginaParlamentar'),
@@ -594,10 +587,10 @@ const fetchSenadores = async (): Promise<Politician[]> => {
         spending: 0,
         partyFidelity: undefined,
       },
-      mandate: { start: mandateStarts[0] || '2023-02-01', end: mandateEnds.at(-1) || '2031-01-31' },
+      mandate: { start: mandateStarts[0] || '', end: mandateEnds[mandateEnds.length - 1] || '' },
       hasApiIntegration: false,
       votes: {},
-    } as Politician;
+    } as Politician];
   }).filter((p) => p.name && p.party && p.state);
 };
 
@@ -608,7 +601,7 @@ const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> 
     sigla: p.sigla,
     nome: p.nome,
     uri: p.uri,
-    ideology: PARTY_FALLBACK[p.sigla]?.ideology || 'Centro',
+    ideology: PARTY_FALLBACK[p.sigla]?.ideology,
   } as Party));
 
   if (parties.length > 0) return { parties, fallback: false };
@@ -624,14 +617,32 @@ const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> 
   };
 };
 
-const fetchFeed = async (): Promise<FeedItem[]> => {
-  const dateVotes = new Date();
-  dateVotes.setDate(dateVotes.getDate() - 30);
-  const dateStrVotes = dateVotes.toISOString().split('T')[0];
+const stableNegativeId = (value: string): number => {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash * 33) ^ value.charCodeAt(i)) >>> 0;
+  }
+  return -(hash + 1);
+};
 
-  const dateLimit = new Date();
-  dateLimit.setDate(dateLimit.getDate() - 7);
-  const dateStr = dateLimit.toISOString().split('T')[0];
+const formatBrazilianDate = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString('pt-BR');
+};
+
+const brasiliaDateDaysAgo = (days: number) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+};
+
+const fetchFeed = async (): Promise<{ items: FeedItem[]; warnings: string[] }> => {
+  const dateStrVotes = brasiliaDateDaysAgo(30);
+  const dateStr = brasiliaDateDaysAgo(7);
 
   const [votesData, propsData, eventsData] = await Promise.all([
     fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/votacoes?ordem=DESC&ordenarPor=dataHoraRegistro&dataInicio=${dateStrVotes}&itens=15`),
@@ -643,21 +654,21 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     const propId = v.uriProposicaoObjeto?.split('/').pop();
     const insight = buildLegislativeInsight('vote', v.descricao);
     return {
-      id: parseInt(v.id, 10) || Math.floor(Date.now() + Math.random() * 1000),
+      id: stableNegativeId(String(v.id)),
       type: 'voto',
       title: `${v.siglaOrgao} ${v.uri ? v.uri.split('/').pop() : ''}`,
-      date: new Date(v.dataHoraRegistro).toLocaleDateString('pt-BR'),
-      description: formatText(v.descricao),
+      date: formatBrazilianDate(v.dataHoraRegistro),
+      description: cleanText(v.descricao),
       originalDescription: cleanOfficialText(v.descricao),
       summary: insight.summary,
       whyItMatters: insight.whyItMatters,
       nextStep: insight.nextStep,
-      status: 'Tramitação',
+      status: v.aprovacao === 1 ? 'Aprovado' : v.aprovacao === 0 ? 'Rejeitado' : undefined,
       sourceUrl: propId
         ? `https://www.camara.leg.br/propostas-legislativas/${propId}`
         : `https://www.camara.leg.br/busca-portal?contexto=votacoes&q=${encodeURIComponent(v.descricao)}`,
       category: insight.category,
-      candidateId: propId ? parseInt(propId, 10) : undefined,
+      propositionId: propId ? parseInt(propId, 10) : undefined,
       organ: v.siglaOrgao,
       approval: v.aprovacao,
       eventUrl: v.uriEvento,
@@ -669,10 +680,11 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     const insight = buildLegislativeInsight('proposition', p.ementa);
     return {
       id: p.id,
-      type: 'voto',
+      type: 'proposicao',
       title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
-      date: new Date(p.dataApresentacao || Date.now()).toLocaleDateString('pt-BR'),
-      description: formatText(p.ementa),
+      date: formatBrazilianDate(p.dataApresentacao),
+      description: cleanText(p.ementa),
+      propositionId: p.id,
       originalDescription: cleanOfficialText(p.ementa),
       summary: insight.summary,
       whyItMatters: insight.whyItMatters,
@@ -689,22 +701,31 @@ const fetchFeed = async (): Promise<FeedItem[]> => {
     .map(buildEventItem)
     .filter((item): item is FeedItem => Boolean(item));
 
-  return [...votes, ...propositions, ...events]
+  const warnings = [
+    votesData ? '' : 'camara_votes_unavailable',
+    propsData ? '' : 'camara_propositions_unavailable',
+    eventsData ? '' : 'camara_events_unavailable',
+  ].filter(Boolean);
+
+  const items = [...votes, ...propositions, ...events]
     .sort((a, b) => {
       const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')).getTime() : 0;
       const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')).getTime() : 0;
       return (b.priority || 0) - (a.priority || 0) || dateB - dateA || (b.id - a.id);
     })
     .slice(0, 30);
+
+  return { items, warnings };
 };
 
 export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap> => {
-  const [deputados, senadores, feedItems, partiesResult] = await Promise.all([
+  const [deputados, senadores, feedResult, partiesResult] = await Promise.all([
     fetchDeputados(),
     fetchSenadores(),
     fetchFeed(),
     fetchParties(),
   ]);
+  const feedItems = feedResult.items;
   const parties = partiesResult.parties;
   const partiesFallback = partiesResult.fallback;
   const generatedAt = new Date().toISOString();
@@ -713,6 +734,7 @@ export const buildLegislativeBootstrap = async (): Promise<LegislativeBootstrap>
     deputados.length === 0 ? 'camara_deputados_unavailable' : '',
     senadores.length === 0 ? 'senado_senadores_unavailable' : '',
     feedItems.length === 0 ? 'camara_feed_unavailable' : '',
+    ...(feedItems.length > 0 ? feedResult.warnings : []),
     articles.length === 0 ? 'education_articles_unavailable' : '',
     partiesFallback ? 'camara_parties_using_fallback' : '',
   ].filter(Boolean);

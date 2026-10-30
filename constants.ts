@@ -1,23 +1,8 @@
 
-import { Politician, QuizQuestion, FeedItem, Alert } from './types';
-
-// CONFIGURAÇÃO DE VOTAÇÕES REAIS
-export const REAL_VOTE_CONFIG: Record<number, string> = {
-  1: "2256735-89", 
-  2: "2316938-45", 
-  3: "2358156-12", 
-  4: "2192459-33"  
-};
+import { Politician } from './types';
 
 export const ESTADOS_BRASIL = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
-
-export const QUIZ_QUESTIONS: QuizQuestion[] = [
-  { id: 1, tema: "Regulação das Redes", peso: 2, description: "Votação sobre o PL das Fake News (PL 2630/20)." },
-  { id: 2, tema: "Fim da 'Saidinha'", peso: 3, description: "Votação para restringir a saída temporária de presos." },
-  { id: 3, tema: "Reforma Tributária", peso: 1, description: "Votação da PEC 45/2019 (Simplificação de Impostos)." },
-  { id: 4, tema: "Privatização Eletrobras", peso: 2, description: "Votação da MP da desestatização da Eletrobras." }
 ];
 
 export const EDUCATION_CAROUSEL = [
@@ -98,44 +83,3 @@ export const PARTY_METADATA: Record<string, { nome: string, logo: string, ideolo
 };
 
 export const POLITICIANS_DB: Politician[] = [];
-
-// Fallback data if API fails to load
-export const FEED_ITEMS: FeedItem[] = [
-  {
-    id: 1001,
-    type: 'voto',
-    title: 'PL 2630/2020 - Lei Brasileira de Liberdade, Responsabilidade e Transparência na Internet',
-    date: '15/10/2023',
-    description: 'Institui a Lei Brasileira de Liberdade, Responsabilidade e Transparência na Internet. Estabelece normas, diretrizes e mecanismos de transparência para provedores de redes sociais.',
-    status: 'Tramitação',
-    sourceUrl: 'https://www.camara.leg.br/propostas-legislativas/2256735'
-  },
-  {
-    id: 1002,
-    type: 'despesa',
-    title: 'Gasto de Gabinete - Passagens Aéreas',
-    date: '14/10/2023',
-    amount: 'R$ 4.500,00',
-    provider: 'LATAM AIRLINES',
-    description: 'Emissão de bilhetes aéreos para deslocamento Brasília/São Paulo em missão oficial.',
-  },
-  {
-    id: 1003,
-    type: 'educacao',
-    title: 'Entenda: O que é uma PEC?',
-    date: '12/10/2023',
-    description: 'Proposta de Emenda à Constituição é o instrumento legislativo utilizado para alterar o texto constitucional. Exige quórum qualificado de 3/5 dos votos.',
-    content: 'A Constituição é a lei maior do país. Mudá-la não é fácil. Uma PEC precisa ser aprovada em dois turnos na Câmara e no Senado.'
-  },
-  {
-    id: 1004,
-    type: 'voto',
-    title: 'Reforma Tributária (PEC 45/2019)',
-    date: '10/10/2023',
-    description: 'Altera o Sistema Tributário Nacional. Unifica impostos sobre consumo (IPI, PIS, Cofins, ICMS, ISS) em um IVA Dual.',
-    status: 'Aprovado',
-    sourceUrl: 'https://www.camara.leg.br/propostas-legislativas/2192459'
-  }
-];
-
-export const ALERTS_DATA: Alert[] = [];

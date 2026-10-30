@@ -184,7 +184,7 @@ export interface Remuneration {
 
 export interface Speech {
   date: string;
-  summary: string;
+  summary?: string;
   transcription?: string; // NOVO: Texto completo
   type: string;
   phase?: string; // NOVO: Pequeno Expediente, Grande Expediente, Ordem do Dia
@@ -287,37 +287,16 @@ export interface Politician {
   hasApiIntegration: boolean; // Flag para indicar se os dados são reais (API) ou apenas informativos
 }
 
-export interface QuizVoteStats {
-  totalYes: number;
-  totalNo: number;
-  totalAbstain: number;
-  partiesYes: string[]; // Top 3 partidos que votaram SIM
-  partiesNo: string[]; // Top 3 partidos que votaram NÃO
-  approvalRate: number; // Porcentagem de aprovação
-}
-
-export interface QuizQuestion {
-  id: number;
-  tema: string;
-  peso: number;
-  description: string; // Usado como Pergunta final
-  context?: string; // NOVO: Contexto do problema
-  proposal?: string; // NOVO: O que está sendo proposto
-  realVoteId?: string;
-  sourceUrl?: string; 
-  originalDescription?: string;
-  stats?: QuizVoteStats; // NOVO: Dados agregados da votação
-}
-
 export type FeedCategory = 'education' | 'health' | 'economy' | 'security' | 'work' | 'environment' | 'justice' | 'activity';
 
 export interface FeedItem {
   id: number;
-  type: 'voto' | 'despesa' | 'educacao' | 'evento';
+  type: 'voto' | 'proposicao' | 'despesa' | 'educacao' | 'evento';
   title: string;
   date?: string;
   action?: string;
-  candidateId?: number;
+  politicianId?: number;
+  propositionId?: number;
   description?: string;
   content?: string;
   amount?: string;
@@ -362,23 +341,15 @@ export interface FeedItem {
   };
 }
 
-export interface Alert {
-  id: number;
-  type: 'critical' | 'warning' | 'info';
-  title: string;
-  msg: string;
-  time: string;
-}
-
 export interface LegislativeEvent {
   id: number;
   startTime: string;
   endTime?: string;
   title: string; // descriptionType
   description: string;
-  location: string;
+  location?: string;
   status: string; // Em andamento, Encerrada, Convocada
-  type: string;
+  type?: string;
   sourceUrl?: string;
   agendaDocumentUrl?: string;
   organs?: string[];
@@ -406,6 +377,7 @@ export interface ChatMessage {
   text?: string;
   image?: string; // Base64 url
   isThinking?: boolean;
+  isError?: boolean;
   groundingMetadata?: {
     search?: { uri: string; title: string }[];
     maps?: { uri: string; title: string; source: string }[];

@@ -1,38 +1,26 @@
-# Copilot instructions for Papo-Reto
+# Instruções para o Copilot no Papo-Reto
 
-## Visão geral e arquitetura
-- SPA em React + Vite (sem roteador): a navegação é controlada por estado no AppContext e decisões condicionais em App.tsx.
-- Fluxo de dados principal: AppProvider → `useInitialData()` → `services/camaraApi.ts` (API da Câmara + cache) e `services/ai.ts` (conteúdo educacional/IA) → views/components.
-- Tipos centrais ficam em `types.ts` e são usados em todo o app (ex.: `Politician`, `FeedItem`, `EducationalArticle`).
+Veja também `CLAUDE.md` na raiz (regras do produto e checklist de PR).
 
-## Estrutura e padrões do projeto
-- Estado global e ações ficam em `contexts/AppContext.tsx`. A UI de tema/acessibilidade (dark mode, alto contraste, zoom) é aplicada via `document.documentElement`.
-- Carregamento inicial usa “Big Bang load” em `hooks/useCamaraData.ts` com `Promise.all` e depois enriquecimento progressivo de perfis.
-- `services/camaraApi.ts` usa cache via `localStorage` com prefixo `paporeto_cache_v7_complete_` e TTL (15min dinâmico / 24h estático). Reaproveite `fetchWithCache`.
-- `services/ai.ts` tem cache próprio e usa `process.env.API_KEY` (definido no Vite). Em caso de ausência de chave, ativa fallback.
-- Conteúdo didático e categorização de feed são feitos em `utils/legislativeTranslator.tsx` (ex.: `detectCategory`, `getDidacticContext`).
-- `constants.ts` contém fallback data e metadados de partidos (logos/ideologia) usados quando a API falha.
+## Visão geral
+- SPA React + Vite hospedada na Vercel, sem roteador: a navegação é estado no `contexts/AppContext.tsx` e a escolha de tela fica em `App.tsx`.
+- Dados legislativos vêm da Câmara (`dadosabertos.camara.leg.br`) e do Senado (`legis.senado.leg.br`), sempre por proxy próprio (BFF) em `api/`.
 
-## Integrações e variáveis de ambiente
-- API da Câmara: `https://dadosabertos.camara.leg.br/api/v2` em `services/camaraApi.ts`.
-- IA (Gemini): Vite injeta `process.env.API_KEY` em `vite.config.ts`. O README menciona `GEMINI_API_KEY`; siga o valor realmente lido no código.
+## Fluxo de dados
+- `AppProvider` chama `useInitialData()` (`hooks/useCamaraData.ts`), que busca `/api/bootstrap` e depois enriquece perfis.
+- `services/camaraApi.ts` acessa as APIs oficiais via `/api/camara` (ver `utils/legislativeApiProxy.ts`) e lê/grava perfis em `/api/profile-cache`.
+- Cache local em `localStorage` com prefixo `paporeto_cache_v8_official_` (constante `CACHE_PREFIX` em `services/camaraApi.ts`). Se mudar o formato dos dados, suba a versão do prefixo.
+- IA (Gemini): `services/ai.ts` chama `POST /api/ai`. A chave (`API_KEY` ou `GOOGLE_API_KEY`) é lida só no servidor, em `api/ai.ts`. Nunca coloque segredo no front.
+- Backend (funções Vercel): `api/ai.ts`, `api/bootstrap.ts`, `api/camara.ts`, `api/profile-cache.ts`, `api/health.ts`, `api/cron/refresh-legislative-data.ts` e helpers em `api/lib/`.
+- Regras de domínio e classificação: `domain/legislative/`; tradução didática: `utils/legislativeTranslator.tsx`.
 
-## Conveções específicas
-- Sem React Router: não adicione rotas; use `AppContext` e switches em App.tsx.
-- Preferir computar categorias semânticas na camada de dados (API/serviços) e usar helpers visuais na renderização.
-- Os componentes exibem acessibilidade (alto contraste) via classes no `<html>` e estilos globais injetados em `App.tsx`.
+## Convenções
+- Não adicione React Router; use o AppContext.
+- Nunca invente dado: o que falta na fonte aparece como ausente, com link para a fonte oficial.
+- Textos em pt-BR simples; acessibilidade WCAG AA (contraste, foco, teclado).
+- Variáveis de ambiente: ver `docs/operations/vercel-environment.md`.
 
-## Comandos de desenvolvimento
-- `npm install`
-- `npm run dev` (Vite em 3000)
-- `npm run build` (TypeScript + Vite build)
-- `npm run preview`
-
-## Arquivos-chave para referência
-- App root: `App.tsx`
-- Estado global: `contexts/AppContext.tsx`
-- Carregamento inicial: `hooks/useCamaraData.ts`
-- API/Caches: `services/camaraApi.ts`
-- IA/Conteúdo: `services/ai.ts`
-- Tradução/Glossário: `utils/legislativeTranslator.tsx`
-- Tipos e mocks: `types.ts`, `constants.ts`
+## Comandos
+- `npm run dev` (porta 3000), `npm run build` (tsc + vite), `npm run preview`
+- `npm test` (Vitest, testes em `tests/`), `npm run lint`
+- `npm run smoke:prod` (verifica produção), `npm run readme:widgets` e `npm run readme:preview` (assets do README, em `scripts/`)

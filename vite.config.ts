@@ -1,9 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   const cwd = process.cwd();
+  const apiProxyTarget = loadEnv(mode, cwd, '').DEV_API_PROXY_TARGET;
   return {
     plugins: [react()],
     resolve: {
@@ -13,6 +14,9 @@ export default defineConfig(() => {
     },
     server: {
       port: 3000,
+      proxy: apiProxyTarget
+        ? { '/api': { target: apiProxyTarget, changeOrigin: true, secure: true } }
+        : undefined,
     },
     build: {
       outDir: 'dist',
@@ -21,7 +25,7 @@ export default defineConfig(() => {
           output: {
             manualChunks: {
               react: ['react', 'react-dom'],
-              charts: ['react-window', 'react-virtualized-auto-sizer'],
+              'virtual-list': ['react-window', 'react-virtualized-auto-sizer'],
               visuals: ['lucide-react', 'html2canvas'],
             }
           }

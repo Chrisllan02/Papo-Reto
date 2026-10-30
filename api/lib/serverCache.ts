@@ -5,6 +5,8 @@ type CacheEnvelope<T> = {
   timestamp: number;
 };
 
+export const BOOTSTRAP_CACHE_KEY = 'legislative-bootstrap-v2';
+
 const memoryCache = new Map<string, string>();
 
 const pathnameForKey = (key: string) => `server-cache/${key}.json`;
@@ -36,7 +38,7 @@ export const readServerCache = async <T>(key: string, ttlMs: number): Promise<T 
     const { blobs } = await list({ prefix: pathname, limit: 1 });
     const blob = blobs.find((item) => item.pathname === pathname);
     if (!blob) return null;
-    const response = await fetch(blob.url);
+    const response = await fetch(blob.url, { signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return null;
     const raw = await response.text();
     memoryCache.set(pathname, raw);
@@ -57,6 +59,8 @@ export const writeServerCache = async <T>(key: string, data: T) => {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
   });
 
   return { persisted: true };
