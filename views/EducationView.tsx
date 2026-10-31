@@ -49,7 +49,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
           const parts = paragraph.split(/(\*\*.*?\*\*)/g);
           
           return (
-              <p key={pIndex} className="text-gray-700 dark:text-gray-300 font-medium leading-loose text-lg md:text-xl mb-6 last:mb-0 text-justify hyphens-auto">
+              <p key={pIndex} className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed text-lg mb-6 last:mb-0">
                   {parts.map((part, i) => {
                       if (part.startsWith('**') && part.endsWith('**')) {
                           return (
@@ -75,7 +75,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
         
         <div className="px-4 md:px-8 pt-4 md:pt-6">
             {/* Hero Header */}
-            <div className={`relative min-h-[300px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl p-6 md:p-12 flex flex-col justify-between bg-midnight ${articleTheme.bg}`}>
+            <div className={`relative min-h-[300px] rounded-2xl overflow-hidden p-6 md:p-12 flex flex-col justify-between bg-midnight ${articleTheme.bg}`}>
                 {/* Texture */}
                 <div className="absolute inset-0 opacity-10 texture-overlay mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-black/10" aria-hidden="true"></div>
@@ -86,21 +86,21 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                         type="button"
                         onClick={onBack}
                         aria-label="Voltar para o Guia Cidadão"
-                        className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors focus-visible:ring-4 focus-visible:ring-white/50"
+                        className="w-11 h-11 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-colors focus-visible:ring-4 focus-visible:ring-white/50 active:scale-[0.98]"
                     >
                         <ChevronLeft size={24} aria-hidden="true" />
                     </button>
-                    <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-black uppercase tracking-widest border border-white/20 drop-shadow-md">
+                    <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-semibold border border-white/20">
                         {article.topic}
                     </div>
                 </div>
 
                 {/* Title */}
                 <div className="relative z-10 mt-8">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white mb-6 border border-white/30 shadow-lg">
-                        {renderIcon(article.icon, 32, "drop-shadow-md")}
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white mb-6 border border-white/30">
+                        {renderIcon(article.icon, 32, "")}
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md mb-2">
+                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-2 break-words">
                         {article.title}
                     </h1>
                 </div>
@@ -109,7 +109,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
 
         {/* Content Body */}
         <div className="px-4 md:px-12 py-10 max-w-4xl mx-auto -mt-12 relative z-20">
-            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-gray-100 dark:border-gray-800">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-10 border border-gray-200 dark:border-gray-800">
                 
                 <div className="prose dark:prose-invert prose-lg max-w-none mb-10">
                     {renderRichText(article.text)}
@@ -117,22 +117,22 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                     {article.legislation && (
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-3xl border border-blue-100 dark:border-blue-900/30">
-                            <div className="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-black uppercase text-xs tracking-widest">
+                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex items-center gap-2 mb-3 text-blue-700 dark:text-blue-300 font-bold text-sm">
                                 <Scale size={16} aria-hidden="true" /> Legislação
                             </div>
-                            <p className="text-blue-900 dark:text-blue-200 font-bold text-sm leading-relaxed">
+                            <p className="text-blue-900 dark:text-blue-100 font-medium text-sm leading-relaxed">
                                 {article.legislation}
                             </p>
                         </div>
                     )}
                     
                     {article.impact && (
-                        <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-3xl border border-orange-100 dark:border-orange-900/30">
-                            <div className="flex items-center gap-2 mb-3 text-orange-600 dark:text-orange-400 font-black uppercase text-xs tracking-widest">
+                        <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-2xl border border-orange-100 dark:border-orange-900/30">
+                            <div className="flex items-center gap-2 mb-3 text-orange-800 dark:text-orange-300 font-bold text-sm">
                                 <AlertCircle size={16} aria-hidden="true" /> Impacto na sua vida
                             </div>
-                            <p className="text-orange-900 dark:text-orange-200 font-bold text-sm leading-relaxed">
+                            <p className="text-orange-900 dark:text-orange-100 font-medium text-sm leading-relaxed">
                                 {article.impact}
                             </p>
                         </div>
@@ -140,12 +140,12 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                 </div>
 
                 {(article.sourceUrl || article.generatedAt) && (
-                    <div className="mb-12 rounded-3xl border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/10 p-6">
-                        <div className="flex items-center gap-2 mb-3 text-green-700 dark:text-green-300 font-black uppercase text-xs tracking-widest">
+                    <div className="mb-12 rounded-2xl border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/10 p-6">
+                        <div className="flex items-center gap-2 mb-3 text-green-800 dark:text-green-300 font-bold text-sm">
                             <RefreshCw size={16} aria-hidden="true" />
                             Conteúdo atualizado automaticamente todos os dias
                         </div>
-                        <p className="text-sm font-bold leading-relaxed text-green-900 dark:text-green-100 mb-4">
+                        <p className="text-sm font-medium leading-relaxed text-green-900 dark:text-green-100 mb-4">
                             Este material foi montado automaticamente a partir de movimentações legislativas recentes e pode mudar conforme novas pautas entram no Congresso.
                         </p>
                         {safeHttpUrl(article.sourceUrl) && (
@@ -153,7 +153,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                                 href={safeHttpUrl(article.sourceUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-2xl bg-white/70 dark:bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-green-800 dark:text-green-100 border border-green-100 dark:border-green-800 hover:bg-white dark:hover:bg-white/15 transition-colors"
+                                className="inline-flex items-center gap-2 min-h-[44px] text-sm font-semibold text-green-800 dark:text-green-100 underline underline-offset-4 hover:text-green-900 dark:hover:text-white focus-visible:ring-4 focus-visible:ring-blue-500/40 rounded-lg transition-colors"
                             >
                                 Fonte oficial
                                 <ExternalLink size={13} aria-hidden="true" />
@@ -165,25 +165,25 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                 {/* Next Suggestion - INCREASED PADDING BOTTOM FOR MOBILE */}
                 {nextItem && (
                     <div className="pt-8 border-t border-gray-200 dark:border-gray-800 pb-48 md:pb-0">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
-                            {nextItem.topic === article.topic ? 'Continue no tema' : 'Próximo Tópico'}
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-4">
+                            {nextItem.topic === article.topic ? 'Continue no tema' : 'Próximo tópico'}
                         </p>
                         <button 
                             type="button"
                             onClick={() => onSelectArticle(nextItem.id)}
-                            className={`w-full group ${nextTheme?.bg || 'bg-gradient-to-r from-nuit to-midnight'} p-1 rounded-[2.5rem] active:scale-[0.98] transition-transform cursor-pointer shadow-sm text-left focus-visible:ring-4 focus-visible:ring-blue-500/40`}
+                            className={`w-full group ${nextTheme?.bg || 'bg-gradient-to-r from-nuit to-midnight'} p-1 rounded-2xl active:scale-[0.98] transition-transform cursor-pointer text-left focus-visible:ring-4 focus-visible:ring-blue-500/40`}
                         >
-                            <div className="glass-panel rounded-[2.3rem] p-5 flex items-center justify-between">
+                            <div className="glass-panel rounded-xl p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextTheme?.text || 'text-nuit'}`}>
                                         {renderIcon(nextItem.icon, 20, "opacity-80")}
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Próximo</p>
-                                        <h4 className="font-bold text-gray-900 dark:text-white text-base md:text-lg line-clamp-1">{nextItem.title}</h4>
+                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Próximo</p>
+                                        <h4 className="font-bold text-gray-900 dark:text-white text-base md:text-lg line-clamp-2">{nextItem.title}</h4>
                                     </div>
                                 </div>
-                                <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
+                                <div className="w-11 h-11 shrink-0 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-black group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
                                     <ArrowRight size={18} aria-hidden="true" />
                                 </div>
                             </div>
