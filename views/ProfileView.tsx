@@ -36,8 +36,8 @@ const getFrontCategoryStyle = (title: string) => {
     if (t.match(/econo|comércio|indústria|serviços|tribut|invest/)) return { name: 'Economia', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-900/50', stroke: '#3b82f6' };
     if (t.match(/educ|ensino|escola|profess/)) return { name: 'Educação', bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-900/50', stroke: '#eab308' };
     if (t.match(/seguran|polícia|armas|violência/)) return { name: 'Segurança', bg: 'bg-gray-200 dark:bg-gray-700/30', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600', stroke: '#4b5563' };
-    if (t.match(/ambien|verde|clima|sustent|florest/)) return { name: 'Meio Ambiente', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', stroke: '#10b981' };
-    if (t.match(/mulher|idoso|criança|humanos|minoria|racial/)) return { name: 'Direitos Humanos', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', stroke: '#a855f7' };
+    if (t.match(/ambien|verde|clima|sustent|florest/)) return { name: 'Meio ambiente', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', stroke: '#10b981' };
+    if (t.match(/mulher|idoso|criança|humanos|minoria|racial/)) return { name: 'Direitos humanos', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', stroke: '#a855f7' };
     if (t.match(/digit|tecno|inov|internet|cyber/)) return { name: 'Tecnologia', bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-900/50', stroke: '#6366f1' };
     if (t.match(/transp|logíst|energia|obras|urbano/)) return { name: 'Infraestrutura', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-900/50', stroke: '#f97316' };
     
@@ -88,32 +88,32 @@ const MandateCountdown: React.FC<MandateCountdownProps> = ({ end, percentage, st
 
     const isHero = variant === 'hero';
     const units = [
-        { label: 'DIAS', value: timeLeft.days },
-        { label: 'HRS', value: timeLeft.hours },
-        { label: 'MIN', value: timeLeft.minutes },
-        { label: 'SEG', value: timeLeft.seconds },
+        { label: 'Dias', value: timeLeft.days },
+        { label: 'Horas', value: timeLeft.hours },
+        { label: 'Min', value: timeLeft.minutes },
+        { label: 'Seg', value: timeLeft.seconds },
     ];
 
     return (
         <>
             <div className="flex justify-between items-center mb-4">
-                <p className={`text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 ${isHero ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'}`}><Clock size={12} className="text-orange-500" aria-hidden="true" /> Contagem Regressiva</p>
-                <span className={`text-xs font-black px-2 py-1 rounded-lg border ${isHero ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' : 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20'}`}>{percentage}%</span>
+                <p className={`text-xs font-semibold flex items-center gap-1.5 ${isHero ? 'text-white/75' : 'text-gray-600 dark:text-gray-400'}`}><Clock size={12} className="text-orange-500" aria-hidden="true" /> Contagem regressiva</p>
+                <span className={`text-xs font-semibold tabular-nums ${isHero ? 'text-orange-300' : 'text-orange-700 dark:text-orange-300'}`}>{percentage}% do mandato</span>
             </div>
             <div role="timer" className="flex justify-between items-center gap-2 mb-4 text-center">
                 {units.map((time) => (
                     <div key={time.label} className={isHero
-                        ? 'flex-1 bg-white/10 rounded-xl p-2 border border-white/5 backdrop-blur-sm shadow-inner group/timer hover:bg-white/15 transition-colors'
-                        : 'flex-1 bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-100 dark:border-white/5 backdrop-blur-sm shadow-inner'}>
+                        ? 'flex-1 bg-white/10 rounded-xl p-2 border border-white/10'
+                        : 'flex-1 bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-200 dark:border-white/10'}>
                         <span className={isHero
-                            ? 'block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none group-hover/timer:scale-110 transition-transform'
+                            ? 'block text-xl md:text-2xl font-black text-white tabular-nums tracking-tighter leading-none'
                             : 'block text-xl font-black text-gray-900 dark:text-white tabular-nums tracking-tighter leading-none'}>{String(time.value).padStart(2, '0')}</span>
-                        <span className={`text-[7px] font-bold uppercase tracking-wider ${isHero ? 'text-white/50' : 'text-gray-400 dark:text-white/40'}`}>{time.label}</span>
+                        <span className={`text-xs font-medium ${isHero ? 'text-white/75' : 'text-gray-600 dark:text-white/75'}`}>{time.label}</span>
                     </div>
                 ))}
             </div>
-            <div className={`relative w-full h-2 rounded-full overflow-hidden mb-2 ${isHero ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`}><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div>
-            <div className={`flex justify-between text-[9px] font-bold uppercase tracking-widest ${isHero ? 'text-white/40' : 'text-gray-400 dark:text-white/30'}`}><span>Início: {startStr}</span><span>Fim: {endStr}</span></div>
+            <div className={`relative w-full h-2 rounded-full overflow-hidden mb-2 ${isHero ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`}><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div>
+            <div className={`flex justify-between text-xs font-medium ${isHero ? 'text-white/75' : 'text-gray-600 dark:text-white/75'}`}><span>Início: {startStr}</span><span>Fim: {endStr}</span></div>
         </>
     );
 };
@@ -133,8 +133,8 @@ const QuickMetric: React.FC<QuickMetricProps> = ({ icon: Icon, label, value, hin
                 <Icon size={18} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-subtle">{label}</p>
-                <p className="text-xl md:text-2xl font-black text-midnight dark:text-white tracking-tight truncate">{value}</p>
+                <p className="text-xs font-semibold text-subtle">{label}</p>
+                <p className={`${/\d/.test(String(value)) ? 'text-xl md:text-2xl' : 'text-base md:text-lg'} font-black text-midnight dark:text-white tracking-tight leading-tight`}>{value}</p>
                 <p className="text-xs font-medium text-muted leading-snug mt-1">{hint}</p>
             </div>
         </div>
@@ -164,19 +164,18 @@ const DnaDonutChart: React.FC<{ categories: FrontCategory[]; total: number }> = 
                     const rotation = (startPercents[i] / 100) * 360;
                     const offset = 0; 
                     return (
-                        <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out drop-shadow-sm" />
+                        <circle key={cat.name} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" stroke={cat.strokeColor} strokeDasharray={strokeDasharray} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(${rotation} ${center} ${center})`} className="transition-all duration-1000 ease-out" />
                     );
                 })}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{total}</span>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Frentes</span>
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Frentes</span>
             </div>
         </div>
     );
 };
 
-// ... (ProfileView component with new integrated sections) ...
 const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, onBack }) => {
   const [profileTab, setProfileTab] = useState<'activities' | 'money'>('activities');
   const [activityFilter, setActivityFilter] = useState<'all' | 'propositions' | 'reported' | 'votes' | 'speeches'>('all');
@@ -189,9 +188,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   const { candidate: enrichedCandidate, isLoadingDetails, loadingStatus } = usePoliticianProfile(initialCandidate);
   const candidate = enrichedCandidate || initialCandidate;
   const [selectedYear, setSelectedYear] = useState<number | 'total'>('total');
-
-  // ... (Hooks for swipe, date parsing, timer, front categories calculation - identical to original) ...
-  // Keeping logic intact, focusing on render updates.
 
   const handleTouchStart = (e: React.TouchEvent) => {
       const threshold = Math.min(window.innerWidth * 0.1, 35);
@@ -231,7 +227,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   };
 
   useEffect(() => {
-      // Mantém "Mandato Completo" como padrão ao abrir o perfil.
+      // Mantém "Mandato completo" como padrão ao abrir o perfil.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- volta para o mandato completo ao trocar de parlamentar
       setSelectedYear('total');
   }, [candidate.id]);
@@ -349,7 +345,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
   }, [candidate, displayStats]);
 
   const getStatusDisplay = () => {
-      let statusText = "Em Exercício";
+      let statusText = "Em exercício";
       let statusColor = "bg-green-500/20 text-white"; 
       let dotColor = "bg-green-400";
       if (candidate.situation) {
@@ -357,7 +353,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           if (sit.includes('licença')) {
               statusText = "Licenciado";
               if (candidate.statusDescription) {
-                  statusText = candidate.statusDescription.length > 30 ? "Licença (" + candidate.statusDescription.substring(0, 25) + "...)" : candidate.statusDescription;
+                  statusText = candidate.statusDescription;
               }
               statusColor = "bg-yellow-500/20 text-yellow-50";
               dotColor = "bg-yellow-400";
@@ -366,7 +362,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               statusColor = "bg-orange-500/20 text-orange-50";
               dotColor = "bg-orange-400";
           } else if (sit.includes('exercício')) {
-              statusText = "Em Exercício";
+              statusText = "Em exercício";
               statusColor = "bg-white/10 text-white";
               dotColor = "bg-green-400";
           } else {
@@ -394,49 +390,49 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
         style={translateX !== 0 ? { transform: `translateX(${translateX}px)`, transition: 'none' } : { transition: 'transform 0.3s ease-out' }}
     >
       {isLoadingDetails && (
-          <div role="status" className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
+          <div role="status" className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/80 dark:bg-white/90 text-white dark:text-black px-6 py-3 rounded-full shadow-lg backdrop-blur-xl border border-white/10 flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-500">
               <Loader2 size={18} className="animate-spin shrink-0" aria-hidden="true" />
-              <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">{loadingStatus}</span>
+              <span className="text-xs font-semibold whitespace-nowrap">{loadingStatus}</span>
           </div>
       )}
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto pt-6 px-safe">
-          <div className="relative w-full overflow-hidden rounded-[2.5rem] md:rounded-[4rem] shadow-2xl bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end group/header">
+          <div className="relative w-full overflow-hidden rounded-2xl shadow-lg bg-gray-900 min-h-[240px] md:min-h-[280px] flex items-end">
               <div className="absolute inset-0 bg-green-900"></div>
-              <div className="absolute inset-0 opacity-50 mix-blend-overlay" aria-hidden="true"><svg viewBox="0 0 20 14" preserveAspectRatio="xMidYMid slice" className="w-full h-full scale-110 brightness-75"><rect width="20" height="14" fill="#009C3B" /><path d="M10 1.7 18.3 7 10 12.3 1.7 7z" fill="#FFDF00" /><circle cx="10" cy="7" r="3.5" fill="#002776" /></svg></div>
+              <div className="absolute inset-0 opacity-50 mix-blend-overlay" aria-hidden="true"><svg viewBox="0 0 20 14" preserveAspectRatio="xMidYMid slice" className="w-full h-full brightness-75"><rect width="20" height="14" fill="#009C3B" /><path d="M10 1.7 18.3 7 10 12.3 1.7 7z" fill="#FFDF00" /><circle cx="10" cy="7" r="3.5" fill="#002776" /></svg></div>
               <div className="absolute inset-0 opacity-20 texture-overlay mix-blend-overlay z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
               <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
-                <button type="button" onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white backdrop-blur-md active:scale-90 border border-white/10 shadow-lg focus-visible:ring-4 focus-visible:ring-white/50"><ChevronLeft size={24} aria-hidden="true" /></button>
+                <button type="button" onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white backdrop-blur-md active:scale-[0.98] border border-white/10 focus-visible:ring-4 focus-visible:ring-white/50"><ChevronLeft size={24} aria-hidden="true" /></button>
               </div>
               <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">
                   <div className="shrink-0 relative">
-                      <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-800"><img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} /></div>
+                      <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-lg overflow-hidden bg-gray-800"><img src={candidate.photo} className="w-full h-full object-cover" alt={`Foto de ${candidate.name}`} /></div>
                   </div>
                   <div className="flex-1 text-center md:text-left text-white mb-2 min-w-0">
                       <div className="flex flex-wrap justify-center md:justify-start gap-1.5 md:gap-2 mb-2 md:mb-3">
-                          <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-xs font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.party}</span>
-                          <span className="bg-white/10 backdrop-blur-md px-3 py-0.5 md:px-4 md:py-1 rounded-full text-white text-xs font-black uppercase border border-white/10 tracking-widest shadow-sm">{candidate.state}</span>
+                          <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-semibold uppercase border border-white/10">{candidate.party}</span>
+                          <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-semibold uppercase border border-white/10">{candidate.state}</span>
                       </div>
-                      <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none drop-shadow-xl break-words">{candidate.name}</h1>
-                      <p className="text-white/90 text-xs md:text-sm font-bold uppercase tracking-widest mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
+                      <h1 className="text-2xl md:text-6xl font-black tracking-tighter leading-none break-words">{candidate.name}</h1>
+                      <p className="text-white/90 text-sm font-medium mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
                         <span>{candidate.role}</span>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/10 backdrop-blur-md shadow-sm ${statusDisplay.bg}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusDisplay.dot} animate-pulse`}></span>
-                            {statusDisplay.text}
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/10 max-w-full ${statusDisplay.bg}`} title={statusDisplay.text}>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDisplay.dot}`}></span>
+                            <span className="line-clamp-2">{statusDisplay.text}</span>
                         </span>
                       </p>
                   </div>
-                  <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl min-w-[340px] group/mandate hover:bg-black/50 transition-colors">
-                      {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="hero" /> : <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Mandato: datas não informadas</p>}
+                  <div className="hidden lg:block absolute right-12 bottom-12 bg-black/40 backdrop-blur-2xl rounded-2xl p-6 border border-white/10 shadow-lg min-w-[340px]">
+                      {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="hero" /> : <p className="text-xs font-bold text-white/80">Mandato: datas não informadas</p>}
                   </div>
               </div>
           </div>
       </div>
 
       <div className="px-4 md:px-12 max-w-[1800px] mx-auto mt-6 relative z-20 space-y-6 px-safe">
-          <div className="lg:hidden mb-6 glass-panel rounded-[2.5rem] p-6">
-                {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="card" /> : <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Mandato: datas não informadas</p>}
+          <div className="lg:hidden mb-6 glass-panel rounded-2xl p-6">
+                {hasMandateDates ? <MandateCountdown end={candidate.mandate.end} percentage={mandateInfo.percentage} startStr={mandateInfo.startStr} endStr={mandateInfo.endStr} variant="card" /> : <p className="text-xs font-bold text-gray-500 dark:text-gray-400">Mandato: datas não informadas</p>}
           </div>
 
           <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4" aria-label="Resumo do parlamentar">
@@ -476,49 +472,48 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
           </div>
 
           <div className="min-w-0">
-              <div className="sticky top-0 z-40 glass-surface p-1.5 rounded-2xl md:rounded-full shadow-xl overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
+              <div className="sticky top-0 z-40 glass-surface p-1.5 rounded-2xl shadow-sm overflow-x-auto scrollbar-hide flex gap-1 mb-8 px-safe" role="tablist" aria-label="Detalhes do mandato">
                  {(['activities', 'money'] as const).map(tab => (
-                     <button key={tab} type="button" id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 py-3 md:py-3.5 rounded-xl md:rounded-full text-xs md:text-sm font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-blue-500 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
-                        {tab === 'money' ? 'Custos e Salário' : 'Atuação e Agenda'}
+                     <button key={tab} type="button" id={`tab-${tab}`} role="tab" aria-selected={profileTab === tab} aria-controls={`panel-${tab}`} onClick={() => setProfileTab(tab)} className={`px-6 md:px-10 min-h-[44px] rounded-xl text-sm font-semibold transition-colors whitespace-nowrap flex-1 ${profileTab === tab ? 'bg-blue-600 text-white' : 'text-blue-700 dark:text-blue-300 hover:bg-gray-100/50 dark:hover:bg-white/10'}`}>
+                        {tab === 'money' ? 'Custos e salário' : 'Atuação e agenda'}
                      </button>
                  ))}
               </div>
               
               <div className="space-y-6 md:space-y-10 pb-24 md:pb-12">
-                  <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="rounded-3xl focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                  <div id={`panel-${profileTab}`} role="tabpanel" aria-labelledby={`tab-${profileTab}`} tabIndex={0} className="rounded-2xl focus-visible:ring-4 focus-visible:ring-blue-500/40">
                     {profileTab === 'activities' && (
                         <div>
-                            {/* --- AGENDA (NOVO WIDGET) --- */}
                             {candidate.agenda && candidate.agenda.length > 0 && <AgendaWidget agenda={candidate.agenda} />}
 
                             {candidate.votes && Object.keys(candidate.votes).length > 0 && <VotesSummaryWidget votes={candidate.votes} />}
 
                             {(activityFilter === 'all' || activityFilter === 'speeches') && candidate.speeches && candidate.speeches.length > 0 && <WordCloudWidget speeches={candidate.speeches} />}
 
-                            <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 animate-in fade-in mb-8">
-                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Flag size={20} className="text-blue-500"/> Frentes Parlamentares</h3>
+                            <div className="glass-panel rounded-2xl p-6 md:p-10 animate-in fade-in mb-8">
+                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Flag size={20} className="text-blue-500"/> Frentes parlamentares</h3>
                                 {isLoadingDetails ? <Skeleton className="h-20 w-full rounded-2xl" /> : (candidate.fronts && candidate.fronts.length > 0 ? (
                                     <div className="flex flex-col lg:flex-row gap-10 items-start">
-                                        <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-[3rem] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
+                                        <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-2xl border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
                                             <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-2 mb-6"><div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl"><PieChart size={18} /></div><h4 className="text-sm font-black uppercase text-gray-700 dark:text-gray-200 tracking-wide">DNA de Interesses</h4></div>
+                                                <div className="flex items-center gap-2 mb-6"><div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl"><PieChart size={18} /></div><h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">DNA de interesses</h4></div>
                                                 <DnaDonutChart categories={frontCategories} total={candidate.fronts?.length || 0} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
                                                 {frontCategories.slice(0, 4).map((cat) => (
-                                                    <div key={cat.name} className={`p-4 rounded-2xl border ${cat.bg} ${cat.border} flex flex-col items-center justify-center min-w-[100px]`}><span className={`text-2xl font-black ${cat.text}`}>{cat.count}</span><span className={`text-[9px] font-bold uppercase tracking-wider opacity-70 ${cat.text}`}>{cat.name}</span></div>
+                                                    <div key={cat.name} className={`p-4 rounded-2xl border ${cat.bg} ${cat.border} flex flex-col items-center justify-center min-w-[100px]`}><span className={`text-2xl font-black ${cat.text}`}>{cat.count}</span><span className={`text-xs font-medium ${cat.text}`}>{cat.name}</span></div>
                                                 ))}
                                                 {frontCategories.length > 4 && (
                                                     <button
                                                         type="button"
                                                         aria-expanded={showOtherFronts}
                                                         onClick={() => setShowOtherFronts(prev => !prev)}
-                                                        className="col-span-2 p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                                                        className="col-span-2 min-h-[44px] p-3 rounded-xl bg-gray-100 dark:bg-white/5 text-center border border-gray-200 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
                                                     >
-                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                                            +{candidate.fronts.length - frontCategories.slice(0,4).reduce((acc, c) => acc + c.count, 0)} Outras
+                                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                            +{candidate.fronts.length - frontCategories.slice(0,4).reduce((acc, c) => acc + c.count, 0)} outras
                                                         </span>
-                                                        <span className="ml-2 text-[10px] font-black text-blue-600 dark:text-blue-300">
+                                                        <span className="ml-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
                                                             {showOtherFronts ? 'Ocultar' : 'Ver'}
                                                         </span>
                                                     </button>
@@ -526,7 +521,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                 {showOtherFronts && frontCategories.slice(4).length > 0 && (
                                                     <div className="col-span-2 flex flex-wrap gap-2">
                                                         {frontCategories.slice(4).map((cat) => (
-                                                            <span key={`other-${cat.name}`} className={`px-3 py-2 text-[9px] font-bold uppercase tracking-wider rounded-xl border ${cat.bg} ${cat.border} ${cat.text}`}>
+                                                            <span key={`other-${cat.name}`} className={`px-3 py-2 text-xs font-medium rounded-xl border ${cat.bg} ${cat.border} ${cat.text}`}>
                                                                 {cat.name} • {cat.count}
                                                             </span>
                                                         ))}
@@ -535,7 +530,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                             </div>
                                         </div>
                                         <div className="flex-1 w-full">
-                                            <div className="flex items-center gap-2 mb-6"><Tag size={16} className="text-gray-400" /><p className="text-xs font-black uppercase text-gray-400 tracking-[0.2em]">Todas as Frentes</p></div>
+                                            <div className="flex items-center gap-2 mb-6"><Tag size={16} className="text-gray-500 dark:text-gray-400" /><p className="text-xs font-black text-gray-500 dark:text-gray-400">Todas as frentes</p></div>
                                             <div className="flex flex-wrap gap-2 content-start max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                                 {sortedFronts.map(f => {
                                                     const style = getFrontCategoryStyle(f.title);
@@ -543,72 +538,71 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                     const isCoordinator = f.role === 'Coordenador';
                                                     const isHighlight = isLeader || isCoordinator;
                                                     return (
-                                                        <span key={f.id} className={`px-4 py-2 text-[10px] font-bold rounded-xl border cursor-default transition-transform hover:scale-105 flex items-center gap-1.5 ${isHighlight ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700/50 shadow-sm' : `${style.bg} ${style.text} ${style.border}`}`}>{isLeader && <Crown size={12} className="text-amber-600 dark:text-amber-400" />}{isCoordinator && <Star size={12} className="text-amber-600 dark:text-amber-400" />}{f.title}{isHighlight && <span className="opacity-70 text-[8px] uppercase border-l border-amber-600/30 pl-1 ml-0.5">{f.role}</span>}</span>
+                                                        <span key={f.id} className={`px-4 py-2 text-xs font-medium rounded-xl border cursor-default flex items-center gap-1.5 ${isHighlight ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700/50' : `${style.bg} ${style.text} ${style.border}`}`}>{isLeader && <Crown size={12} className="text-amber-600 dark:text-amber-400" />}{isCoordinator && <Star size={12} className="text-amber-600 dark:text-amber-400" />}{f.title}{isHighlight && <span className="text-xs border-l border-amber-600/30 pl-1 ml-0.5">{f.role}</span>}</span>
                                                     );
                                                 })}
                                             </div>
                                         </div>
                                     </div>
-                                ) : <div className="text-center py-6 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">Nenhuma frente parlamentar registrada.</div>)}
+                                ) : <div className="text-center py-6 text-gray-600 dark:text-gray-400 font-medium text-sm">Nenhuma frente parlamentar registrada.</div>)}
                             </div>
 
-                            <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 animate-in fade-in mb-8">
-                                <h3 className="font-black text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Briefcase size={20} className="text-blue-500"/> Trajetória Profissional</h3>
+                            <div className="glass-panel rounded-2xl p-6 md:p-10 animate-in fade-in mb-8">
+                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Briefcase size={20} className="text-blue-500"/> Trajetória profissional</h3>
                                 {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? <div className="space-y-4"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.occupations && candidate.occupations.length > 0 ? (
                                         <div className="space-y-4 relative">
                                             <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
                                             {[...candidate.occupations].sort((a,b) => (b.startYear || 0) - (a.startYear || 0)).map((job, i) => (
                                                 <div key={`${job.title}-${job.entity ?? ''}-${job.startYear ?? ''}-${i}`} className="flex gap-4 relative z-10 group">
-                                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 shadow-sm group-hover:border-blue-500 group-hover:text-blue-500 transition-colors"><Briefcase size={18} className="text-gray-400 group-hover:text-blue-500"/></div>
+                                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0 transition-colors"><Briefcase size={18} className="text-gray-500 dark:text-gray-400 group-hover:text-blue-600"/></div>
                                                     <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors">
-                                                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{job.title}</h4>
+                                                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-3">{job.title}</h4>
                                                         <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mt-1">{job.entity} {job.state ? `- ${job.state}` : job.country ? `- ${job.country}` : ''}</p>
-                                                        <div className="mt-2 flex items-center gap-2"><span className="text-[10px] font-bold bg-gray-200 dark:bg-white/10 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300">{job.startYear} {job.endYear ? `- ${job.endYear}` : '- Atual'}</span></div>
+                                                        <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{job.startYear} {job.endYear ? `- ${job.endYear}` : '- Atual'}</p>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : <div className="text-center py-10 text-gray-400 font-bold text-xs uppercase tracking-widest opacity-50">Informações de carreira não disponíveis na base oficial.</div>)}
+                                    ) : <div className="text-center py-10 text-gray-600 dark:text-gray-400 font-medium text-sm">Informações de carreira não disponíveis na base oficial.</div>)}
                             </div>
 
                             <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                                 {['all', 'propositions', 'reported', 'votes', 'speeches'].map(f => (
-                                    <button key={f} type="button" aria-pressed={activityFilter === f} onClick={() => setActivityFilter(f as any)} className={`focus-visible:ring-4 focus-visible:ring-blue-500/40 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white/50 dark:bg-midnight/50 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}>{f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}</button>
+                                    <button key={f} type="button" aria-pressed={activityFilter === f} onClick={() => setActivityFilter(f as any)} className={`focus-visible:ring-4 focus-visible:ring-blue-500/40 px-5 min-h-[44px] rounded-xl text-sm font-medium whitespace-nowrap border transition-colors ${activityFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/50 dark:bg-midnight/50 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight'}`}>{f === 'all' ? 'Tudo' : f === 'propositions' ? 'Propostas' : f === 'reported' ? 'Relatorias' : f === 'votes' ? 'Votações' : 'Discursos'}</button>
                                 ))}
                             </div>
                             <div className="space-y-4">
-                                {isLoadingDetails && combinedActivities.length === 0 ? <><SkeletonFeedItem /><SkeletonFeedItem /><SkeletonFeedItem /></> : (combinedActivities.length > 0 ? combinedActivities.map((item, i) => <ActivityCard key={`${item._type}-${item.id ?? `${item.date}-${i}`}`} item={item} />) : <div className="text-center py-24 text-gray-400 text-sm font-bold uppercase tracking-[0.3em] opacity-50">Nenhuma atividade encontrada neste filtro</div>)}
+                                {isLoadingDetails && combinedActivities.length === 0 ? <><SkeletonFeedItem /><SkeletonFeedItem /><SkeletonFeedItem /></> : (combinedActivities.length > 0 ? combinedActivities.map((item, i) => <ActivityCard key={`${item._type}-${item.id ?? `${item.date}-${i}`}`} item={item} />) : <div className="text-center py-24 text-gray-600 dark:text-gray-400 text-sm font-medium">Nenhuma atividade encontrada neste filtro</div>)}
                             </div>
                         </div>
                     )}
                     {profileTab === 'money' && (
                          <div className="space-y-6 md:space-y-10">
-                             {isLoadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-[3rem]" /> : (
-                                 <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-[3rem] border border-green-200/50 dark:border-green-800/50 text-center shadow-inner dark:shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden group backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2">
-                                     <p className="text-[10px] md:text-xs font-black text-green-700 dark:text-green-300 uppercase mb-3 tracking-[0.3em]">{selectedYear === 'total' ? 'Recursos Públicos Utilizados (Total)' : `Recursos Utilizados em ${selectedYear}`}</p>
+                             {isLoadingDetails && displayStats.spending === 0 ? <Skeleton className="h-64 w-full rounded-2xl" /> : (
+                                 <div className="bg-gradient-to-br from-green-50/50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/10 px-8 py-12 md:py-20 rounded-2xl border border-green-200/50 dark:border-green-800/50 text-center relative overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                                     <p className="text-sm font-semibold text-green-800 dark:text-green-300 mb-3">{selectedYear === 'total' ? 'Recursos públicos utilizados (total)' : `Recursos utilizados em ${selectedYear}`}</p>
                                      <p className="text-4xl md:text-7xl font-black text-green-800 dark:text-green-400 tracking-tighter">{profileSummary.hasSpendingData ? `R$ ${displayStats.spending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Sem dados da fonte'}</p>
                                  </div>
                              )}
 
-                             {/* --- REMUNERAÇÃO SALARIAL (NOVO WIDGET) --- */}
                              {candidate.remuneration && <RemunerationWidget remuneration={candidate.remuneration} />}
                              
                              {candidate.amendmentStats && candidate.amendmentStats.authorized > 0 && (
-                                <section className="glass-panel p-6 md:p-8 rounded-[3rem] relative overflow-hidden animate-in fade-in">
-                                    <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-xl text-purple-600 backdrop-blur-sm"><Wallet size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Emendas Individuais</h4><p className="text-[10px] text-gray-500 font-medium">Orçamento da União (Proposto)</p></div></div>
-                                    <div className="space-y-6"><div><div className="flex justify-between items-end mb-2"><span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Valor Apresentado</span><span className="text-lg font-black text-purple-600 dark:text-purple-400">R$ {candidate.amendmentStats.authorized.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div className="w-full h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full"><div className="h-full bg-purple-500 rounded-full w-full"></div></div></div></div>
-                                    <div className="mt-6 p-3 bg-gray-50/50 dark:bg-white/5 rounded-xl text-[10px] text-gray-500 italic text-center backdrop-blur-sm">* Valor total das emendas de autoria do parlamentar listadas na API. A execução financeira depende do Poder Executivo.</div>
+                                <section className="glass-panel p-6 md:p-8 rounded-2xl relative overflow-hidden animate-in fade-in">
+                                    <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-xl text-purple-700 dark:text-purple-300"><Wallet size={20} /></div><div><h4 className="text-sm font-semibold text-gray-900 dark:text-white">Emendas individuais</h4><p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Orçamento da União (proposto)</p></div></div>
+                                    <div className="space-y-6"><div><div className="flex justify-between items-end mb-2"><span className="text-xs font-medium text-gray-600 dark:text-gray-400">Valor apresentado</span><span className="text-lg font-black text-purple-700 dark:text-purple-300">R$ {candidate.amendmentStats.authorized.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div className="w-full h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full"><div className="h-full bg-purple-500 rounded-full w-full"></div></div></div></div>
+                                    <div className="mt-6 p-3 bg-gray-50/50 dark:bg-white/5 rounded-xl text-xs text-gray-600 dark:text-gray-400 text-center">* Valor total das emendas de autoria do parlamentar listadas na API. A execução financeira depende do Poder Executivo.</div>
                                 </section>
                              )}
                              
                              {isLoadingDetails && (!candidate.expensesBreakdown || candidate.expensesBreakdown.length === 0) ? <div className="space-y-2"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.expensesBreakdown && candidate.expensesBreakdown.length > 0 && (
-                                      <section className="glass-panel p-6 md:p-12 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
-                                          <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 mb-8 tracking-[0.4em] border-b border-gray-50 dark:border-white/5 pb-3">Detalhamento dos Gastos</h4>
+                                      <section className="glass-panel p-6 md:p-12 rounded-2xl animate-in fade-in slide-in-from-bottom-4">
+                                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-6 border-b border-gray-50 dark:border-white/5 pb-3">Detalhamento dos gastos</h4>
                                           <div className="space-y-4 md:space-y-6">
                                               {candidate.expensesBreakdown.map((exp) => (
-                                                  <a key={exp.type} href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" title="Ver fonte oficial na Câmara" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md rounded-3xl border border-transparent hover:bg-white/80 dark:hover:bg-white/10 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900 transition-all group cursor-pointer hover:scale-[1.01]">
-                                                      <div className="flex items-center gap-4 mb-2 sm:mb-0"><div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-gray-700/50 flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform"><Banknote size={24} aria-hidden="true" /></div><div><span className="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-200 line-clamp-1 group-hover:text-blue-600 transition-colors">{exp.type}</span><span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1 group-hover:text-blue-400">Fonte Oficial <ExternalLink size={8}/></span></div></div>
-                                                      <div className="flex items-center justify-between sm:justify-end gap-6 pl-16 sm:pl-0"><div className="text-right"><span className="text-sm md:text-lg font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">R$ {exp.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full mt-1.5 overflow-hidden" aria-hidden="true"><div className="bg-blue-500 h-full rounded-full" style={{ width: `${exp.percent}%` }}></div></div></div></div>
+                                                  <a key={exp.type} href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" title="Ver fonte oficial na Câmara" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10 hover:border-blue-200 dark:hover:border-blue-900 transition-colors group cursor-pointer">
+                                                      <div className="flex items-center gap-4 mb-2 sm:mb-0"><div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-gray-700/50 flex items-center justify-center text-blue-600 dark:text-blue-300"><Banknote size={24} aria-hidden="true" /></div><div><span className="text-sm font-semibold text-gray-700 dark:text-gray-200 line-clamp-3 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors block">{exp.type}</span><span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">Fonte oficial <ExternalLink size={12} aria-hidden="true"/></span></div></div>
+                                                      <div className="flex items-center justify-between sm:justify-end gap-6 pl-16 sm:pl-0"><div className="text-right"><span className="text-sm md:text-lg font-black text-blue-700 dark:text-blue-300 whitespace-nowrap">R$ {exp.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full mt-1.5 overflow-hidden" aria-hidden="true"><div className="bg-blue-500 h-full rounded-full" style={{ width: `${exp.percent}%` }}></div></div></div></div>
                                                   </a>
                                               ))}
                                           </div>
@@ -617,17 +611,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && <DailyExpensesChart expenses={candidate.detailedExpenses} />}
 
-                             {candidate.assets && candidate.assets.length > 0 && <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4">
+                             {candidate.assets && candidate.assets.length > 0 && <section className="glass-panel p-6 md:p-10 rounded-2xl animate-in fade-in slide-in-from-bottom-4">
                                 <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3">
-                                    <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 dark:text-yellow-400"><BadgeCheck size={20} /></div>
-                                    <div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Patrimônio Declarado</h4><p className="text-[10px] text-gray-500 font-medium">Bens informados ao TSE</p></div>
+                                    <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-700 dark:text-yellow-300"><BadgeCheck size={20} /></div>
+                                    <div><h4 className="text-sm font-semibold text-gray-900 dark:text-white">Patrimônio declarado</h4><p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Bens informados ao TSE</p></div>
                                 </div>
                                 <div className="space-y-4">
                                     {candidate.assets.map((asset, i) => (
                                         <div key={`${asset.type}-${asset.description}-${i}`} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                                             <div>
-                                                <p className="text-xs font-bold text-gray-800 dark:text-white">{asset.type}</p>
-                                                <p className="text-[9px] text-gray-500 uppercase">{asset.description}</p>
+                                                <p className="text-xs font-semibold text-gray-800 dark:text-white">{asset.type}</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400">{asset.description}</p>
                                             </div>
                                             <span className="text-sm font-black text-gray-900 dark:text-white">{asset.value}</span>
                                         </div>
@@ -636,29 +630,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                              </section>}
 
                              {candidate.detailedExpenses && candidate.detailedExpenses.length > 0 && (
-                                <section className="glass-panel p-6 md:p-10 rounded-[3rem] animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
+                                <section className="glass-panel p-6 md:p-10 rounded-2xl animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
                                     <div className="flex items-center justify-between mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
                                         <div>
-                                            <h4 className="text-[11px] md:text-xs font-black uppercase text-gray-400 tracking-[0.4em] flex items-center gap-2"><FileCheck size={14} className="text-green-600 dark:text-green-400"/> Auditoria de Notas Fiscais</h4>
-                                            <p className="text-[9px] text-gray-400 mt-1 uppercase tracking-wide opacity-70">Últimos Pagamentos Realizados</p>
+                                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><FileCheck size={14} className="text-green-700 dark:text-green-400" aria-hidden="true"/> Auditoria de notas fiscais</h4>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Últimos pagamentos realizados</p>
                                         </div>
                                     </div>
                                     <div className="space-y-3">
                                         {candidate.detailedExpenses.slice(0, 20).map((expense, idx) => ( 
                                             <div key={expense.id ?? idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
                                                 <div className="flex items-start gap-4 mb-3 md:mb-0">
-                                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{formatLocalDate(expense.date, { day: '2-digit', month: 'short' }, expense.date).replace('.', '')}</span><FileText size={14} className="text-gray-300 mt-0.5"/></div>
+                                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shrink-0"><span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{formatLocalDate(expense.date, { day: '2-digit', month: 'short' }, expense.date).replace('.', '')}</span><FileText size={14} className="text-gray-400 mt-0.5" aria-hidden="true"/></div>
                                                     <div>
-                                                        <p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide line-clamp-1 group-hover:text-blue-600 transition-colors">{expense.provider}</p>
+                                                        <p className="text-sm font-semibold text-gray-800 dark:text-white line-clamp-3 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">{expense.provider}</p>
                                                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                                                            {expense.cnpjCpf && (<span className="text-[9px] font-bold bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500">{maskDoc(expense.cnpjCpf)}</span>)}
-                                                            <span className="text-[9px] font-medium text-gray-400">{expense.type}</span>
-                                                            {expense.documentType && <span className="text-[9px] font-medium text-gray-400">{expense.documentType}{expense.documentNumber ? ` ${expense.documentNumber}` : ''}</span>}
-                                                            {expense.installment && expense.installment > 0 && <span className="text-[9px] font-medium text-gray-400">Parcela {expense.installment}</span>}
-                                                            {expense.reimbursementNumber && <span className="text-[9px] font-medium text-gray-400">Ressarcimento {expense.reimbursementNumber}</span>}
+                                                            {expense.cnpjCpf && (<span className="text-xs font-medium text-gray-600 dark:text-gray-400">{maskDoc(expense.cnpjCpf)}</span>)}
+                                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{expense.type}</span>
+                                                            {expense.documentType && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{expense.documentType}{expense.documentNumber ? ` ${expense.documentNumber}` : ''}</span>}
+                                                            {expense.installment && expense.installment > 0 && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Parcela {expense.installment}</span>}
+                                                            {expense.reimbursementNumber && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Ressarcimento {expense.reimbursementNumber}</span>}
                                                         </div>
                                                         {Boolean(expense.documentValue || expense.disallowedValue) && (
-                                                            <p className="mt-1 text-[9px] font-medium text-gray-400">
+                                                            <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                                                 {expense.documentValue ? `Documento: ${expense.documentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
                                                                 {expense.disallowedValue ? ` • Glosa: ${expense.disallowedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
                                                             </p>
@@ -667,23 +661,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                                 </div>
                                                 <div className="flex items-center justify-between md:justify-end gap-4 pl-16 md:pl-0">
                                                     <p className="text-sm font-black text-gray-900 dark:text-white">R$ {expense.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                                    {safeHttpUrl(expense.urlDocumento) ? (<a href={safeHttpUrl(expense.urlDocumento)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm">Nota Fiscal <ExternalLink size={8} /></a>) : (<span className="px-3 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-400 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-50 cursor-not-allowed">Sem Nota</span>)}
+                                                    {safeHttpUrl(expense.urlDocumento) ? (<a href={safeHttpUrl(expense.urlDocumento)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 min-h-[44px] text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline focus-visible:ring-4 focus-visible:ring-blue-500/40 rounded-lg">Nota fiscal <ExternalLink size={12} aria-hidden="true" /></a>) : (<span className="text-xs font-medium text-gray-600 dark:text-gray-400">Sem nota</span>)}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="mt-4 text-center"><a href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-blue-500 uppercase tracking-widest transition-colors">Ver todas as despesas no portal da Câmara <ExternalLink size={10} /></a></div>
+                                    <div className="mt-4 text-center"><a href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 min-h-[44px] text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline focus-visible:ring-4 focus-visible:ring-blue-500/40 rounded-lg">Ver todas as despesas no portal da Câmara <ExternalLink size={12} aria-hidden="true" /></a></div>
                                 </section>
                              )}
 
                              {candidate.travels && candidate.travels.length > 0 && (
-                                 <section className="glass-panel p-6 md:p-8 rounded-[3rem] relative overflow-hidden animate-in fade-in">
-                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-600 dark:text-sky-400 backdrop-blur-sm"><Plane size={20} /></div><div><h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Viagens Oficiais</h4><p className="text-[10px] text-gray-500 font-medium">Deslocamentos com Cota Parlamentar</p></div></div>
+                                 <section className="glass-panel p-6 md:p-8 rounded-2xl relative overflow-hidden animate-in fade-in">
+                                     <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-3"><div className="p-2 bg-sky-100/50 dark:bg-sky-900/30 rounded-xl text-sky-700 dark:text-sky-300"><Plane size={20} /></div><div><h4 className="text-sm font-semibold text-gray-900 dark:text-white">Viagens oficiais</h4><p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Deslocamentos com cota parlamentar</p></div></div>
                                      <div className="space-y-3">
                                          {candidate.travels.map((trip, i) => (
                                              <div key={`${trip.date}-${trip.destiny}-${i}`} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-900 transition-colors group">
-                                                 <div className="flex items-center gap-4"><div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm shrink-0"><span className="text-[10px] font-black text-gray-400 uppercase">{formatLocalDate(trip.date, { month: 'short' }).replace('.', '')}</span><span className="text-lg font-black text-gray-800 dark:text-white leading-none">{parseLocalDate(trip.date)?.getDate() ?? ''}</span></div><div><p className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-wide group-hover:text-sky-600 transition-colors">{trip.destiny}</p><p className="text-[10px] text-gray-500 line-clamp-1">{trip.reason}</p></div></div>
-                                                 <div className="text-right"><p className="text-sm font-black text-sky-600 dark:text-sky-400">R$ {trip.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+                                                 <div className="flex items-center gap-4"><div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-black/20 rounded-xl border border-gray-200 dark:border-white/10 shrink-0"><span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{formatLocalDate(trip.date, { month: 'short' }).replace('.', '')}</span><span className="text-lg font-black text-gray-800 dark:text-white leading-none">{parseLocalDate(trip.date)?.getDate() ?? ''}</span></div><div><p className="text-sm font-semibold text-gray-800 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-300 transition-colors">{trip.destiny}</p><p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">{trip.reason}</p></div></div>
+                                                 <div className="text-right"><p className="text-sm font-black text-sky-700 dark:text-sky-300">R$ {trip.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
                                              </div>
                                          ))}
                                      </div>
