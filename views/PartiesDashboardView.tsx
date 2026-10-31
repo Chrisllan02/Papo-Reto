@@ -59,15 +59,12 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
     const visibleWithoutWomen = isExpanded ? stats.withoutWomen : stats.withoutWomen.slice(0, 8);
 
     return (
-        <div className="glass-panel rounded-[3rem] p-6 md:p-10 xl:p-12 flex flex-col lg:flex-row items-center gap-8 xl:gap-12 h-full w-full relative overflow-hidden group hover:shadow-2xl transition-shadow min-h-[360px]">
+        <div className="glass-panel rounded-2xl p-6 md:p-10 xl:p-12 flex flex-col lg:flex-row items-center gap-8 xl:gap-12 h-full w-full relative overflow-hidden group min-h-[360px]">
             
-            {/* Background Decor */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
             {/* Left: Chart & Main Stat */}
             <div className="flex flex-col items-center justify-center shrink-0 relative">
                 <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
-                    <svg className="w-full h-full overflow-visible transform -rotate-90 drop-shadow-xl" viewBox="0 0 100 100">
+                    <svg className="w-full h-full overflow-visible transform -rotate-90" viewBox="0 0 100 100">
                         {/* Track */}
                         <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200 dark:text-gray-700/50" />
                         {/* Progress */}
@@ -79,17 +76,17 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                             strokeDasharray={circumference}
                             strokeDashoffset={offset}
                             strokeLinecap="round"
-                            className="text-orange-500 transition-all duration-1000 ease-out drop-shadow-md"
+                            className="text-orange-500 transition-all duration-1000 ease-out"
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
-                        <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Mulheres</span>
+                        <span className="text-sm font-bold text-gray-600 dark:text-gray-400">mulheres</span>
                     </div>
                 </div>
                 <div className="mt-2 text-center">
-                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Total: {stats.womenCount}</p>
-                    <p className="mt-1 text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    <p className="text-sm font-bold text-gray-600 dark:text-gray-400">Total: {stats.womenCount}</p>
+                    <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-400">
                         Base: {stats.knownTotal}/{stats.total} confirmados
                     </p>
                 </div>
@@ -99,20 +96,20 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
             <div className="flex-1 w-full flex flex-col gap-3 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-xl backdrop-blur-sm">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-xl">
                             <Users size={18} />
                         </div>
-                        <h4 className="text-lg md:text-xl font-black text-gray-800 dark:text-white uppercase tracking-tight">Representatividade</h4>
+                        <h4 className="text-lg md:text-xl font-black text-gray-800 dark:text-white tracking-tight">Representatividade</h4>
                     </div>
                     <div className="flex items-center gap-2">
                         {stats.unknownSexCount > 0 && (
-                            <span className="hidden sm:inline-flex rounded-full bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                            <span className="hidden sm:inline-flex rounded-lg bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-700 dark:text-amber-300">
                                 atualizando {stats.unknownSexCount}
                             </span>
                         )}
                         <button 
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                            className="min-h-11 text-sm font-bold text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
                         >
                             {isExpanded ? 'Ver menos' : 'Ver todos'}
                             {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
@@ -128,35 +125,35 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 xl:gap-8">
                     {/* Column 1: Parties WITH Women */}
                     <div className="flex flex-col gap-3">
-                        <p className="text-sm font-black text-green-600 dark:text-green-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-2">
-                            Com Mulheres ({stats.withWomen.length})
+                        <p className="text-sm font-black text-green-700 dark:text-green-400 border-b border-gray-100/50 dark:border-white/10 pb-2">
+                            Com mulheres ({stats.withWomen.length})
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {visibleWithWomen.map(([party, count]) => (
-                                <div key={party} className="flex min-h-9 items-center gap-2 bg-orange-50/70 dark:bg-white/5 border border-orange-100 dark:border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm">
+                                <div key={party} className="flex min-h-9 items-center gap-2 bg-orange-50/70 dark:bg-white/5 border border-orange-100 dark:border-white/10 px-3 py-2 rounded-xl">
                                     <span className="text-sm font-black text-gray-700 dark:text-gray-200">{party}</span>
-                                    <span className="text-xs font-black text-orange-600 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full shadow-sm">{count}</span>
+                                    <span className="text-xs font-black text-orange-700 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full">{count}</span>
                                 </div>
                             ))}
                             {!isExpanded && stats.withWomen.length > 6 && (
-                                <span className="text-sm font-bold text-gray-400 self-center">+{stats.withWomen.length - 6}</span>
+                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 self-center">+{stats.withWomen.length - 6}</span>
                             )}
                         </div>
                     </div>
 
                     {/* Column 2: Parties WITHOUT Women */}
                     <div className="flex flex-col gap-3">
-                        <p className="text-sm font-black text-gray-400 uppercase border-b border-gray-100/50 dark:border-white/10 pb-2">
-                            Sem Mulheres ({stats.withoutWomen.length})
+                        <p className="text-sm font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100/50 dark:border-white/10 pb-2">
+                            Sem mulheres ({stats.withoutWomen.length})
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {visibleWithoutWomen.map((party) => (
-                                <span key={party} className="min-h-9 text-sm font-black text-gray-400 bg-gray-100/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 px-3 py-2 rounded-xl opacity-80 backdrop-blur-sm">
+                                <span key={party} className="min-h-9 text-sm font-black text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 px-3 py-2 rounded-xl flex items-center">
                                     {party}
                                 </span>
                             ))}
                              {!isExpanded && stats.withoutWomen.length > 8 && (
-                                <span className="text-sm font-bold text-gray-400 self-center">+{stats.withoutWomen.length - 8}</span>
+                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 self-center">+{stats.withoutWomen.length - 8}</span>
                             )}
                         </div>
                     </div>
@@ -192,20 +189,20 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
                             <span className="block text-2xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">
                                 {realPct}%
                             </span>
-                            <span className={`text-[9px] font-bold uppercase tracking-wider opacity-60 ${item.text}`}>
+                            <span className={`text-xs font-bold ${item.text}`}>
                                 {item.count} cadeiras
                             </span>
                         </div>
 
-                        <div className={`w-full max-w-[60px] h-64 md:h-80 rounded-full ${item.track} relative overflow-hidden backdrop-blur-md border border-white/20`}>
+                        <div className={`w-full max-w-[60px] h-64 md:h-80 rounded-full ${item.track} relative overflow-hidden border border-white/20`}>
                             <div 
-                                className={`absolute bottom-0 left-0 right-0 w-full rounded-full ${item.color} shadow-lg transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:brightness-110`}
+                                className={`absolute bottom-0 left-0 right-0 w-full rounded-full ${item.color} transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
                                 style={{ height: `${Math.max(heightPct, 5)}%` }} 
                             ></div>
                         </div>
 
-                        <div className={`mt-3 px-3 py-1 rounded-lg ${item.track} backdrop-blur-md border border-white/10`}>
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${item.text}`}>
+                        <div className={`mt-3 px-3 py-1 rounded-lg ${item.track} border border-white/10`}>
+                            <span className={`text-xs font-black ${item.text}`}>
                                 {item.fullLabel}
                             </span>
                         </div>
@@ -238,7 +235,7 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
     return (
         <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
             <div className="relative w-48 h-48 flex items-center justify-center shrink-0 mb-4">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 drop-shadow-xl" role="img" aria-label={`${total} representantes: ${data.map(item => `${item.name} ${item.value} (${Math.round(item.percent)}%)`).join(', ')}`}>
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label={`${total} representantes: ${data.map(item => `${item.name} ${item.value} (${Math.round(item.percent)}%)`).join(', ')}`}>
                     {/* Fundo */}
                     <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
                     
@@ -270,7 +267,7 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
                 {/* Texto Central */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{total}</span>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Repres.</span>
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-1">representantes</span>
                 </div>
             </div>
 
@@ -279,10 +276,10 @@ const PartyPieChart = ({ data, total }: { data: { name: string, value: number, p
                 {data.map((item) => (
                     <div key={item.name} className="flex items-center justify-between bg-white/50 dark:bg-white/5 px-2 py-1.5 rounded-lg border border-gray-100 dark:border-white/5">
                         <div className="flex items-center gap-1.5 overflow-hidden">
-                            <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: item.color }}></div>
-                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 truncate">{item.name}</span>
+                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 line-clamp-1">{item.name}</span>
                         </div>
-                        <span className="text-[10px] font-black text-gray-500">{Math.round(item.percent)}%</span>
+                        <span className="text-xs font-black text-gray-600 dark:text-gray-400">{Math.round(item.percent)}%</span>
                     </div>
                 ))}
             </div>
@@ -346,8 +343,8 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
         }
 
         return {
-            title: selectedState ? `Partidos em ${selectedState}` : 'Cenário Partidário Nacional',
-            subtitle: selectedState ? 'Distribuição Estadual' : 'Distribuição no Congresso',
+            title: selectedState ? `Partidos em ${selectedState}` : 'Cenário partidário nacional',
+            subtitle: selectedState ? 'Distribuição estadual' : 'Distribuição no Congresso',
             data: finalData,
             total
         };
@@ -362,22 +359,22 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
     const activeRegionMaxStateCount = Math.max(...activeRegionData.states.map(uf => stateCounts[uf] || 0), 1);
 
     return (
-        <section className="glass-panel rounded-[2.5rem] p-4 md:p-6 min-h-[550px] w-full relative overflow-hidden flex flex-col">
+        <section className="glass-panel rounded-2xl p-4 md:p-6 min-h-[550px] w-full relative overflow-hidden flex flex-col">
             
             <div className="flex items-center justify-between mb-6 relative z-10 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600 shadow-sm backdrop-blur-sm">
+                    <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600">
                         <Globe size={18} aria-hidden="true" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Força Regional</h3>
-                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Distribuição nos Estados</p>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Força regional</h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Distribuição nos estados</p>
                     </div>
                 </div>
                 {selectedState && (
                     <button 
                         onClick={() => setSelectedState(null)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-[10px] font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                        className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
                     >
                         <X size={12} /> Limpar
                     </button>
@@ -388,13 +385,13 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                 {/* Seletor de Estados */}
                 <div className="w-full lg:w-3/5 flex flex-col gap-4">
                     
-                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] p-2 shadow-sm">
+                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] p-2">
                         <div className="flex items-center justify-between gap-3 px-2 pb-2">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Região</p>
-                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Filtre os estados por bloco geográfico</p>
+                                <p className="text-xs font-black text-gray-600 dark:text-gray-400">Região</p>
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Filtre os estados por bloco geográfico</p>
                             </div>
-                            <span className="hidden sm:inline-flex rounded-full bg-blue-50 dark:bg-blue-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                            <span className="hidden sm:inline-flex rounded-lg bg-blue-50 dark:bg-blue-500/10 px-3 py-1 text-xs font-black text-blue-700 dark:text-blue-300">
                                 {activeRegionTotal} representantes
                             </span>
                         </div>
@@ -410,12 +407,12 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                                         aria-pressed={isActive}
                                         className={`group min-h-16 rounded-xl border px-3 py-2 text-left transition-all ${
                                             isActive
-                                            ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-900/15'
+                                            ? 'border-blue-600 bg-blue-600 text-white'
                                             : 'border-gray-100 bg-gray-50/80 text-gray-600 hover:border-blue-200 hover:bg-white hover:text-blue-700 dark:border-white/5 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:border-blue-400/30 dark:hover:bg-white/[0.07]'
                                         }`}
                                     >
                                         <span className="flex items-center justify-between gap-2">
-                                            <span className="truncate text-[11px] font-black uppercase tracking-wide">{region.name}</span>
+                                            <span className="text-xs font-black leading-tight">{region.name}</span>
                                             <span className={`h-2 w-2 rounded-full transition-colors ${
                                                 isActive ? 'bg-white' : 'bg-gray-300 group-hover:bg-blue-500 dark:bg-gray-600'
                                             }`} />
@@ -432,25 +429,25 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                     </div>
 
                     {/* States Grid for Active Region */}
-                    <div className={`p-4 rounded-3xl border flex-1 ${activeRegionData.color} flex flex-col relative transition-colors duration-300`}>
+                    <div className={`p-4 rounded-2xl border flex-1 ${activeRegionData.color} flex flex-col relative transition-colors duration-300`}>
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <div>
-                                <span className="font-black uppercase tracking-wider text-sm flex items-center gap-2">
+                                <span className="font-black text-sm flex items-center gap-2">
                                     <MapPin size={14} aria-hidden="true" /> {activeRegionData.name}
                                 </span>
-                                <p className="text-[11px] font-semibold opacity-70 mt-1">
+                                <p className="text-xs font-semibold mt-1">
                                     {selectedState ? `Estado selecionado: ${selectedState}` : 'Escolha um estado para detalhar o cenário partidário'}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black bg-white/65 dark:bg-black/20 px-2.5 py-1.5 rounded-full uppercase tracking-wide">
+                                <span className="text-xs font-black bg-white/65 dark:bg-black/20 px-2.5 py-1.5 rounded-full">
                                     {activeRegionTotal} representantes
                                 </span>
                                 {selectedState && (
                                     <button
                                         type="button"
                                         onClick={() => setSelectedState(null)}
-                                        className="rounded-full bg-white/70 dark:bg-black/20 p-1.5 transition-colors hover:bg-white dark:hover:bg-black/30"
+                                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70 dark:bg-black/20 transition-colors hover:bg-white dark:hover:bg-black/30"
                                         aria-label="Limpar estado selecionado"
                                     >
                                         <X size={12} aria-hidden="true" />
@@ -471,16 +468,16 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                                         type="button"
                                         onClick={() => setSelectedState(prev => prev === uf ? null : uf)}
                                         aria-pressed={isActive}
-                                        className={`rounded-2xl border p-3 text-left transition-all shadow-sm ${
+                                        className={`rounded-2xl border p-3 text-left transition-all ${
                                             isActive
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-900/15 ring-2 ring-white dark:ring-midnight'
+                                            ? 'bg-blue-600 text-white border-blue-600'
                                             : 'bg-white/85 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-white/80 dark:border-white/10 hover:bg-white hover:border-blue-200'
                                         }`}
                                     >
                                         <span className="flex items-center justify-between gap-2">
                                             <span className="text-sm font-black">{uf}</span>
-                                            <span className={`text-[10px] font-black ${
-                                                isActive ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                                            <span className={`text-xs font-black ${
+                                                isActive ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'
                                             }`}>
                                                 {count}
                                             </span>
@@ -502,7 +499,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                         
                         {!selectedState && (
                             <div className="mt-4 rounded-2xl bg-white/45 dark:bg-black/10 px-3 py-2 text-center">
-                                <p className="text-[10px] uppercase font-black tracking-wide opacity-70 flex items-center justify-center gap-1">
+                                <p className="text-xs font-bold flex items-center justify-center gap-1">
                                     <MousePointerClick size={12} aria-hidden="true" /> Toque em um estado para filtrar o gráfico
                                 </p>
                             </div>
@@ -511,10 +508,10 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                 </div>
 
                 {/* Pie Chart Card */}
-                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-[2.5rem] border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
+                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
                     <div className="mb-2 text-center">
                         <h4 className="font-black text-gray-900 dark:text-white text-sm">{pieChartData.title}</h4>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{pieChartData.subtitle}</p>
+                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400">{pieChartData.subtitle}</p>
                     </div>
                     
                     <div className="flex-1 flex items-center justify-center">
@@ -582,29 +579,29 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
     const effectiveActive = hoveredParty || activeParty;
 
     return (
-        <section className="glass-panel rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-between relative overflow-hidden h-auto" aria-labelledby="hemicycle-title">
+        <section className="glass-panel rounded-2xl  p-6 md:p-8 flex flex-col items-center justify-between relative overflow-hidden h-auto" aria-labelledby="hemicycle-title">
             
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full mb-4 z-10 gap-4">
                  <div className="flex items-center gap-3">
-                     <div className="p-3 bg-blue-100/50 dark:bg-blue-900/30 rounded-2xl text-blue-600 shadow-sm backdrop-blur-sm">
+                     <div className="p-3 bg-blue-100/50 dark:bg-blue-900/30 rounded-2xl text-blue-600">
                          <Trophy size={24} className="md:w-6 md:h-6" aria-hidden="true" />
                      </div>
                      <div>
-                        <h3 id="hemicycle-title" className="font-bold text-gray-900 dark:text-white text-lg md:text-xl leading-tight">Distribuição de Cadeiras</h3>
-                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Composição da Câmara</p>
+                        <h3 id="hemicycle-title" className="font-bold text-gray-900 dark:text-white text-lg md:text-xl leading-tight">Distribuição de cadeiras</h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Câmara e Senado juntos</p>
                      </div>
                  </div>
-                 <div className="flex gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-wide bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10 backdrop-blur-sm">
-                     <span className="flex items-center gap-1.5 text-rose-600"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
-                     <span className="flex items-center gap-1.5 text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
-                     <span className="flex items-center gap-1.5 text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-600"></span> Dir.</span>
+                 <div className="flex gap-2 text-xs font-black bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10">
+                     <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
+                     <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
+                     <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-600"></span> Dir.</span>
                  </div>
             </div>
 
             {/* Graphic Container */}
             <div className="relative w-full max-w-[650px] aspect-[1.8/1] min-h-[220px] flex items-end justify-center mb-6 md:mb-10">
-                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible drop-shadow-2xl" role="img" aria-label={`Distribuição de ${totalSeats} cadeiras por partido: ${sortedParties.map(p => `${p.name} ${p.totalMembers}`).join(', ')}`}>
+                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible" role="img" aria-label={`Distribuição de ${totalSeats} cadeiras por partido: ${sortedParties.map(p => `${p.name} ${p.totalMembers}`).join(', ')}`}>
                     {/* Background Track */}
                     <path 
                         d={describeArc(centerX, centerY, radius, 0, 180)}
@@ -646,7 +643,7 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                                     stroke={color}
                                     strokeWidth={strokeWidth}
                                     strokeLinecap={seats > 2 ? "round" : "butt"} 
-                                    className={`transition-all duration-300 ease-out hover:stroke-[58px]
+                                    className={`transition-all duration-300 ease-out 
                                         ${isHighlighted ? 'opacity-100 stroke-[58px]' : isDimmed ? 'opacity-20' : 'opacity-90'}
                                     `}
                                 />
@@ -657,11 +654,11 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
 
                     {/* Center Text */}
                     <g className="transition-all duration-300 transform translate-y-2 pointer-events-none">
-                        <text x="200" y="175" textAnchor="middle" className="text-4xl md:text-6xl font-black fill-gray-900 dark:fill-white tracking-tighter drop-shadow-sm">
+                        <text x="200" y="175" textAnchor="middle" className="text-4xl md:text-6xl font-black fill-gray-900 dark:fill-white tracking-tighter">
                             {effectiveActive ? data.find(p => p.name === effectiveActive)?.totalMembers : totalSeats}
                         </text>
-                        <text x="200" y="200" textAnchor="middle" className="text-[10px] md:text-xs font-black uppercase fill-gray-400 tracking-[0.3em]">
-                            {effectiveActive ? formatPartyName(effectiveActive) : 'Total de Cadeiras'}
+                        <text x="200" y="200" textAnchor="middle" className="text-xs font-bold fill-gray-600 dark:fill-gray-400">
+                            {effectiveActive ? formatPartyName(effectiveActive) : 'Total de cadeiras'}
                         </text>
                     </g>
                 </svg>
@@ -676,15 +673,15 @@ const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[
                         onMouseEnter={() => setHoveredParty(p.name)}
                         onMouseLeave={() => setHoveredParty(null)}
                         aria-pressed={activeParty === p.name}
-                        className={`px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase border transition-all active:scale-95 flex items-center gap-1.5 backdrop-blur-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 ${
+                        className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors active:scale-[0.98] flex items-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 ${
                             activeParty === p.name || hoveredParty === p.name
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                            : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-transparent hover:bg-white/60 dark:hover:bg-white/10 shadow-sm opacity-80 hover:opacity-100'
+                            ? 'bg-blue-600 text-white border-blue-600 transform'
+                            : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-transparent hover:bg-white/60 dark:hover:bg-white/10'
                         }`}
                     >
-                        <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: getPartyColor(p.name) }}></span>
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getPartyColor(p.name) }}></span>
                         {p.name} 
-                        <span className="opacity-60 ml-0.5 pl-1 border-l border-current">({p.totalMembers})</span>
+                        <span className="ml-0.5 pl-1 border-l border-current">({p.totalMembers})</span>
                     </button>
                 ))}
             </div>
@@ -712,29 +709,29 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
     const offset = circumference - (displayValue / 100) * circumference;
     
     const getStatus = (score: number) => {
-        if (!hasData) return { label: 'Dados insuficientes', color: 'text-gray-500', bg: 'bg-gray-100/50 dark:bg-white/5' };
-        if (score >= 90) return { label: 'Assiduidade Alta', color: 'text-green-500', bg: 'bg-green-100/50 dark:bg-green-900/20' };
-        if (score >= 70) return { label: 'Assiduidade Média', color: 'text-blue-500', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; 
-        return { label: 'Assiduidade Baixa', color: 'text-red-500', bg: 'bg-red-100/50 dark:bg-red-900/20' };
+        if (!hasData) return { label: 'Dados insuficientes', color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100/50 dark:bg-white/5' };
+        if (score >= 90) return { label: 'Assiduidade alta', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-100/50 dark:bg-green-900/20' };
+        if (score >= 70) return { label: 'Assiduidade média', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; 
+        return { label: 'Assiduidade baixa', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-100/50 dark:bg-red-900/20' };
     };
 
     const status = getStatus(displayValue);
 
     return (
-        <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 flex flex-col justify-between relative overflow-hidden min-h-[400px] group w-full">
+        <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden min-h-[400px] group w-full">
             
             {/* Header */}
             <div className="flex items-center justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-4">
-                    <div className={`p-3 bg-green-100/50 dark:bg-green-900/30 rounded-2xl text-green-600 shadow-sm backdrop-blur-sm`}>
+                    <div className={`p-3 bg-green-100/50 dark:bg-green-900/30 rounded-2xl text-green-600`}>
                         <UserCheck size={28} aria-hidden="true" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-xl md:text-2xl leading-tight">Assiduidade Média</h3>
-                        <p className="text-xs md:text-sm text-gray-500 font-bold uppercase tracking-wide flex items-center gap-1">
-                            Presença em Sessões 
+                        <h3 className="font-bold text-gray-900 dark:text-white text-xl md:text-2xl leading-tight">Assiduidade média</h3>
+                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-bold flex items-center gap-1">
+                            Presença em sessões 
                         </p>
-                        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">{coverageLabel}</p>
+                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">{coverageLabel}</p>
                     </div>
                 </div>
             </div>
@@ -743,7 +740,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                 
                 {/* Main Gauge Graphic */}
                 <div className="relative w-64 h-64 shrink-0 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90 drop-shadow-xl" viewBox="0 0 200 200">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
                         <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="2 4" className="text-gray-200 dark:text-gray-800" />
                         {/* Background Ghost Arc */}
                         <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="16" strokeDasharray={`2 ${circumference}`} strokeDashoffset={-(circumference * ((overall.average ?? 0) / 100))} className="text-gray-400 dark:text-gray-600 opacity-30" transform={`rotate(0 100 100)`} />
@@ -752,17 +749,17 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
-                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top opacity-50">%</span></> : <span className="text-base">Sem dados</span>}
+                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top">%</span></> : <span className="text-base">Sem dados</span>}
                         </span>
-                        <div className={`mt-2 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider backdrop-blur-sm border border-white/10 ${status.bg} ${status.color}`}>
+                        <div className={`mt-2 px-4 py-1.5 rounded-full text-sm font-black border border-white/10 ${status.bg} ${status.color}`}>
                             {status.label}
                         </div>
                     </div>
                 </div>
 
                 {/* Explanatory Table */}
-                <div className="flex-1 w-full space-y-4 bg-gray-50/50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100/50 dark:border-white/5 backdrop-blur-sm">
-                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest border-b border-gray-200 dark:border-gray-700 pb-3 mb-2">Média da Bancada</h4>
+                <div className="flex-1 w-full space-y-4 bg-gray-50/50 dark:bg-white/5 p-6 rounded-2xl border border-gray-100/50 dark:border-white/5">
+                    <h4 className="text-xs font-black text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-3 mb-2">Média da bancada</h4>
                     
                     <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-4 items-center">
                         <div className="w-3 h-3 rounded-full bg-green-500"></div>
@@ -770,7 +767,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Alta (+90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -778,7 +775,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Média (70-90%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada entre 70% e 90% das sessões.</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada entre 70% e 90% das sessões.</p>
                         </div>
 
                         <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -786,7 +783,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Baixa (-70%)</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Presença registrada abaixo de 70% das sessões.</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada abaixo de 70% das sessões.</p>
                         </div>
                     </div>
                 </div>
@@ -808,15 +805,15 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
     const max = Math.max(...top.map(p => p.avgSpending));
 
     return (
-        <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 flex flex-col gap-4 min-h-[320px]">
+        <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-4 min-h-[320px]">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-green-100/50 dark:bg-green-900/30 rounded-xl text-green-600">
                         <TrendingUp size={18} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Gastos Médios por Partido</h3>
-                        <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Top 6 com maior média</p>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Gastos médios por partido</h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Top 6 com maior média</p>
                     </div>
                 </div>
             </div>
@@ -824,18 +821,18 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
             <div className="space-y-3">
                 {top.map((p) => (
                     <div key={p.name} className="flex items-center gap-3">
-                        <span className="w-12 text-[10px] font-black text-gray-500 dark:text-gray-300 uppercase">{p.name}</span>
+                        <span className="w-14 shrink-0 text-xs font-bold text-gray-700 dark:text-gray-300">{p.name}</span>
                         <div className="flex-1 h-2 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
                             <div className="h-full bg-green-500" style={{ width: `${Math.max(5, (p.avgSpending / max) * 100)}%` }}></div>
                         </div>
-                        <span className="text-[10px] font-black text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">
                             R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            <span className="ml-1 font-bold text-gray-500 dark:text-gray-400">(n={p.spendingSampleCount})</span>
+                            <span className="ml-1 font-bold text-gray-600 dark:text-gray-400">(n={p.spendingSampleCount})</span>
                         </span>
                     </div>
                 ))}
             </div>
-            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Média por parlamentar do partido; n = parlamentares considerados</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Média por parlamentar do partido; n = parlamentares considerados</p>
         </div>
     );
 };
@@ -872,10 +869,10 @@ const GovernmentStructureFlow = () => {
     ];
 
     return (
-        <section className="glass-panel rounded-[2.5rem] p-6 md:p-8 overflow-hidden" aria-labelledby="government-structure-title">
+        <section className="glass-panel rounded-2xl p-6 md:p-8 overflow-hidden" aria-labelledby="government-structure-title">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300 mb-2">Mapa do Estado brasileiro</p>
+                    <p className="text-xs font-black text-blue-600 dark:text-blue-300 mb-2">Mapa do Estado brasileiro</p>
                     <h2 id="government-structure-title" className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
                         Como o Brasil funciona
                     </h2>
@@ -890,11 +887,11 @@ const GovernmentStructureFlow = () => {
             </div>
 
             <div className="mt-8 flex flex-col items-center">
-                <div className="flex min-w-[220px] items-center justify-center gap-3 rounded-2xl bg-blue-700 px-6 py-4 text-white shadow-lg shadow-blue-900/15 dark:bg-blue-600">
+                <div className="flex min-w-[220px] items-center justify-center gap-3 rounded-2xl bg-blue-700 px-6 py-4 text-white dark:bg-blue-600">
                     <Users size={22} aria-hidden="true" />
                     <div>
                         <p className="text-base font-black leading-none">Povo</p>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-100">Origem do poder político</p>
+                        <p className="mt-1 text-xs font-bold text-blue-100">Origem do poder político</p>
                     </div>
                 </div>
 
@@ -905,7 +902,7 @@ const GovernmentStructureFlow = () => {
 
                 <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-3">
                     {powers.map(({ title, lead, description, icon: Icon, accent, iconStyle, borderStyle }) => (
-                        <article key={title} className={`rounded-2xl border bg-white/70 p-5 shadow-sm dark:bg-white/5 ${borderStyle}`}>
+                        <article key={title} className={`rounded-2xl border bg-white/70 p-5 dark:bg-white/5 ${borderStyle}`}>
                             <div className="flex items-start gap-4">
                                 <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
                                     <Icon size={21} aria-hidden="true" />
@@ -929,7 +926,7 @@ const GovernmentStructureFlow = () => {
             </div>
 
             <div className="mt-6 border-t border-gray-200/70 pt-5 dark:border-white/10">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-300">
+                <div className="flex items-center gap-2 text-xs font-black text-gray-600 dark:text-gray-300">
                     <Globe size={15} aria-hidden="true" />
                     Onde as decisões chegam
                 </div>
@@ -941,7 +938,7 @@ const GovernmentStructureFlow = () => {
                     ].map(([title, description]) => (
                         <div key={title} className="rounded-xl bg-gray-100/80 px-4 py-3 dark:bg-white/5">
                             <p className="text-xs font-black text-gray-900 dark:text-white">{title}</p>
-                            <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{description}</p>
+                            <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-400">{description}</p>
                         </div>
                     ))}
                 </div>
@@ -960,7 +957,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
         <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-8 relative z-10 px-safe">
             <div className="pt-safe">
                 <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
-                <p className="text-[10px] md:text-sm font-bold text-gray-500 uppercase tracking-widest mt-1.5">Raio-X das Forças do Congresso Nacional</p>
+                <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400 mt-1.5">Raio-X das forças do Congresso Nacional</p>
             </div>
 
             <GovernmentStructureFlow />
@@ -982,12 +979,12 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
                 </div>
                 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-2">
-                    <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 flex flex-col justify-center min-h-[400px]">
+                    <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-center min-h-[400px]">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600 shadow-sm backdrop-blur-sm">
+                            <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600">
                                 <Compass size={18} aria-hidden="true" />
                             </div>
-                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Espectro Político</h3>
+                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Espectro político</h3>
                         </div>
                         <IdeologySpectrum left={ideologyStats['Esquerda']} center={ideologyStats['Centro']} right={ideologyStats['Direita']} />
                     </div>
