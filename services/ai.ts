@@ -189,8 +189,7 @@ function generateJournalisticTitle(rawText: string, type: 'voto' | 'evento' | 'p
         const agendaSubject = extractAgendaSubject(text);
         if (/educação domiciliar/i.test(agendaSubject)) return 'Debate sobre educação domiciliar';
         if (agendaSubject.length > 8 && !/^audiência pública$/i.test(agendaSubject)) {
-            const title = sentenceCase(agendaSubject.split(',')[0]);
-            return title.length > 58 ? `${title.slice(0, 55)}...` : title;
+            return sentenceCase(agendaSubject.split(',')[0]);
         }
     }
 
@@ -240,7 +239,6 @@ function generateJournalisticTitle(rawText: string, type: 'voto' | 'evento' | 'p
     // 6. Formatação Final
     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
     if (cleaned.endsWith('.') || cleaned.endsWith(':') || cleaned.endsWith('-')) cleaned = cleaned.slice(0, -1).trim();
-    if (cleaned.length > 60) cleaned = cleaned.substring(0, 57) + "...";
 
     return cleaned || "Nova Proposta Legislativa";
 }

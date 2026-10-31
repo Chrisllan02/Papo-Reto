@@ -9,29 +9,28 @@ interface NavItemProps {
   label: string;
   isActive: boolean;
   onSelect: (id: string) => void;
-  colorClass?: string;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ id, icon: Icon, label, isActive, onSelect, colorClass = "bg-gradient-to-r from-nuit to-midnight" }) => (
+const NavItem: React.FC<NavItemProps> = ({ id, icon: Icon, label, isActive, onSelect }) => (
     <button 
       type="button"
       data-tour={id}
       onClick={() => onSelect(id)}
       aria-current={isActive ? 'page' : undefined}
       aria-label={label}
-      className={`group relative flex items-center xl:justify-start justify-center gap-4 p-3.5 xl:px-6 rounded-full transition-all duration-300 ease-out w-full
-        ${isActive 
-          ? 'text-white shadow-lg shadow-nuit/30 scale-105 backdrop-blur-md dark:shadow-[0_0_30px_rgba(30,72,143,0.6)]' 
-          : 'text-midnight dark:text-blue-200 hover:bg-white/40 dark:hover:bg-white/10 hover:backdrop-blur-sm active:scale-95'
+      className={`group relative flex items-center xl:justify-start justify-center gap-4 p-3 xl:px-5 rounded-xl transition-colors duration-200 w-full
+        ${isActive
+          ? 'bg-nuit/10 text-nuit dark:bg-white/10 dark:text-white'
+          : 'text-slate-700 dark:text-blue-200 hover:bg-white/50 dark:hover:bg-white/10 active:scale-[0.98]'
         } focus-visible:ring-4 focus-visible:ring-blue-500/40`}
     >
       {isActive && (
-          <div className={`absolute inset-0 ${colorClass} rounded-full opacity-100 transition-opacity duration-500`}></div>
+          <span aria-hidden="true" className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-nuit dark:bg-blue-400"></span>
       )}
-      <div className={`relative z-10 p-1 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : ''}`}>
-         <Icon size={26} strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+      <div className="relative z-10 p-1">
+         <Icon size={24} strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
       </div>
-      <span className={`relative z-10 hidden xl:block text-lg tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+      <span className={`relative z-10 hidden xl:block text-base ${isActive ? 'font-bold' : 'font-medium'}`}>
           {label}
       </span>
       
@@ -85,20 +84,20 @@ const Sidebar: React.FC = () => {
                 onClick={() => actions.setActiveTab('feed')}
                 aria-label="Voltar para o Mural"
             >
-                <div className="w-12 h-12 bg-gradient-to-tr from-nuit to-midnight rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-nuit/30 group-hover:shadow-nuit/50 dark:shadow-[0_0_20px_rgba(30,72,143,0.8)] transition-all duration-500 border-2 border-white/20">
+                <div className="w-12 h-12 bg-gradient-to-tr from-nuit to-midnight rounded-2xl flex items-center justify-center shadow-md border border-white/20">
                     <MessageCircle size={24} fill="white" className="text-white" aria-hidden="true" />
                 </div>
-                <span className="hidden xl:block font-black text-2xl tracking-tighter text-midnight dark:text-white drop-shadow-md">
+                <span className="hidden xl:block font-black text-2xl tracking-tight text-midnight dark:text-white">
                     Papo<span className="text-transparent bg-clip-text bg-gradient-to-r from-nuit to-blue-400">Reto</span>
                 </span>
             </button>
         </div>
 
-        <div className="flex flex-col gap-3 items-center xl:items-start w-full">
+        <div className="flex flex-col gap-2 items-center xl:items-start w-full">
           <NavItem id="feed" icon={ScrollText} label="Mural" isActive={activeTab === 'feed'} onSelect={actions.setActiveTab} />
           <NavItem id="explore" icon={Users} label="Políticos" isActive={activeTab === 'explore'} onSelect={actions.setActiveTab} />
-          <NavItem id="parties" icon={BarChart3} label="Gráficos" isActive={activeTab === 'parties'} onSelect={actions.setActiveTab} colorClass="bg-gradient-to-r from-blue-500 to-blue-600" />
-          <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" isActive={activeTab === 'articles'} onSelect={actions.setActiveTab} colorClass="bg-gradient-to-r from-picture to-green-900" />
+          <NavItem id="parties" icon={BarChart3} label="Gráficos" isActive={activeTab === 'parties'} onSelect={actions.setActiveTab} />
+          <NavItem id="articles" icon={BookOpen} label="Guia Cidadão" isActive={activeTab === 'articles'} onSelect={actions.setActiveTab} />
         </div>
 
         <button
@@ -111,14 +110,14 @@ const Sidebar: React.FC = () => {
                 }
             }}
             disabled={isLocating}
-            className="mt-2 flex w-full items-center xl:justify-start justify-center gap-3 rounded-2xl border border-blue-100/70 dark:border-white/10 bg-white/35 dark:bg-white/5 px-3 py-3 text-nuit dark:text-blue-200 shadow-sm transition-all hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-blue-500/40"
+            className="mt-2 flex w-full items-center xl:justify-start justify-center gap-3 rounded-xl border border-blue-100/70 dark:border-white/10 bg-white/35 dark:bg-white/5 px-3 py-3 text-nuit dark:text-blue-200 transition-colors hover:bg-white/60 dark:hover:bg-white/10 active:scale-[0.98] disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-blue-500/40"
             aria-label={userLocation ? `Abrir bancada de ${userLocation}` : 'Detectar localização'}
         >
-            <div className="rounded-xl bg-blue-100 dark:bg-blue-900/30 p-2">
+            <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2">
                 {isLocating ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : userLocation ? <MapPin size={18} aria-hidden="true" /> : <LocateFixed size={18} aria-hidden="true" />}
             </div>
             <div className="hidden xl:block text-left leading-tight">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Minha região</p>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Minha região</p>
                 <p className="text-sm font-black text-midnight dark:text-white">
                     {isLocating ? 'Localizando...' : userLocation ? `Bancada ${userLocation}` : 'Detectar estado'}
                 </p>
@@ -131,7 +130,7 @@ const Sidebar: React.FC = () => {
             type="button"
             ref={accessButtonRef}
             onClick={() => setShowAccessMenu(!showAccessMenu)}
-            className={`flex items-center xl:justify-start justify-center gap-4 p-3.5 rounded-full backdrop-blur-sm transition-all duration-300 w-full group relative border border-white/20 active:scale-95 ${showAccessMenu ? 'bg-white text-black shadow-lg dark:bg-midnight dark:text-white dark:border-white/20 dark:shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'} focus-visible:ring-4 focus-visible:ring-blue-500/40`}
+            className={`flex items-center xl:justify-start justify-center gap-4 p-3 xl:px-5 rounded-xl transition-colors duration-200 w-full group relative border border-white/20 active:scale-[0.98] ${showAccessMenu ? 'bg-white text-black shadow-md dark:bg-midnight dark:text-white dark:border-white/20' : 'text-nuit dark:text-blue-300 bg-white/20 dark:bg-black/40 hover:bg-white/40 dark:hover:bg-white/10'} focus-visible:ring-4 focus-visible:ring-blue-500/40`}
             aria-label="Menu de Configurações"
             aria-expanded={showAccessMenu}
             aria-controls="menu-configuracoes"
@@ -146,11 +145,11 @@ const Sidebar: React.FC = () => {
          </button>
 
          {showAccessMenu && (
-             <div id="menu-configuracoes" className="absolute bottom-full left-0 mb-3 w-[min(22rem,calc(100vw-2rem))] glass-panel rounded-[1.5rem] p-4 flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
+             <div id="menu-configuracoes" className="absolute bottom-full left-0 mb-3 w-[min(22rem,calc(100vw-2rem))] glass-panel rounded-2xl p-4 flex flex-col gap-2 animate-in slide-in-from-bottom-2 fade-in z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-white/10">
                      <div>
-                         <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Configurações</span>
-                         <p className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Aparência, leitura e ajuda da plataforma.</p>
+                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Configurações</span>
+                         <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-400">Aparência, leitura e ajuda da plataforma.</p>
                      </div>
                  </div>
 
@@ -169,7 +168,7 @@ const Sidebar: React.FC = () => {
                          >
                              <Minus size={14} aria-hidden="true" />
                          </button>
-                         <span className="text-[10px] font-black w-8 text-center tabular-nums text-gray-600 dark:text-gray-300">
+                         <span className="text-xs font-semibold w-10 text-center tabular-nums text-gray-600 dark:text-gray-300">
                              {Math.round(fontSizeLevel * 100)}%
                          </span>
                          <button 

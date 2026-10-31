@@ -98,7 +98,7 @@ const compactTitle = (text: string, fallback: string) => {
   if (cleaned.length <= 78) return cleaned;
   const beforeColon = cleaned.split(':')[0];
   if (beforeColon.length >= 24 && beforeColon.length <= 78) return beforeColon;
-  return `${cleaned.slice(0, 75).trim()}...`;
+  return cleaned;
 };
 
 const buildEventItem = (event: any): FeedItem | null => {

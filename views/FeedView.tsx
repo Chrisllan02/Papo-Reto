@@ -10,6 +10,7 @@ import FeedCard from '../components/FeedCard';
 import DataState from '../components/DataState';
 import { getCategoryIcon } from '../utils/legislativeTranslator';
 import { parseLocalDate } from '../utils/date';
+import { resolveFeedTitle } from '../utils/feedText';
 
 interface FeedViewProps {
   politicians: Politician[];
@@ -128,7 +129,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
             <div className="pt-safe px-4 md:px-8 py-8 md:py-10 max-w-[2000px] mx-auto">
                 
                 {/* Header */}
-                <header className="mb-10 flex items-center justify-between">
+                <header className="mb-8 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-none mb-2">
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-nuit to-blue-500 dark:from-white dark:to-blue-300">
@@ -144,20 +145,20 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                 {/* News Ticker */}
                 <NewsTicker />
 
-                <section className="mb-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4" aria-label="Resumo do Mural">
+                <section className="mb-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Resumo do Mural">
                     <button
                         type="button"
                         onClick={() => muralSummary.priorityItem ? setSelectedFeedItem(muralSummary.priorityItem) : onSeeMore()}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg transition-shadow focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-3">
                             <CalendarClock size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Acompanhar agora</span>
+                            <span className="text-xs font-semibold">Acompanhar agora</span>
                         </div>
-                        <p className="text-lg font-black text-midnight dark:text-white leading-tight line-clamp-2">
-                            {muralSummary.priorityItem?.title || 'Sem pauta prioritária'}
+                        <p className="text-lg font-black text-midnight dark:text-white leading-snug line-clamp-3 break-words">
+                            {muralSummary.priorityItem ? resolveFeedTitle(muralSummary.priorityItem.title, muralSummary.priorityItem.description) : 'Sem pauta prioritária'}
                         </p>
-                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
+                        <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
                             {muralSummary.priorityDateLabel
                                 ? `${muralSummary.priorityDateLabel} · ${muralSummary.priorityItem?.type === 'evento' ? 'agenda pública' : 'tramitação'}`
                                 : `${muralSummary.eventsCount} eventos e ${muralSummary.votesCount} movimentações no radar.`}
@@ -167,16 +168,16 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={() => muralSummary.topCategory && setSelectedCategory(muralSummary.topCategory.id)}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg transition-shadow focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 mb-3">
                             <TrendingUp size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Tema concreto</span>
+                            <span className="text-xs font-semibold">Tema concreto</span>
                         </div>
-                        <p className="text-xl font-black text-midnight dark:text-white leading-tight">
+                        <p className="text-lg font-black text-midnight dark:text-white leading-snug">
                             {muralSummary.topCategory?.meta.label || 'Congresso'}
                         </p>
-                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
+                        <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
                             {muralSummary.topCategory?.id === 'activity'
                                 ? 'Sem tema específico dominante. Veja o histórico para separar pauta genérica de pauta substantiva.'
                                 : `${muralSummary.topCategory?.count || 0} registros com tema identificável. Clique para filtrar.`}
@@ -186,18 +187,18 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={() => userLocation ? onGoToExplore(userLocation) : actions.detectLocation()}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg transition-shadow focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 mb-3">
                             <MapPinned size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Recorte local</span>
+                            <span className="text-xs font-semibold">Recorte local</span>
                         </div>
-                        <p className="text-xl font-black text-midnight dark:text-white leading-tight">
+                        <p className="text-lg font-black text-midnight dark:text-white leading-snug">
                             {userLocation ? `Bancada de ${userLocation}` : 'Definir estado'}
                         </p>
-                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
+                        <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
                             {userLocation && muralSummary.localActivityCount > 0
-                                ? `${muralSummary.localActivityCount} atividades nominais. Exemplo: ${muralSummary.localSample?.title || 'atividade recente'}.`
+                                ? `${muralSummary.localActivityCount} atividades nominais. Exemplo: ${muralSummary.localSample ? resolveFeedTitle(muralSummary.localSample.title, muralSummary.localSample.description) : 'atividade recente'}.`
                                 : userLocation
                                     ? `${muralSummary.localPoliticiansCount} parlamentares. Nenhuma atividade nominal recente vinculada; abra a bancada para fiscalizar nomes.`
                                 : 'Use sua localização para priorizar sua bancada.'}
@@ -207,14 +208,14 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                     <button
                         type="button"
                         onClick={onSeeMore}
-                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg active:scale-[0.99] transition-all focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
+                        className="glass-surface rounded-2xl p-4 border border-white/60 dark:border-white/10 text-left hover:shadow-lg transition-shadow focus-visible:ring-4 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none"
                     >
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 mb-3">
                             <DatabaseZap size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Confiabilidade</span>
+                            <span className="text-xs font-semibold">Confiabilidade</span>
                         </div>
-                        <p className="text-lg font-black text-midnight dark:text-white leading-tight">{muralSummary.latestLabel}</p>
-                        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300">
+                        <p className="text-lg font-black text-midnight dark:text-white leading-snug">{muralSummary.latestLabel}</p>
+                        <p className="mt-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
                             {muralSummary.officialSourceCount}/{feedItems.length} itens com fonte oficial e {muralSummary.datedCount} com data informada. Ver histórico.
                         </p>
                     </button>
@@ -240,7 +241,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                 <button
                                     type="button"
                                     onClick={() => setSelectedCategory('all')}
-                                    className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-white/15 active:scale-95 transition-all"
+                                    className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-white/15 active:scale-95 transition-all"
                                     aria-label="Limpar filtro"
                                     title="Limpar filtro"
                                 >
@@ -248,7 +249,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                 </button>
                             )}
                             {feedItems.length > 0 && (
-                                <button type="button" onClick={onSeeMore} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 h-10 px-4 rounded-xl text-xs font-black text-blue-700 dark:text-blue-200 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/25 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                <button type="button" onClick={onSeeMore} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 h-10 px-4 rounded-xl text-sm font-semibold text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/25 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
                                     Ver histórico
                                 </button>
                             )}
@@ -261,9 +262,9 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                 type="button"
                                 onClick={() => setSelectedCategory('all')}
                                 aria-pressed={selectedCategory === 'all'}
-                                className={`shrink-0 px-4 h-11 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                                className={`shrink-0 px-4 h-11 rounded-xl text-sm font-semibold border transition-colors ${
                                     selectedCategory === 'all'
-                                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20 dark:bg-blue-500/20 dark:text-blue-100 dark:border-blue-400/50'
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm dark:bg-blue-500/20 dark:text-blue-100 dark:border-blue-400/50'
                                         : 'bg-white/60 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10'
                                 }`}
                             >
@@ -275,9 +276,9 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                                     type="button"
                                     onClick={() => setSelectedCategory(id)}
                                     aria-pressed={selectedCategory === id}
-                                    className={`shrink-0 px-3 h-11 rounded-xl text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                                    className={`shrink-0 px-3 h-11 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-2 ${
                                         selectedCategory === id
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20'
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                             : 'bg-white/60 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10'
                                     }`}
                                 >
@@ -304,7 +305,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                             onAction={() => setSelectedCategory('all')}
                         />
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {filteredFeedItems.slice(0, 6).map((item) => (
                                 <FeedCard 
                                     key={`${item.type}-${item.id}`} 

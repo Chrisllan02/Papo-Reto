@@ -104,7 +104,6 @@ export const formatCardTitle = (title: string, type: string) => {
 
     clean = clean.charAt(0).toUpperCase() + clean.slice(1);
 
-    if (clean.length > 60) return clean.substring(0, 60) + '...';
     return clean;
 };
 

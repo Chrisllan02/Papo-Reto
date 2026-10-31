@@ -111,24 +111,24 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
         };
     };
 
-    if (isLoading) return <div className="h-64 w-full glass-surface rounded-[2.5rem] animate-pulse mb-8" aria-hidden="true"></div>;
+    if (isLoading) return <div className="h-64 w-full glass-surface rounded-2xl animate-pulse mb-8" aria-hidden="true"></div>;
     if (statePoliticians.length === 0) return null;
 
     return (
-        <section className="mb-16 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
-            <div className="absolute inset-0 glass-panel rounded-[3rem] -mx-4 md:mx-0 z-0"></div>
+        <section className="mb-8 animate-in fade-in slide-in-from-bottom-8 duration-500 relative group/widget">
+            <div className="absolute inset-0 glass-panel rounded-2xl z-0"></div>
 
-            <div className="relative z-10 p-6 md:p-8">
-                <div className="mb-6 flex items-center justify-between">
+            <div className="relative z-10 p-4 md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-2xl shadow-lg backdrop-blur-md ${isLocal ? 'bg-picture/90 text-white' : 'bg-spring/90 text-midnight'}`}>
+                        <div className={`p-3 rounded-xl ${isLocal ? 'bg-picture/90 text-white' : 'bg-spring/90 text-midnight'}`}>
                             {isLocal ? <LocateFixed size={22} aria-hidden="true" /> : <MapPin size={22} aria-hidden="true" />}
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-midnight dark:text-white leading-none mb-1">
                                 {selectedState}
                             </h2>
-                            <span className="text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                                 {isLocal ? 'Sua Bancada' : 'Giro pelos Estados'}
                             </span>
                         </div>
@@ -136,7 +136,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     <button 
                         type="button"
                         onClick={() => onGoToExplore(selectedState)}
-                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 px-5 py-2.5 glass-surface rounded-full text-xs font-black text-nuit dark:text-blue-400 uppercase tracking-widest shadow-sm active:scale-95 transition-all"
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 px-4 py-2 glass-surface rounded-xl text-sm font-semibold text-nuit dark:text-blue-300 active:scale-95 transition-all"
                     >
                         Ver Todos
                     </button>
@@ -157,7 +157,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                     {/* Container Scrollável */}
                     <div 
                         ref={scrollContainerRef}
-                        className="flex overflow-x-auto gap-4 py-5 pb-8 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth"
+                        className="flex overflow-x-auto gap-4 py-2 pb-4 scrollbar-hide snap-x snap-mandatory px-1 scroll-smooth"
                     >
                         {statePoliticians.map((pol) => {
                             const ideology = getIdeology(pol.party);
@@ -177,16 +177,16 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                                             onSelectCandidate(pol);
                                         }
                                     }}
-                                    className={`group/card relative snap-center shrink-0 w-52 md:w-56 min-h-[220px] overflow-hidden rounded-[1.75rem] border bg-white/90 p-5 text-center shadow-[0_16px_28px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(15,23,42,0.16)] active:scale-[0.99] dark:bg-white/[0.06] dark:shadow-[0_18px_34px_rgba(0,0,0,0.45)] cursor-pointer focus-visible:ring-4 focus-visible:ring-blue-500/40 ${cardTheme.ring}`}
+                                    className={`group/card relative snap-center shrink-0 w-52 md:w-56 min-h-[220px] overflow-hidden rounded-2xl border bg-white/90 p-4 text-center shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-lg dark:bg-white/[0.06] cursor-pointer focus-visible:ring-4 focus-visible:ring-blue-500/40 ${cardTheme.ring}`}
                                 >
                                     <div className={`absolute inset-x-0 top-0 h-1.5 ${cardTheme.accent}`} aria-hidden="true"></div>
                                     <div className={`absolute inset-0 bg-gradient-to-br ${cardTheme.glow} via-transparent to-transparent opacity-80`} aria-hidden="true"></div>
                                     <div className="relative mx-auto mb-4 mt-2 h-24 w-24">
-                                        <div className={`h-full w-full overflow-hidden rounded-full bg-slate-100 shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-transform duration-300 group-hover/card:scale-[1.04] dark:bg-slate-800 ${isSenator ? 'border-[3px] border-amber-400 dark:border-amber-500 ring-4 ring-amber-400/20' : 'border-[4px] border-white dark:border-slate-700'}`}>
+                                        <div className={`h-full w-full overflow-hidden rounded-full bg-slate-100 shadow-md dark:bg-slate-800 ${isSenator ? 'border-[3px] border-amber-400 dark:border-amber-500 ring-4 ring-amber-400/20' : 'border-[4px] border-white dark:border-slate-700'}`}>
                                             <img src={pol.photo} alt="" className="w-full h-full object-cover" loading="lazy" />
                                         </div>
                                         {isSenator && (
-                                            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/20 bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-white shadow-lg whitespace-nowrap">
+                                            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/20 bg-amber-700 px-2.5 py-1 text-xs font-semibold text-white shadow-sm whitespace-nowrap">
                                                 Senado
                                             </div>
                                         )}
@@ -195,7 +195,7 @@ const StateSpotlightWidget: React.FC<StateSpotlightWidgetProps> = ({ politicians
                                     
                                     <div className={`relative mx-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ${cardTheme.badge}`}>
                                         <div className={`h-2 w-2 rounded-full ${cardTheme.dot} shadow-sm`} title={`Ideologia: ${ideology || 'Não classificado'}`}></div>
-                                        <p className="text-xs font-bold uppercase">{pol.party}</p>
+                                        <p className="text-xs font-semibold">{pol.party}</p>
                                     </div>
                                 </div>
                             );

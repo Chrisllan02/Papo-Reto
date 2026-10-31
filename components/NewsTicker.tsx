@@ -4,12 +4,9 @@ import { fetchDailyNews, getBestAvailableNews, getEmergencyNews } from '../servi
 import { NewsArticle } from '../types';
 import { Sparkles, ExternalLink, AlertTriangle, CheckCircle2, Info, Pause, Play } from 'lucide-react';
 import { safeHttpUrl } from '../utils/url';
+import { distinctSummary } from '../utils/feedText';
 
-const clampText = (text: string, maxLength: number) => {
-    const clean = (text || '').replace(/\s+/g, ' ').trim();
-    if (clean.length <= maxLength) return clean;
-    return `${clean.slice(0, maxLength - 3).trim()}...`;
-};
+const cleanText = (text: string) => (text || '').replace(/\s+/g, ' ').trim();
 
 const NewsTicker: React.FC = () => {
     // 1. Initialize state immediately with cache OR emergency fallback.
@@ -107,14 +104,14 @@ const NewsTicker: React.FC = () => {
 
     const theme = getNewsTheme(currentNews.summary?.context || "", currentNews.title);
     const ThemeIcon = theme.icon;
-    const displayTitle = clampText(currentNews.title, 72);
-    const displayContext = clampText(currentNews.summary?.context || currentNews.source || 'Atualização', 26);
-    const displaySummary = clampText(currentNews.summary?.main ?? '', 170);
+    const displayTitle = cleanText(currentNews.title);
+    const displayContext = cleanText(currentNews.summary?.context || currentNews.source || 'Atualização');
+    const displaySummary = distinctSummary(displayTitle, cleanText(currentNews.summary?.main ?? ''));
     const sourceUrl = safeHttpUrl(currentNews.url);
 
     return (
         <section 
-            className={`w-full relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] shadow-[0_15px_35px_-10px_rgba(0,0,0,0.3)] mb-6 transition-all duration-500 ease-in-out group min-h-[300px] md:min-h-[330px] hover:shadow-2xl hover:scale-[1.005]`}
+            className={`w-full relative overflow-hidden rounded-2xl shadow-lg mb-6 group min-h-[300px] md:min-h-[330px]`}
             onMouseEnter={() => setHoverPaused(true)}
             onMouseLeave={() => setHoverPaused(false)}
             onFocusCapture={() => setFocusPaused(true)}
@@ -137,10 +134,10 @@ const NewsTicker: React.FC = () => {
                 {/* Header: Source & Status */}
                 <div className="flex justify-between items-start gap-3 mb-5">
                     <div className="flex items-center gap-2 animate-in fade-in">
-                        <span className={`backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-1.5 ${theme.labelColor}`}>
+                        <span className={`backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${theme.labelColor}`}>
                             <ThemeIcon size={12} aria-hidden="true" /> {currentNews.source}
                         </span>
-                        <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 ml-1 whitespace-nowrap">
+                        <span className="text-xs font-medium text-white/80 flex items-center gap-1 ml-1 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> {currentNews.time}
                         </span>
                     </div>
@@ -152,7 +149,7 @@ const NewsTicker: React.FC = () => {
                                 onClick={() => setUserPaused(prev => !prev)}
                                 aria-pressed={userPaused}
                                 aria-label={userPaused ? 'Retomar rotação das notícias' : 'Pausar rotação das notícias'}
-                                className="flex items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white border border-white/10 shadow-sm transition-colors focus-visible:ring-4 focus-visible:ring-white/40"
+                                className="flex items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white border border-white/10 transition-colors focus-visible:ring-4 focus-visible:ring-white/40"
                             >
                                 {userPaused ? <Play size={12} aria-hidden="true" /> : <Pause size={12} aria-hidden="true" />}
                             </button>
@@ -162,7 +159,7 @@ const NewsTicker: React.FC = () => {
                                 href={sourceUrl} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10 shadow-sm hover:scale-105 transform duration-200"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-semibold transition-colors border border-white/10"
                                 title="Ler na fonte oficial"
                             >
                                 <span className="hidden sm:inline">Ver na Íntegra</span>
@@ -176,29 +173,35 @@ const NewsTicker: React.FC = () => {
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col justify-start" aria-live={isRotating ? 'off' : 'polite'}>
                     {/* Title */}
-                    <h3 className="font-black leading-[1.05] tracking-tight drop-shadow-md text-3xl md:text-5xl mb-5 line-clamp-2 max-w-5xl">
+                    <h3 className="font-black leading-tight tracking-tight text-2xl md:text-4xl mb-4 line-clamp-3 break-words max-w-5xl">
                         {displayTitle}
                     </h3>
                     
                     {/* Summary (Structured Context + Main) */}
-                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-6xl">
-                        <div className="grid grid-cols-[auto,1fr] gap-3">
+                    {displaySummary ? (
+                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 animate-in fade-in duration-500 max-w-6xl">
+                        <div className="grid grid-cols-[auto,1fr] gap-4">
                             <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
-                                <Sparkles size={15} className="text-yellow-300" aria-hidden="true" />
+                                <Sparkles size={16} className="text-yellow-300" aria-hidden="true" />
                             </div>
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                                    <strong className="text-white font-black uppercase tracking-wide text-[10px] bg-white/20 px-2 py-1 rounded-lg max-w-full truncate">
+                                    <strong className="text-white font-semibold text-xs bg-white/20 px-2 py-1 rounded-lg max-w-full truncate">
                                         {displayContext}
                                     </strong>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/55">O que importa</span>
+                                    <span className="text-xs font-medium text-white/80">O que importa</span>
                                 </div>
-                                <p className="text-sm md:text-base font-semibold leading-relaxed text-white/90 line-clamp-3">
+                                <p className="text-sm md:text-base font-medium leading-relaxed text-white/90 line-clamp-3">
                                     {displaySummary}
                                 </p>
                             </div>
                         </div>
                     </div>
+                    ) : (
+                    <strong className="self-start inline-block text-white font-semibold text-xs bg-white/20 px-2 py-1 rounded-lg max-w-full truncate">
+                        {displayContext}
+                    </strong>
+                    )}
                 </div>
 
                 {/* Pagination Dots */}
