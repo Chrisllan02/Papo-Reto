@@ -6,6 +6,7 @@ import DataState from '../components/DataState';
 import { parseLocalDate } from '../utils/date';
 import { getFeedTypeMeta } from '../utils/feedType';
 import { safeHttpUrl } from '../utils/url';
+import { feedCode, isRedundantText, resolveFeedTitle } from '../utils/feedText';
 
 interface FullFeedViewProps {
   feedItems: FeedItem[];
@@ -105,103 +106,94 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
 
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12 animate-in fade-in duration-300">
-        
-        {/* HEADER FIXO */}
         <div className="sticky top-0 z-30 px-4 pt-4 md:px-8 md:pt-6">
-             <div className="mx-auto max-w-[1800px] glass-panel rounded-[2.5rem] border border-white/60 dark:border-white/10 p-4 md:p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-                 {/* Linha Superior: Voltar e Título */}
+             <div className="mx-auto max-w-[1800px] glass-panel rounded-2xl p-4 md:p-6">
                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                    <div className="flex items-center gap-4">
-                     <button type="button" onClick={onBack} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 p-2.5 bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-blue-100/70 dark:border-white/10 shadow-sm" aria-label="Voltar para o mural">
-                        <ChevronLeft className="text-gray-700 dark:text-white" size={24} aria-hidden="true" />
+                     <button type="button" onClick={onBack} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 w-11 h-11 flex items-center justify-center bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-[0.98] border border-slate-200/70 dark:border-white/10" aria-label="Voltar para o mural">
+                        <ChevronLeft className="text-muted-strong" size={24} aria-hidden="true" />
                      </button>
                      <div>
-                         <h1 className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-none tracking-tight">Histórico Completo</h1>
-                         <p className="text-xs text-slate-500 dark:text-slate-300 font-black uppercase tracking-widest mt-1">{filteredItems.length} registros encontrados</p>
+                         <h1 className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight">Histórico completo</h1>
+                         <p className="text-xs text-subtle font-medium mt-1">{filteredItems.length} registros encontrados</p>
                      </div>
                    </div>
 
-                   <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-blue-50/70 dark:bg-blue-900/20 px-4 py-3 text-xs font-bold text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30">
+                   <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-blue-50/70 dark:bg-blue-900/20 px-4 py-3 text-xs font-medium text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30">
                      <Filter size={16} aria-hidden="true" />
                      Use filtros para cruzar data, tipo e termo.
                    </div>
                  </div>
 
-                 {/* Linha de Controles */}
-                 <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,1fr)_auto]">
-                     
-                     {/* Busca */}
+                 <div className="mt-6 grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(260px,1fr)_auto]">
                      <div className="relative flex-1">
-                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} aria-hidden="true" />
-                         <input 
-                            type="text" 
-                            aria-label="Pesquisar no histórico" 
-                            placeholder="Pesquisar por palavras-chave..." 
+                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-subtle" size={18} aria-hidden="true" />
+                         <input
+                            type="text"
+                            aria-label="Pesquisar no histórico"
+                            placeholder="Pesquisar por palavras-chave..."
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
-                                if (e.target.value && sortBy === 'date_desc') setSortBy('relevance'); // Auto-switch to relevance on search
+                                if (e.target.value && sortBy === 'date_desc') setSortBy('relevance');
                             }}
-                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-950/40 rounded-2xl text-sm font-bold text-gray-900 dark:text-white border border-blue-100 dark:border-white/10 placeholder-slate-400 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-4 focus:ring-blue-500/15 transition-all shadow-sm"
+                            className="w-full min-h-11 pl-11 pr-12 py-3 bg-white dark:bg-slate-950/40 rounded-2xl text-sm font-semibold text-midnight dark:text-white border border-slate-200 dark:border-white/10 placeholder:text-subtle focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-colors"
                          />
                          {searchTerm && (
-                             <button type="button" onClick={() => setSearchTerm('')} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 focus-visible:ring-4 focus-visible:ring-blue-500/40">
-                                 <X size={14} aria-hidden="true" />
+                             <button type="button" onClick={() => setSearchTerm('')} aria-label="Limpar busca" className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full text-subtle hover:text-red-700 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                 <X size={16} aria-hidden="true" />
                              </button>
                          )}
                      </div>
 
-                     <div className="flex flex-wrap gap-3 xl:flex-nowrap xl:justify-end">
-                        {/* Datas */}
+                     <div className="flex flex-wrap gap-4 2xl:flex-nowrap 2xl:justify-end">
                         <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
-                                <input 
-                                    type="date" 
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
+                                <input
+                                    type="date"
                                     aria-label="Data inicial"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
+                                    className="h-full min-h-11 w-full min-w-[145px] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-semibold text-muted-strong focus:ring-4 focus:ring-blue-500/15"
                                 />
                             </div>
-                            <div className="flex items-center text-slate-400 font-bold" aria-hidden="true">-</div>
+                            <div className="flex items-center text-subtle font-bold" aria-hidden="true">-</div>
                             <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
-                                <input 
-                                    type="date" 
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none"><Calendar size={14} aria-hidden="true" /></div>
+                                <input
+                                    type="date"
                                     aria-label="Data final"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="h-full w-full min-w-[145px] rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-black uppercase text-slate-600 dark:text-slate-200 focus:ring-4 focus:ring-blue-500/15"
+                                    className="h-full min-h-11 w-full min-w-[145px] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-3 text-xs font-semibold text-muted-strong focus:ring-4 focus:ring-blue-500/15"
                                 />
                             </div>
                         </div>
 
-                        {/* Ordenação */}
                         <div className="relative shrink-0">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ArrowDownUp size={14} aria-hidden="true" /></div>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none"><ArrowDownUp size={14} aria-hidden="true" /></div>
                             <select
                                 aria-label="Ordenar registros"
                                 value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as any)}
-                                className="h-full min-w-[180px] appearance-none rounded-2xl border border-blue-100 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-8 text-xs font-black uppercase text-slate-700 dark:text-slate-100 cursor-pointer focus:ring-4 focus:ring-blue-500/15"
+                                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                                className="h-full min-h-11 min-w-[180px] appearance-none rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950/40 py-3 pl-9 pr-8 text-xs font-semibold text-muted-strong cursor-pointer focus:ring-4 focus:ring-blue-500/15"
                             >
                                 <option value="relevance">Relevância</option>
-                                <option value="date_desc">Mais Recentes</option>
-                                <option value="date_asc">Mais Antigos</option>
-                                <option value="type">Agrupar por Tipo</option>
+                                <option value="date_desc">Mais recentes</option>
+                                <option value="date_asc">Mais antigos</option>
+                                <option value="type">Agrupar por tipo</option>
                             </select>
                         </div>
 
-                        {/* Tabs Tipo */}
-                        <div role="group" aria-label="Filtrar por tipo" className="flex shrink-0 rounded-2xl border border-blue-100 dark:border-white/10 bg-white/70 dark:bg-slate-950/40 p-1 shadow-sm">
+                        <div role="group" aria-label="Filtrar por tipo" className="flex shrink-0 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-slate-950/40 p-1">
                             {TYPE_FILTERS.map(({ id, label }) => (
                                 <button
                                     key={id}
                                     type="button"
                                     onClick={() => setActiveFilter(id)}
                                     aria-pressed={activeFilter === id}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${activeFilter === id ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:text-blue-700'}`}
+                                    className={`min-h-11 px-4 py-2 rounded-xl text-xs font-semibold transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${activeFilter === id ? 'bg-blue-600 text-white' : 'text-muted-strong hover:bg-blue-50 dark:hover:bg-white/10 hover:text-blue-700'}`}
                                 >
                                     {label}
                                 </button>
@@ -212,62 +204,68 @@ const FullFeedView: React.FC<FullFeedViewProps> = ({ feedItems, politicians, onB
              </div>
         </div>
 
-        {/* GRID DE CONTEÚDO */}
         <div className="mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8">
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredItems.map((item) => {
                     const candidate = item.politicianId ? politicianById.get(item.politicianId) ?? null : null;
                     const isExpense = item.type === 'despesa';
                     const typeMeta = getFeedTypeMeta(item.type);
+                    const title = resolveFeedTitle(item.title, item.description);
+                    const code = feedCode(item.title, item.description);
+                    const description = item.description && !isRedundantText(title, item.description) ? item.description : undefined;
+                    const sourceUrl = safeHttpUrl(item.sourceUrl);
 
                     return (
-                        <div key={`${item.type}-${item.id}`} className="group flex h-full min-h-[250px] flex-col rounded-[2rem] border border-white/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.14)]">
-                            <div className="flex justify-between items-start mb-3">
-                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 ${typeMeta.chipClass}`}>
-                                    <typeMeta.Icon size={10} aria-hidden="true" />
+                        <article key={`${item.type}-${item.id}`} className="flex h-full min-h-[250px] flex-col rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] p-4 md:p-6 shadow-sm">
+                            <div className="flex justify-between items-start gap-2 mb-4">
+                                <span className={`text-xs font-semibold px-2 py-1 rounded-lg flex items-center gap-1.5 ${typeMeta.chipClass}`}>
+                                    <typeMeta.Icon size={14} aria-hidden="true" />
                                     {typeMeta.label}
                                 </span>
-                                <span className="text-[10px] font-black text-slate-400">{item.date}</span>
+                                <span className="text-xs font-medium text-subtle">{item.date}</span>
                             </div>
 
-                            <h3 className="font-black text-midnight dark:text-white text-lg leading-tight mb-3 line-clamp-3 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
-                                {item.title}
+                            <h3 className="font-black text-midnight dark:text-white text-lg leading-snug mb-2 line-clamp-3 break-words">
+                                {title}
                             </h3>
+                            {code && <p className="text-xs font-medium text-subtle mb-2">{code}</p>}
 
-                             {isExpense && item.amount && (
+                            {isExpense && item.amount && (
                                 <div className="mb-2">
-                                    <p className="text-xl font-black text-midnight dark:text-white tracking-tighter">{item.amount}</p>
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold truncate">{item.provider}</p>
+                                    <p className="text-xl font-black text-midnight dark:text-white tracking-tight">{item.amount}</p>
+                                    <p className="text-xs text-subtle font-medium truncate">{item.provider}</p>
                                 </div>
                             )}
 
-                            {item.description && !isExpense && (
-                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed line-clamp-3 mb-4">
-                                    {item.description}
+                            {description && !isExpense && (
+                                <p className="text-sm text-muted-strong font-medium leading-relaxed line-clamp-3 mb-4">
+                                    {description}
                                 </p>
                             )}
 
-                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
+                            <div className="mt-auto pt-4 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between gap-2">
                                 {candidate ? (
-                                    <button type="button" onClick={() => onSelectCandidate(candidate)} className="flex items-center gap-2 rounded-lg text-left focus-visible:ring-4 focus-visible:ring-blue-500/40">
-                                        <img src={candidate.photo} className="w-6 h-6 rounded-full bg-gray-200 object-cover" alt=""/>
-                                        <span className="truncate max-w-[100px] text-[10px] font-bold text-midnight dark:text-white">{candidate.name}</span>
+                                    <button type="button" onClick={() => onSelectCandidate(candidate)} className="flex items-center gap-2 min-h-11 rounded-lg text-left focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                        <img src={candidate.photo} className="w-6 h-6 rounded-full bg-slate-200 object-cover" alt=""/>
+                                        <span className="truncate max-w-[140px] text-xs font-semibold text-midnight dark:text-white">{candidate.name}</span>
                                         <span className="sr-only">Ver perfil</span>
                                     </button>
                                 ) : (
-                                    <span className="text-[10px] font-black text-slate-400">Institucional</span>
+                                    <span className="text-xs font-medium text-subtle">Institucional</span>
                                 )}
-                                {safeHttpUrl(item.sourceUrl) && (
-                                    <a href={safeHttpUrl(item.sourceUrl)} target="_blank" rel="noopener noreferrer" className="p-1 rounded-md text-slate-400 hover:text-blue-500 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40" aria-label="Abrir fonte oficial (nova aba)">
-                                        <ExternalLink size={14} aria-hidden="true" />
+                                {sourceUrl && (
+                                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-h-11 rounded text-xs font-medium text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                        Fonte oficial
+                                        <ExternalLink size={12} aria-hidden="true" />
+                                        <span className="sr-only">(abre em nova aba)</span>
                                     </a>
                                 )}
                             </div>
-                        </div>
+                        </article>
                     );
                 })}
             </div>
-            
+
             {filteredItems.length === 0 && (
                 <div className="py-10 flex justify-center">
                     <DataState

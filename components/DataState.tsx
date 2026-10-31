@@ -29,12 +29,12 @@ const DataState: React.FC<DataStateProps> = ({
   return (
     <div
       role={variant === 'error' ? 'alert' : variant === 'loading' ? 'status' : undefined}
-      className="glass-panel rounded-[2rem] px-6 py-10 md:px-10 md:py-12 text-center flex flex-col items-center border border-white/50 dark:border-white/10"
+      className="glass-panel rounded-2xl px-6 py-10 md:px-10 md:py-12 text-center flex flex-col items-center border border-slate-200/70 dark:border-white/10"
     >
       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 ${
         variant === 'error'
-          ? 'bg-red-100/80 text-red-600 dark:bg-red-900/30 dark:text-red-300'
-          : 'bg-blue-50/90 text-blue-600 dark:bg-blue-900/30 dark:text-blue-200'
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+          : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
       }`}>
         <Icon size={28} className={variant === 'loading' ? 'animate-spin' : ''} aria-hidden="true" />
       </div>
@@ -44,7 +44,7 @@ const DataState: React.FC<DataStateProps> = ({
         <button
           type="button"
           onClick={onAction}
-          className="mt-6 px-5 py-3 rounded-xl bg-blue-600 text-white text-xs font-black uppercase tracking-wider hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-600/20"
+          className="mt-6 min-h-11 px-5 py-3 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-[0.98] transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
         >
           {actionLabel}
         </button>

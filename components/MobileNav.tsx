@@ -40,50 +40,47 @@ const MobileNav: React.FC = () => {
 
   return (
     <>
-        {/* Expanded Overlay Menu */}
         <div 
             id="menu-movel"
             ref={menuRef}
             aria-hidden={!isMenuOpen}
-            className={`fixed inset-x-0 bottom-0 z-[60] glass-panel rounded-t-[2.5rem] transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
+            className={`fixed inset-x-0 bottom-0 z-[60] glass-panel rounded-t-3xl transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
             style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}
         >
             <div className="p-6 space-y-6">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">Configurações</h3>
-                    <button type="button" onClick={() => setIsMenuOpen(false)} aria-label="Fechar configurações" className="p-2 bg-gray-100/50 dark:bg-white/10 rounded-full text-gray-500 dark:text-gray-300 backdrop-blur-md focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                    <h3 className="text-lg font-black text-midnight dark:text-white">Configurações</h3>
+                    <button type="button" onClick={() => setIsMenuOpen(false)} aria-label="Fechar configurações" className="w-11 h-11 flex items-center justify-center bg-slate-100 dark:bg-white/10 rounded-full text-muted-strong focus-visible:ring-4 focus-visible:ring-blue-500/40">
                         <X size={20} aria-hidden="true" />
                     </button>
                 </div>
 
-                <div className="h-px bg-gray-100 dark:bg-white/10 w-full"></div>
+                <div className="h-px bg-slate-200/70 dark:bg-white/10 w-full"></div>
 
-                {/* Settings Grid */}
                 <div className="grid grid-cols-2 gap-3">
                     <button 
                         type="button"
                         onClick={actions.toggleDarkMode}
-                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 active:scale-[0.98] transition-colors"
                     >
-                        {darkMode ? <Sun size={20} className="text-yellow-500" aria-hidden="true" /> : <Moon size={20} className="text-blue-600" aria-hidden="true" />}
-                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{darkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
+                        {darkMode ? <Sun size={20} className="text-yellow-700" aria-hidden="true" /> : <Moon size={20} className="text-blue-700" aria-hidden="true" />}
+                        <span className="text-xs font-semibold text-muted-strong">{darkMode ? 'Modo claro' : 'Modo escuro'}</span>
                     </button>
 
                     <button 
                         type="button"
                         onClick={actions.toggleHighContrast}
                         aria-pressed={highContrast}
-                        className={`focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border active:scale-95 transition-transform ${highContrast ? 'bg-black text-white border-black' : 'bg-white/60 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-white/5'}`}
+                        className={`focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border active:scale-[0.98] transition-colors ${highContrast ? 'bg-black text-white border-black' : 'bg-white/60 dark:bg-white/5 text-muted-strong border-slate-200/70 dark:border-white/10'}`}
                     >
                         <Eye size={20} aria-hidden="true" />
-                        <span className="text-[10px] font-bold">Alto Contraste</span>
+                        <span className="text-xs font-semibold">Alto contraste</span>
                     </button>
 
-                    {/* Font Size Control - Full Width in Grid */}
-                    <div className="col-span-2 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                    <div className="col-span-2 flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10">
                         <div className="flex items-center gap-2">
                             <Type size={20} className="text-blue-600 dark:text-blue-400" aria-hidden="true" />
-                            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Tamanho da Fonte</span>
+                            <span className="text-xs font-semibold text-muted-strong">Tamanho da fonte</span>
                         </div>
                         <div className="flex items-center gap-2">
                              <button 
@@ -91,11 +88,11 @@ const MobileNav: React.FC = () => {
                                 onClick={actions.decreaseFontSize} 
                                 disabled={fontSizeLevel <= 0.9}
                                 aria-label="Diminuir fonte"
-                                className="focus-visible:ring-4 focus-visible:ring-blue-500/40 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-lg disabled:opacity-30 active:scale-95 transition-all"
+                                className="focus-visible:ring-4 focus-visible:ring-blue-500/40 w-11 h-11 flex items-center justify-center bg-slate-100 dark:bg-white/10 rounded-lg disabled:opacity-40 active:scale-[0.98] transition-colors"
                              >
                                  <Minus size={16} aria-hidden="true" />
                              </button>
-                             <span className="text-xs font-black w-10 text-center tabular-nums text-gray-800 dark:text-white">
+                             <span className="text-xs font-black w-10 text-center tabular-nums text-midnight dark:text-white">
                                  {Math.round(fontSizeLevel * 100)}%
                              </span>
                              <button 
@@ -103,7 +100,7 @@ const MobileNav: React.FC = () => {
                                 onClick={actions.increaseFontSize} 
                                 disabled={fontSizeLevel >= 1.5}
                                 aria-label="Aumentar fonte"
-                                className="focus-visible:ring-4 focus-visible:ring-blue-500/40 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-lg disabled:opacity-30 active:scale-95 transition-all"
+                                className="focus-visible:ring-4 focus-visible:ring-blue-500/40 w-11 h-11 flex items-center justify-center bg-slate-100 dark:bg-white/10 rounded-lg disabled:opacity-40 active:scale-[0.98] transition-colors"
                              >
                                  <Plus size={16} aria-hidden="true" />
                              </button>
@@ -113,10 +110,10 @@ const MobileNav: React.FC = () => {
                     <button 
                         type="button"
                         onClick={() => { actions.setShowOnboarding(true); setIsMenuOpen(false); }}
-                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 col-span-2 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 col-span-2 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 active:scale-[0.98] transition-colors"
                     >
                         <HelpCircle size={20} className="text-green-600 dark:text-green-400" aria-hidden="true" />
-                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Ajuda e Tutoriais</span>
+                        <span className="text-xs font-semibold text-muted-strong">Ajuda e tutoriais</span>
                     </button>
                 </div>
             </div>
@@ -125,18 +122,16 @@ const MobileNav: React.FC = () => {
         {isMenuOpen && (
             <div 
                 aria-hidden="true"
-                className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 z-[55] bg-black/60 transition-opacity"
                 onClick={() => setIsMenuOpen(false)}
             />
         )}
 
-        {/* BOTTOM NAV BAR */}
         <div className="md:hidden fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none pb-safe">
                     <nav 
-                        className="pointer-events-auto glass-surface flex items-center p-1.5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_50px_rgba(0,0,0,0.8)] relative w-full max-w-sm mx-auto transition-all duration-300"
+                        className="pointer-events-auto glass-surface flex items-center p-1.5 rounded-full shadow-md relative w-full max-w-sm mx-auto transition-all duration-300"
                         aria-label="Navegação Móvel"
                     >
-            {/* Standard Tabs Loop */}
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id && !isMenuOpen;
                 
@@ -146,10 +141,10 @@ const MobileNav: React.FC = () => {
                         type="button"
                         data-tour={tab.id}
                         onClick={() => handleTabClick(tab.id)}
-                        className={`flex-1 relative z-10 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
+                        className={`flex-1 relative z-10 min-h-11 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                             isActive 
                             ? 'text-blue-700 dark:text-white' 
-                            : 'text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-200'
+                            : 'text-subtle hover:text-midnight dark:hover:text-white'
                         }`}
                         aria-label={tab.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -157,24 +152,22 @@ const MobileNav: React.FC = () => {
                         <tab.icon 
                             size={20} 
                             strokeWidth={isActive ? 2.5 : 2}
-                            className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}
                             aria-hidden="true"
                         />
-                        <span className={`text-[9px] font-bold leading-none ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                        <span className="text-xs font-semibold leading-none">
                             {tab.label}
                         </span>
                     </button>
                 );
             })}
 
-            {/* Menu Trigger */}
             <button
                 type="button"
                 onClick={toggleMenu}
-                className={`flex-1 relative z-10 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
+                className={`flex-1 relative z-10 min-h-11 flex flex-col items-center justify-center gap-1 py-2 rounded-full transition-colors duration-200 focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                     isMenuOpen 
                     ? 'text-nuit dark:text-white' 
-                    : 'text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-200'
+                    : 'text-subtle hover:text-midnight dark:hover:text-white'
                 }`}
                 aria-label={isMenuOpen ? "Fechar Menu" : "Abrir Menu"}
                 aria-expanded={isMenuOpen}
@@ -185,7 +178,7 @@ const MobileNav: React.FC = () => {
                 ) : (
                     <Menu size={20} strokeWidth={2} aria-hidden="true" />
                 )}
-                <span className={`text-[9px] font-bold leading-none ${isMenuOpen ? 'opacity-100' : 'opacity-70'}`}>
+                <span className="text-xs font-semibold leading-none">
                     Menu
                 </span>
             </button>

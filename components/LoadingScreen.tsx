@@ -93,11 +93,10 @@ const LoadingScreen: React.FC = () => {
         .loading-text-wrapper {
             position: relative;
             font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
-            font-weight: 900;
+            font-weight: 700;
             font-size: 1.25rem;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.05em;
             color: #00457F; /* Azul Profundo da Paleta do App */
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
             animation: textMotion 5s ease-in-out infinite;
             z-index: 10;
             transition: color 0.3s ease; 
@@ -106,14 +105,12 @@ const LoadingScreen: React.FC = () => {
         /* Dark mode support */
         .dark .loading-text-wrapper {
              color: #EDF5FA; 
-             text-shadow: 0 2px 8px rgba(0,0,0,0.8);
         }
 
         @media (prefers-color-scheme: dark) {
             .loading-text-wrapper {
                 color: #EDF5FA; 
-                text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-            }
+               }
         }
 
         .text-ghost { opacity: 0; visibility: hidden; }
@@ -238,8 +235,8 @@ const LoadingScreen: React.FC = () => {
         </div>
         
         <div className="loading-text-wrapper" aria-hidden="true">
-            <span className="text-ghost">CARREGANDO...</span>
-            <span className="text-visible">CARREGANDO...</span>
+            <span className="text-ghost">Carregando...</span>
+            <span className="text-visible">Carregando...</span>
         </div>
       </div>
     </div>

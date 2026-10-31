@@ -10,6 +10,7 @@ import { safeHttpUrl } from '../utils/url';
 import { getDidacticContext, renderWithGlossary } from '../utils/legislativeTranslator';
 import { fetchProposicaoDetails, fetchEventDetails } from '../services/camaraApi';
 import { buildActivityAudioScript } from '../utils/audioNarration';
+import { distinctSummary, feedCode, isRedundantText, resolveFeedTitle } from '../utils/feedText';
 
 interface FeedDetailModalProps {
     item: FeedItem;
@@ -65,6 +66,14 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
     const didacticContent = useMemo(() => getDidacticContext(item.title, item.description, item.type), [item]);
     const glossaryContent = useMemo(() => renderWithGlossary(didacticContent.text), [didacticContent.text]);
     const audioScript = useMemo(() => buildActivityAudioScript(item, didacticContent.text, politician), [item, didacticContent.text, politician]);
+    const resolvedTitle = resolveFeedTitle(item.title, item.description);
+    const code = feedCode(item.title, item.description);
+    const summary = distinctSummary(resolvedTitle, item.summary);
+    const showDidactic = Boolean(didacticContent.text) && !isRedundantText(resolvedTitle, didacticContent.text) && !isRedundantText(summary, didacticContent.text);
+    const originalText = distinctSummary(resolvedTitle, item.content || item.originalDescription || item.description);
+    const agendaUrl = safeHttpUrl(extraDetails?.agendaDocumentUrl);
+    const eventUrl = safeHttpUrl(extraDetails?.eventUrl);
+    const fullTextUrl = safeHttpUrl(extraDetails?.fullTextUrl);
 
     useEffect(() => {
         const frame = requestAnimationFrame(() => setVisible(true));
@@ -194,76 +203,78 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
             onClose={onClose}
             labelledBy="modal-title"
             initialFocusRef={closeBtnRef}
-            className={`fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-midnight/60 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} 
+            className={`fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-midnight/60 dark:bg-black/80 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
         >
-            <div 
-                className={`glass-panel w-full max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] relative overflow-hidden flex flex-col max-h-[95dvh] md:max-h-[85dvh] transition-transform duration-500 ease-out ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}
+            <div
+                className={`glass-panel w-full max-w-2xl rounded-t-3xl md:rounded-3xl relative overflow-hidden flex flex-col max-h-[95dvh] md:max-h-[85dvh] transition-transform duration-500 ease-out ${visible ? 'translate-y-0' : 'translate-y-full md:scale-95'}`}
                 style={{ transform: visible ? `translateY(${dragY}px)` : undefined }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
-                {/* Drag Handle */}
                 <div className="md:hidden w-full h-6 absolute top-0 left-0 right-0 z-50 flex items-center justify-center cursor-grab active:cursor-grabbing">
-                    <div className="w-12 h-1.5 bg-gray-300/50 dark:bg-gray-700/50 rounded-full backdrop-blur-sm" aria-hidden="true"></div>
+                    <div className="w-12 h-1.5 bg-gray-300/60 dark:bg-gray-600/60 rounded-full" aria-hidden="true"></div>
                 </div>
-                
-                <div className={`h-24 md:h-32 shrink-0 relative flex items-start justify-end p-6 ${typeMeta.headerClass} backdrop-blur-md transition-colors`}>
+
+                <div className={`h-24 md:h-32 shrink-0 relative flex items-start justify-end p-6 ${typeMeta.headerClass}`}>
                     <div className="absolute top-6 left-6 z-50 flex gap-2">
                         <AudioPlayer text={audioScript} isDarkText={isLightBg && !isEvent} />
                     </div>
-                    <button 
+                    <button
                         ref={closeBtnRef}
                         type="button"
-                        onClick={onClose} 
+                        onClick={onClose}
                         aria-label="Fechar detalhes"
-                        className={`p-2.5 rounded-full transition-colors backdrop-blur-md border shadow-sm focus-visible:ring-4 focus-visible:ring-blue-500/40 ${closeBtnClass}`}
+                        className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors border focus-visible:ring-4 focus-visible:ring-blue-500/40 ${closeBtnClass}`}
                     >
                         <X size={20} aria-hidden="true" />
                     </button>
-                    <div className="absolute -bottom-6 left-8 p-3 bg-white/80 dark:bg-gray-900/80 rounded-[1.5rem] shadow-xl border-4 border-praxeti dark:border-midnight backdrop-blur-xl flex items-center justify-center">
+                    <div className="absolute -bottom-6 left-8 p-3 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border-2 border-praxeti dark:border-midnight flex items-center justify-center">
                         <typeMeta.Icon size={28} className={typeMeta.iconClass} aria-hidden="true" />
                     </div>
                 </div>
 
                 <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-8 pt-12 pb-safe">
-                    <div className="flex flex-wrap items-center gap-2 mb-6">
-                        <span className={`text-xs font-black uppercase px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm ${typeMeta.chipClass}`}>
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${typeMeta.chipClass}`}>
                             {typeMeta.label}
                         </span>
-                        {item.date && <span className="text-xs font-bold text-subtle flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {item.date}</span>}
+                        {item.date && <span className="text-xs font-medium text-subtle flex items-center gap-1.5"><Clock size={14} aria-hidden="true" /> {item.date}</span>}
                     </div>
 
-                    <h2 id="modal-title" className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight mb-8 tracking-tight">{item.title}</h2>
+                    <h2 id="modal-title" className="text-2xl md:text-3xl font-black text-midnight dark:text-white leading-tight mb-4 break-words">{resolvedTitle}</h2>
+                    {code && <p className="text-xs font-medium text-subtle -mt-2 mb-4">{code}</p>}
 
-                    {(item.summary || item.whyItMatters || item.nextStep) && (
-                        <div className="mb-8 grid gap-3">
-                            {item.summary && (
-                                <div className="bg-white/60 dark:bg-white/5 p-5 rounded-3xl border border-white/60 dark:border-white/10">
-                                    <p className="text-xs font-black uppercase tracking-widest text-subtle mb-2">Resumo cidadão</p>
-                                    <p className="text-base font-bold leading-relaxed text-gray-900 dark:text-white">{item.summary}</p>
+                    {(summary || item.whyItMatters || item.nextStep) && (
+                        <div className="mb-8 grid gap-4">
+                            {summary && (
+                                <div className="bg-white/60 dark:bg-white/5 p-4 md:p-6 rounded-2xl border border-slate-200/70 dark:border-white/10">
+                                    <p className="text-xs font-semibold text-subtle mb-2">Resumo cidadão</p>
+                                    <p className="text-base font-bold leading-relaxed text-midnight dark:text-white">{summary}</p>
                                 </div>
                             )}
-                            <div className="grid gap-3 md:grid-cols-2">
-                                {item.whyItMatters && (
-                                    <div className="bg-blue-50/90 dark:bg-blue-900/15 p-5 rounded-3xl border border-blue-100 dark:border-blue-900/30">
-                                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-xs font-black uppercase tracking-widest mb-2">
-                                            <Target size={14} aria-hidden="true" />
-                                            Por que importa
+                            {(item.whyItMatters || item.nextStep) && (
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {item.whyItMatters && (
+                                        <div className="bg-blue-50/90 dark:bg-blue-900/15 p-4 md:p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-2">
+                                                <Target size={14} aria-hidden="true" />
+                                                Por que importa
+                                            </div>
+                                            <p className="text-sm font-semibold leading-relaxed text-blue-950 dark:text-blue-100">{item.whyItMatters}</p>
                                         </div>
-                                        <p className="text-sm font-bold leading-relaxed text-blue-950 dark:text-blue-100">{item.whyItMatters}</p>
-                                    </div>
-                                )}
-                                {item.nextStep && (
-                                    <div className="bg-slate-50/90 dark:bg-white/5 p-5 rounded-3xl border border-slate-100 dark:border-white/10">
-                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-widest mb-2">
-                                            <Route size={14} aria-hidden="true" />
-                                            Próximo passo
+                                    )}
+                                    {item.nextStep && (
+                                        <div className="bg-slate-50/90 dark:bg-white/5 p-4 md:p-6 rounded-2xl border border-slate-200/70 dark:border-white/10">
+                                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 text-xs font-semibold mb-2">
+                                                <Route size={14} aria-hidden="true" />
+                                                Próximo passo
+                                            </div>
+                                            <p className="text-sm font-semibold leading-relaxed text-slate-800 dark:text-slate-100">{item.nextStep}</p>
                                         </div>
-                                        <p className="text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100">{item.nextStep}</p>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -279,115 +290,109 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                         </div>
                     )}
 
-                    {/* --- CONVIDADOS E MESA (PARA EVENTOS) --- */}
                     {isEvent && (
                         <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="bg-purple-50 dark:bg-white/5 p-5 rounded-3xl border border-purple-100 dark:border-white/10">
+                            <div className="bg-purple-50 dark:bg-white/5 p-4 md:p-6 rounded-2xl border border-purple-100 dark:border-white/10">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
-                                        <Mic2 size={14} aria-hidden="true" /> Mesa de Convidados
-                                    </h4>
-                                    {loadingExtras && <Loader2 size={12} className="animate-spin text-purple-500" role="img" aria-label="Carregando" />}
+                                    <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                                        <Mic2 size={14} aria-hidden="true" /> Mesa de convidados
+                                    </h3>
+                                    {loadingExtras && <Loader2 size={14} className="animate-spin text-purple-700 dark:text-purple-300" role="img" aria-label="Carregando" />}
                                 </div>
-                                
+
                                 {extraDetails?.guests && extraDetails.guests.length > 0 ? (
                                     <div className="flex flex-col gap-2">
                                         {extraDetails.guests.map((guest, idx) => {
                                             const isVIP = guest.toLowerCase().includes('ministro') || guest.toLowerCase().includes('secretário');
                                             return (
-                                                <div key={`${guest}-${idx}`} className="flex items-start gap-3 p-2 rounded-xl bg-white/60 dark:bg-black/20 border border-transparent hover:border-purple-200 dark:hover:border-purple-800 transition-colors">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isVIP ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                <div key={`${guest}-${idx}`} className="flex items-start gap-3 p-2 rounded-xl bg-white/60 dark:bg-black/20">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isVIP ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>
                                                         {isVIP ? <Star size={14} fill="currentColor" aria-hidden="true" /> : <Users size={14} aria-hidden="true" />}
                                                     </div>
-                                                    <div>
-                                                        <p className={`text-sm font-bold leading-tight ${isVIP ? 'text-purple-900 dark:text-purple-200' : 'text-muted-strong'}`}>
-                                                            {guest}
-                                                        </p>
-                                                    </div>
+                                                    <p className={`text-sm font-semibold leading-snug self-center ${isVIP ? 'text-purple-900 dark:text-purple-200' : 'text-muted-strong'}`}>
+                                                        {guest}
+                                                    </p>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-subtle italic">
+                                    <p className="text-sm text-subtle">
                                         {loadingExtras ? "Buscando lista de convidados..." : loadError ? "Lista de convidados indisponível no momento." : "Lista de convidados não disponível na pauta digital."}
                                     </p>
                                 )}
                             </div>
                             {extraDetails && (
-                                <div className="grid gap-3 md:grid-cols-2">
+                                <div className="grid gap-4 md:grid-cols-2">
                                     {extraDetails.organs && extraDetails.organs.length > 0 && (
-                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
-                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Órgãos responsáveis</p>
-                                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.organs.join(', ')}</p>
+                                        <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-semibold text-subtle">Órgãos responsáveis</p>
+                                            <p className="text-sm font-semibold text-muted-strong">{extraDetails.organs.join(', ')}</p>
                                         </div>
                                     )}
                                     {extraDetails.participants && extraDetails.participants.length > 0 && (
-                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
-                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Parlamentares participantes</p>
-                                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.participants.slice(0, 12).join(', ')}{extraDetails.participants.length > 12 ? ` e mais ${extraDetails.participants.length - 12}` : ''}</p>
+                                        <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-semibold text-subtle">Parlamentares participantes</p>
+                                            <p className="text-sm font-semibold text-muted-strong">{extraDetails.participants.slice(0, 12).join(', ')}{extraDetails.participants.length > 12 ? ` e mais ${extraDetails.participants.length - 12}` : ''}</p>
                                         </div>
                                     )}
                                     {extraDetails.requests && extraDetails.requests.length > 0 && (
-                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
-                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Requerimentos</p>
-                                            <ul className="space-y-1 text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.requests.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
+                                        <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-semibold text-subtle">Requerimentos</p>
+                                            <ul className="space-y-1 text-sm font-semibold text-muted-strong">{extraDetails.requests.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
                                         </div>
                                     )}
                                     {extraDetails.phases && extraDetails.phases.length > 0 && (
-                                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
-                                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-400">Fases do evento</p>
-                                            <ul className="space-y-1 text-sm font-bold text-gray-800 dark:text-gray-200">{extraDetails.phases.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
+                                        <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                                            <p className="mb-2 text-xs font-semibold text-subtle">Fases do evento</p>
+                                            <ul className="space-y-1 text-sm font-semibold text-muted-strong">{extraDetails.phases.slice(0, 8).map((value, index) => <li key={index}>• {value}</li>)}</ul>
                                         </div>
                                     )}
                                 </div>
                             )}
-                            {(safeHttpUrl(extraDetails?.agendaDocumentUrl) || safeHttpUrl(extraDetails?.eventUrl)) && (
-                                <div className="flex flex-wrap gap-2">
-                                    {safeHttpUrl(extraDetails?.agendaDocumentUrl) && <a href={safeHttpUrl(extraDetails?.agendaDocumentUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-xs font-black uppercase text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"><FileText size={14} aria-hidden="true" /> Pauta oficial</a>}
-                                    {safeHttpUrl(extraDetails?.eventUrl) && <a href={safeHttpUrl(extraDetails?.eventUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase text-gray-700 dark:bg-white/10 dark:text-gray-300"><ExternalLink size={14} aria-hidden="true" /> Registro oficial</a>}
+                            {(agendaUrl || eventUrl) && (
+                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold">
+                                    {agendaUrl && <a href={agendaUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 min-h-11 rounded text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline focus-visible:ring-4 focus-visible:ring-blue-500/40"><FileText size={14} aria-hidden="true" /> Pauta oficial<span className="sr-only"> (abre em nova aba)</span></a>}
+                                    {eventUrl && <a href={eventUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 min-h-11 rounded text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline focus-visible:ring-4 focus-visible:ring-blue-500/40"><ExternalLink size={14} aria-hidden="true" /> Registro oficial<span className="sr-only"> (abre em nova aba)</span></a>}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* --- TRAMITÔMETRO E EXTRAS DO PROJETO (PARA VOTOS) --- */}
                     {hasTramitacao && (
                         <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            {/* Barra de Progresso */}
-                            <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-3xl border border-gray-100 dark:border-white/10">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h4 className="text-xs font-black uppercase text-subtle tracking-widest flex items-center gap-2">
+                            <div className="bg-slate-50 dark:bg-white/5 p-4 md:p-6 rounded-2xl border border-slate-200/70 dark:border-white/10">
+                                <div className="flex justify-between items-center gap-4 mb-3">
+                                    <h3 className="text-sm font-semibold text-muted-strong flex items-center gap-2">
                                         <GitCommit size={14} aria-hidden="true" /> Tramitômetro
-                                    </h4>
-                                    {loadingExtras && <Loader2 size={12} className="animate-spin text-blue-500" role="img" aria-label="Carregando" />}
-                                    {!loadingExtras && extraDetails && (
-                                        <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">
+                                    </h3>
+                                    {loadingExtras && <Loader2 size={14} className="animate-spin text-blue-700 dark:text-blue-300" role="img" aria-label="Carregando" />}
+                                    {!loadingExtras && extraDetails && extraDetails.label && (
+                                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
                                             {extraDetails.label}
                                         </span>
                                     )}
                                 </div>
                                 {extraDetails?.closed ? (
-                                    <p className="text-xs font-bold text-muted-strong">Tramitação encerrada sem virar lei.</p>
+                                    <p className="text-sm font-medium text-muted-strong">Tramitação encerrada sem virar lei.</p>
                                 ) : !loadingExtras && !(extraDetails && extraDetails.progress > 0) ? (
-                                    <p className="text-xs font-bold text-muted-strong">Etapa não disponível.</p>
+                                    <p className="text-sm font-medium text-muted-strong">Etapa não disponível.</p>
                                 ) : (
                                     <>
-                                    <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
-                                        <div 
-                                            className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 ease-out relative"
+                                    <div
+                                        role="progressbar"
+                                        aria-label="Andamento da tramitação"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={extraDetails ? extraDetails.progress : 0}
+                                        className="h-3 w-full bg-slate-200 dark:bg-white/15 rounded-full overflow-hidden relative"
+                                    >
+                                        <div
+                                            className="h-full bg-nuit dark:bg-blue-400 rounded-full transition-all duration-1000 ease-out"
                                             style={{ width: `${extraDetails ? extraDetails.progress : 0}%` }}
-                                        >
-                                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50 animate-pulse"></div>
-                                        </div>
-                                        {/* Steps Markers */}
-                                        <div className="absolute inset-0 flex justify-between px-1">
-                                            {[10, 30, 60, 80, 100].map(step => (
-                                                <div key={step} className={`w-0.5 h-full ${extraDetails && extraDetails.progress >= step ? 'bg-white/30' : 'bg-gray-300/30'}`}></div>
-                                            ))}
-                                        </div>
+                                        ></div>
                                     </div>
-                                    <div className="flex justify-between mt-2 text-[9px] font-bold text-subtle uppercase tracking-wide">
+                                    <div className="flex justify-between mt-2 text-xs font-medium text-subtle">
                                         <span>Início</span>
                                         <span>Sanção</span>
                                     </div>
@@ -395,48 +400,47 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                 )}
                             </div>
 
-                            {/* Autores & Inteiro Teor */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/10">
-                                    <h4 className="text-[10px] font-black uppercase text-subtle tracking-widest mb-2 flex items-center gap-1.5">
-                                        <Users size={12} aria-hidden="true" /> Quem Assina
-                                    </h4>
+                                <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/70 dark:border-white/10">
+                                    <h3 className="text-xs font-semibold text-subtle mb-2 flex items-center gap-1.5">
+                                        <Users size={14} aria-hidden="true" /> Quem assina
+                                    </h3>
                                     {loadingExtras ? (
-                                        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                                        <div className="h-4 w-20 bg-slate-200 dark:bg-white/15 rounded animate-pulse"></div>
                                     ) : (
-                                        <div className="text-xs font-bold text-gray-800 dark:text-gray-200 leading-tight">
-                                            {extraDetails && extraDetails.authors && extraDetails.authors.length > 0 
+                                        <div className="text-sm font-semibold text-muted-strong leading-snug">
+                                            {extraDetails && extraDetails.authors && extraDetails.authors.length > 0
                                                 ? extraDetails.authors.slice(0, 3).join(', ') + (extraDetails.authors.length > 3 ? ` e +${extraDetails.authors.length - 3}` : '')
                                                 : "Autoria não informada"}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-3xl border border-blue-100 dark:border-blue-900/30 flex flex-col justify-center items-center text-center group cursor-pointer hover:bg-blue-100/50 transition-colors">
+                                <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/70 dark:border-white/10 flex flex-col justify-center items-center text-center">
                                     {loadingExtras ? (
-                                        <Loader2 size={20} className="animate-spin text-blue-500" role="img" aria-label="Carregando" />
-                                    ) : safeHttpUrl(extraDetails?.fullTextUrl) ? (
-                                        <a href={safeHttpUrl(extraDetails?.fullTextUrl)} target="_blank" rel="noopener noreferrer" className="w-full h-full flex flex-col items-center justify-center">
-                                            <FileText size={20} className="text-blue-600 dark:text-blue-400 mb-1 group-hover:scale-110 transition-transform" aria-hidden="true" />
-                                            <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-300 tracking-wide">Ler Inteiro Teor</span>
+                                        <Loader2 size={20} className="animate-spin text-blue-700 dark:text-blue-300" role="img" aria-label="Carregando" />
+                                    ) : fullTextUrl ? (
+                                        <a href={fullTextUrl} target="_blank" rel="noopener noreferrer" className="w-full min-h-11 flex flex-col items-center justify-center gap-1 rounded text-blue-700 dark:text-blue-300 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                            <FileText size={20} aria-hidden="true" />
+                                            <span className="text-sm font-semibold underline-offset-2 hover:underline">Ler inteiro teor<span className="sr-only"> (abre em nova aba)</span></span>
                                         </a>
                                     ) : (
                                         <>
-                                            <FileText size={20} className="text-gray-400 mb-1" aria-hidden="true" />
-                                            <span className="text-[10px] font-bold uppercase text-gray-400">PDF Indisponível</span>
+                                            <FileText size={20} className="text-subtle mb-1" aria-hidden="true" />
+                                            <span className="text-sm font-medium text-subtle">PDF indisponível</span>
                                         </>
                                     )}
                                 </div>
                             </div>
                             {item.approval !== undefined && (
-                                <div className={`rounded-2xl border p-4 text-sm font-black ${Number(item.approval) === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'}`}>
+                                <div className={`rounded-2xl border p-4 text-sm font-semibold ${Number(item.approval) === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'}`}>
                                     Resultado oficial: {Number(item.approval) === 1 ? 'aprovação registrada' : 'aprovação não registrada'}
                                 </div>
                             )}
                             {extraDetails && (extraDetails.detailedSummary || extraDetails.justification || extraDetails.statusDescription || extraDetails.dispatch || extraDetails.keywords?.length || extraDetails.relatedPropositions?.length || extraDetails.finalUrn) && (
-                                <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-white/10 dark:bg-white/5">
-                                    <p className="mb-4 text-xs font-black uppercase tracking-widest text-gray-400">Dados oficiais da proposição</p>
-                                    <div className="space-y-3 text-sm text-gray-800 dark:text-gray-200">
+                                <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4 md:p-6 dark:border-white/10 dark:bg-white/5">
+                                    <h3 className="mb-4 text-sm font-semibold text-muted-strong">Dados oficiais da proposição</h3>
+                                    <div className="space-y-3 text-sm text-muted-strong">
                                         {extraDetails.statusDescription && <p><strong>Situação:</strong> {extraDetails.statusDescription}</p>}
                                         {extraDetails.responsibleBody && <p><strong>Órgão responsável:</strong> {extraDetails.responsibleBody}</p>}
                                         {extraDetails.detailedSummary && <p><strong>Ementa detalhada:</strong> {extraDetails.detailedSummary}</p>}
@@ -451,24 +455,24 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                         </div>
                     )}
 
-                    <div className="mb-10 space-y-6">
-                        {/* Didactic Box - WCAG Contrast Fix: Blue-50 solid for light mode */}
-                        <div className="bg-blue-50/90 dark:bg-blue-900/20 p-6 rounded-3xl border border-blue-100 dark:border-nuit/20 backdrop-blur-md relative overflow-hidden shadow-sm">
-                            <div className="absolute top-0 left-0 w-1.5 h-full bg-nuit"></div>
-                            <div className="text-gray-900 dark:text-blue-100 text-base md:text-lg font-medium leading-relaxed">
-                                {glossaryContent}
+                    <div className="mb-8 space-y-4">
+                        {showDidactic && (
+                            <div className="bg-blue-50/90 dark:bg-blue-900/20 p-4 md:p-6 rounded-2xl border border-blue-100 dark:border-nuit/30 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-nuit dark:bg-blue-400"></div>
+                                <div className="text-midnight dark:text-blue-100 text-base font-medium leading-relaxed">
+                                    {glossaryContent}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {didacticContent.constitution && (
-                            // Constitution Box - WCAG Contrast Fix: Yellow-50 solid for light mode
-                            <div className="bg-yellow-50/90 dark:bg-yellow-900/20 p-6 rounded-3xl border border-yellow-100 dark:border-spring/10 backdrop-blur-md relative overflow-hidden shadow-sm">
-                                <div className="absolute top-0 left-0 w-1.5 h-full bg-spring"></div>
+                            <div className="bg-yellow-50/90 dark:bg-yellow-900/20 p-4 md:p-6 rounded-2xl border border-yellow-100 dark:border-spring/20 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-spring"></div>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <Scale size={16} className="text-yellow-800 dark:text-spring" />
-                                    <span className="text-xs font-black uppercase tracking-wider text-yellow-800 dark:text-spring">Na Constituição ({didacticContent.constitution.art})</span>
+                                    <Scale size={16} className="text-yellow-800 dark:text-spring" aria-hidden="true" />
+                                    <span className="text-xs font-semibold text-yellow-800 dark:text-spring">Na Constituição ({didacticContent.constitution.art})</span>
                                 </div>
-                                <p className="text-gray-900 dark:text-yellow-100 text-sm md:text-base font-medium leading-relaxed italic">
+                                <p className="text-midnight dark:text-yellow-100 text-sm md:text-base font-medium leading-relaxed italic">
                                     "{didacticContent.constitution.text}"
                                 </p>
                             </div>
@@ -476,40 +480,41 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                     </div>
 
                     {isExpense && item.amount && (
-                        // Expense Box - WCAG Contrast Fix: Gray-50 solid
-                        <div className="mb-8 p-6 bg-gray-50/90 dark:bg-white/5 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-white/10 flex items-center justify-between">
+                        <div className="mb-8 p-4 md:p-6 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/70 dark:border-white/10 flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-xs font-bold text-subtle uppercase mb-1">Valor</p>
-                                <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">{item.amount}</p>
+                                <p className="text-xs font-semibold text-subtle mb-1">Valor</p>
+                                <p className="text-2xl font-black text-midnight dark:text-white tracking-tight">{item.amount}</p>
                             </div>
                             {item.provider && (
                                 <div className="text-right max-w-[50%]">
-                                    <p className="text-xs font-bold text-subtle uppercase mb-1">Fornecedor</p>
-                                    <p className="text-sm font-bold text-muted-strong truncate">{item.provider}</p>
+                                    <p className="text-xs font-semibold text-subtle mb-1">Fornecedor</p>
+                                    <p className="text-sm font-semibold text-muted-strong line-clamp-2">{item.provider}</p>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    <div className="text-muted-strong font-medium leading-loose mb-8 text-sm md:text-base">
-                        <p className="mb-3 font-bold text-xs uppercase text-subtle tracking-wider">Texto Original:</p>
-                        <p>{item.content || item.originalDescription || item.description}</p>
-                    </div>
+                    {originalText && (
+                        <div className="text-muted-strong font-medium leading-relaxed mb-8 text-sm md:text-base">
+                            <p className="mb-2 font-semibold text-xs text-subtle">Texto original</p>
+                            <p>{originalText}</p>
+                        </div>
+                    )}
 
                     <div className="flex flex-col gap-4 mt-auto">
                         {politician && (
-                            <button 
-                                onClick={() => { onClose(); onGoToProfile(politician); }} 
+                            <button
+                                onClick={() => { onClose(); onGoToProfile(politician); }}
                                 aria-label={`Ver perfil completo de ${politician.name}`}
-                                className="flex items-center gap-4 p-5 rounded-3xl border border-gray-200 dark:border-white/10 hover:border-nuit bg-white/50 dark:bg-white/5 cursor-pointer transition-all active:scale-[0.98] text-left backdrop-blur-md shadow-sm hover:shadow-md group"
+                                className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200/70 dark:border-white/10 hover:border-nuit bg-white/50 dark:bg-white/5 cursor-pointer transition-colors active:scale-[0.98] text-left group focus-visible:ring-4 focus-visible:ring-blue-500/40"
                             >
-                                <img src={politician.photo} className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-600 shadow-md group-hover:scale-105 transition-transform" alt="" loading="lazy" />
+                                <img src={politician.photo} className="w-14 h-14 rounded-full object-cover border border-white dark:border-gray-600" alt="" loading="lazy" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-subtle uppercase mb-1">Responsável</p>
+                                    <p className="text-xs font-semibold text-subtle mb-1">Responsável</p>
                                     <p className="text-base font-black text-midnight dark:text-white truncate">{politician.name}</p>
                                     <p className="text-xs font-medium text-subtle">{politician.party} - {politician.state}</p>
                                 </div>
-                                <div className="p-3 bg-white/50 dark:bg-white/10 rounded-full text-subtle shrink-0 group-hover:text-nuit transition-colors">
+                                <div className="w-11 h-11 flex items-center justify-center bg-white/50 dark:bg-white/10 rounded-full text-subtle shrink-0 group-hover:text-nuit transition-colors">
                                     <ArrowRight size={20} aria-hidden="true" />
                                 </div>
                             </button>
@@ -517,17 +522,17 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
 
                         <div className="flex gap-4">
                             {sourceUrl && (
-                                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-4 rounded-2xl bg-midnight dark:bg-white text-white dark:text-black font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg hover:shadow-xl hover:bg-nuit">
-                                    Fonte Oficial <ExternalLink size={16} aria-hidden="true" />
+                                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-h-11 py-3.5 rounded-2xl bg-midnight dark:bg-white text-white dark:text-black font-bold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] hover:bg-nuit focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                    Fonte oficial <ExternalLink size={16} aria-hidden="true" /><span className="sr-only">(abre em nova aba)</span>
                                 </a>
                             )}
                             {sourceUrl && (
-                                <button type="button" onClick={handleShare} aria-label="Compartilhar esta informação" className="px-6 py-4 rounded-2xl border border-gray-200 dark:border-white/10 text-muted-strong font-bold active:scale-[0.98] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors bg-white/20 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                <button type="button" onClick={handleShare} aria-label="Compartilhar esta informação" className="min-w-11 min-h-11 px-6 py-3.5 rounded-2xl border border-slate-200/70 dark:border-white/10 text-muted-strong font-bold active:scale-[0.98] hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:ring-4 focus-visible:ring-blue-500/40">
                                     <Share2 size={22} aria-hidden="true" />
                                 </button>
                             )}
                         </div>
-                        <p role="status" className="text-center text-xs font-bold text-muted-strong min-h-[1rem]">{shareFeedback}</p>
+                        <p role="status" className="text-center text-xs font-medium text-muted-strong min-h-[1rem]">{shareFeedback}</p>
                     </div>
                 </div>
             </div>

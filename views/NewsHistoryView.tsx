@@ -37,7 +37,7 @@ const ImageWithFallback = ({ src, alt, className }: { src?: string, alt: string,
 
     if (status === 'error' || !src) {
         return (
-            <div aria-hidden="true" className={`flex items-center justify-center bg-gray-200 dark:bg-gray-800 text-gray-400 ${className}`}>
+            <div aria-hidden="true" className={`flex items-center justify-center bg-slate-200 dark:bg-white/10 text-subtle ${className}`}>
                 <ImageOff size={24} strokeWidth={1.5} />
             </div>
         );
@@ -304,14 +304,14 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
 
                     {/* Content */}
                     <div className="space-y-10">
-                        <span className="inline-block px-8 py-3 rounded-2xl bg-blue-500 text-white text-2xl font-black uppercase tracking-widest shadow-lg">
+                        <span className="inline-block px-8 py-3 rounded-2xl bg-blue-500 text-white text-2xl font-black uppercase tracking-widest">
                             {sharingItem.summary?.context}
                         </span>
-                        <h2 className="text-7xl font-black leading-[1.1] tracking-tight drop-shadow-lg">
+                        <h2 className="text-7xl font-black leading-[1.1] tracking-tight">
                             {sharingItem.title}
                         </h2>
                         <div className="w-32 h-3 bg-blue-500 rounded-full"></div>
-                        <p className="text-4xl font-medium leading-relaxed text-gray-200 max-w-4xl">
+                        <p className="text-4xl font-medium leading-relaxed text-slate-200 max-w-4xl">
                             {sharingItem.summary?.main}
                         </p>
                     </div>
@@ -323,7 +323,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                             <p className="text-3xl font-black">{sharingItem.time}</p>
                         </div>
                         <div className="flex items-center gap-4 opacity-70">
-                            <div className="w-4 h-4 bg-green-500 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.8)]"></div>
+                            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                             <span className="text-2xl font-black uppercase tracking-widest">Dados Oficiais</span>
                         </div>
                     </div>
@@ -332,69 +332,65 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
 
             {/* Summary Modal Overlay */}
             {summaryResult && (
-                <Modal onClose={() => setSummaryResult(null)} labelledBy="resumo-titulo" className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] max-w-md w-full shadow-2xl relative border border-white/20">
-                        <button type="button" onClick={() => setSummaryResult(null)} aria-label="Fechar" className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-4 focus-visible:ring-blue-500/40"><X size={20} aria-hidden="true" /></button>
-                        <div id="resumo-titulo" className="flex items-center gap-2 mb-4 text-purple-600 dark:text-purple-400 font-black uppercase text-xs tracking-wider">
-                            <Sparkles size={18} aria-hidden="true" /> Resumo Inteligente
+                <Modal onClose={() => setSummaryResult(null)} labelledBy="resumo-titulo" className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl max-w-md w-full relative border border-slate-200/70 dark:border-white/10">
+                        <button type="button" onClick={() => setSummaryResult(null)} aria-label="Fechar" className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-full text-muted-strong hover:bg-slate-100 dark:hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-blue-500/40"><X size={20} aria-hidden="true" /></button>
+                        <div id="resumo-titulo" className="flex items-center gap-2 mb-4 pr-10 text-purple-700 dark:text-purple-300 font-semibold text-sm">
+                            <Sparkles size={18} aria-hidden="true" /> Resumo inteligente
                         </div>
-                        <p className="text-gray-800 dark:text-gray-200 text-base font-medium leading-relaxed">
+                        <p className="text-midnight dark:text-gray-100 text-base font-medium leading-relaxed">
                             {summaryResult}
                         </p>
                         <div className="mt-6 flex justify-end">
-                            <button type="button" onClick={() => setSummaryResult(null)} className="px-5 py-2 bg-gray-100 dark:bg-gray-800 rounded-xl font-bold text-xs uppercase hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40">Fechar</button>
+                            <button type="button" onClick={() => setSummaryResult(null)} className="min-h-11 px-5 py-2 bg-slate-100 dark:bg-white/10 text-midnight dark:text-white rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-white/20 transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40">Fechar</button>
                         </div>
                     </div>
                 </Modal>
             )}
 
             {shareNotice && (
-                <div role="status" className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] flex items-center gap-3 rounded-2xl bg-midnight text-white px-4 py-3 text-xs font-bold shadow-2xl border border-white/10">
+                <div role="status" className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] flex items-center gap-3 rounded-2xl bg-midnight text-white px-4 py-3 text-sm font-semibold border border-white/10">
                     <span>{shareNotice.message}</span>
                     {shareNotice.downloadUrl && (
-                        <a href={shareNotice.downloadUrl} download={shareNotice.fileName} className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 uppercase tracking-wider focus-visible:ring-4 focus-visible:ring-white/40">
-                            <Download size={12} aria-hidden="true" /> Baixar imagem
+                        <a href={shareNotice.downloadUrl} download={shareNotice.fileName} className="inline-flex items-center gap-1.5 min-h-11 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 focus-visible:ring-4 focus-visible:ring-white/40">
+                            <Download size={14} aria-hidden="true" /> Baixar imagem
                         </a>
                     )}
-                    <button type="button" onClick={() => setShareNotice(null)} aria-label="Fechar aviso" className="p-1 rounded-full hover:bg-white/15 focus-visible:ring-4 focus-visible:ring-white/40">
+                    <button type="button" onClick={() => setShareNotice(null)} aria-label="Fechar aviso" className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/15 focus-visible:ring-4 focus-visible:ring-white/40">
                         <X size={14} aria-hidden="true" />
                     </button>
                 </div>
             )}
 
-            {/* Header Area */}
             <div className="sticky top-0 z-30 pt-4 px-3 md:px-6 pb-2">
-                <div className="w-full glass-panel rounded-[2.5rem] p-4 max-w-[2000px] mx-auto flex flex-col gap-4">
-                    
-                    {/* Top Row: Title, Back, Actions */}
+                <div className="w-full glass-panel rounded-2xl p-4 md:p-6 max-w-[2000px] mx-auto flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <button 
                                 type="button"
                                 onClick={onBack} 
                                 aria-label="Voltar para o Guia Cidadão"
-                                className="p-2.5 bg-gray-100/50 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-all active:scale-95 border border-white/20 focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                                className="w-11 h-11 flex items-center justify-center bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 rounded-full transition-colors active:scale-[0.98] border border-slate-200/70 dark:border-white/10 focus-visible:ring-4 focus-visible:ring-blue-500/40"
                             >
-                                <ChevronLeft className="text-gray-700 dark:text-white" size={20} aria-hidden="true" />
+                                <ChevronLeft className="text-muted-strong" size={20} aria-hidden="true" />
                             </button>
                             <div>
-                                <h1 className="text-lg md:text-xl font-black text-gray-900 dark:text-white leading-none flex items-center gap-2">
-                                    <Newspaper size={20} className="text-blue-600" aria-hidden="true" /> Galeria
+                                <h1 className="text-lg md:text-xl font-black text-midnight dark:text-white leading-tight flex items-center gap-2">
+                                    <Newspaper size={20} className="text-blue-700 dark:text-blue-300" aria-hidden="true" /> Galeria
                                 </h1>
-                                <p className="text-[10px] font-bold text-subtle uppercase tracking-wider">Acervo ({history.length})</p>
+                                <p className="text-xs font-medium text-subtle">Acervo ({history.length})</p>
                             </div>
                         </div>
 
-                        {/* Layout Toggle - Lixeira Removida */}
                         <div className="flex gap-2">
-                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-white/10">
+                            <div className="flex bg-slate-100 dark:bg-white/10 p-1 rounded-xl border border-slate-200/70 dark:border-white/10">
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('grid')}
                                     aria-label="Visualização em grade"
                                     aria-pressed={viewMode === 'grid'}
-                                    className={`p-2 rounded-lg transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${viewMode === 'grid' ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm' : 'text-subtle hover:text-gray-600'}`}
-                                    title="Visualização em Grade"
+                                    className={`w-11 h-11 flex items-center justify-center rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${viewMode === 'grid' ? 'bg-white dark:bg-white/20 text-blue-700 dark:text-white' : 'text-subtle hover:text-midnight dark:hover:text-white'}`}
+                                    title="Visualização em grade"
                                 >
                                     <LayoutGrid size={16} aria-hidden="true" />
                                 </button>
@@ -403,8 +399,8 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                     onClick={() => setViewMode('list')}
                                     aria-label="Visualização em lista"
                                     aria-pressed={viewMode === 'list'}
-                                    className={`p-2 rounded-lg transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${viewMode === 'list' ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm' : 'text-subtle hover:text-gray-600'}`}
-                                    title="Visualização em Lista"
+                                    className={`w-11 h-11 flex items-center justify-center rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${viewMode === 'list' ? 'bg-white dark:bg-white/20 text-blue-700 dark:text-white' : 'text-subtle hover:text-midnight dark:hover:text-white'}`}
+                                    title="Visualização em lista"
                                 >
                                     <AlignLeft size={16} aria-hidden="true" />
                                 </button>
@@ -412,11 +408,10 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                         </div>
                     </div>
 
-                    {/* Controls Row: Search & Chips */}
                     <div className="flex flex-col md:flex-row gap-3">
                         <div className="relative flex-1 group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" aria-hidden="true" />
+                                <Search className="h-4 w-4 text-subtle group-focus-within:text-blue-700 transition-colors" aria-hidden="true" />
                             </div>
                             <input 
                                 type="text"
@@ -424,18 +419,15 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                 placeholder="Buscar manchetes..."
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                className="block w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                                className="block w-full min-h-11 pl-9 pr-12 py-2.5 bg-white dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold text-midnight dark:text-white placeholder:text-subtle focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                             />
                             {query && (
-                                <button type="button" onClick={() => setQuery('')} aria-label="Limpar busca" className="absolute inset-y-0 right-0 pr-2 flex items-center rounded-xl focus-visible:ring-4 focus-visible:ring-blue-500/40">
-                                    <div className="p-0.5 bg-gray-200 dark:bg-white/10 rounded-full text-gray-500 hover:text-red-500 transition-colors cursor-pointer">
-                                        <X size={12} aria-hidden="true" />
-                                    </div>
+                                <button type="button" onClick={() => setQuery('')} aria-label="Limpar busca" className="absolute inset-y-0 right-0 w-11 flex items-center justify-center rounded-xl text-subtle hover:text-red-700 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                    <X size={16} aria-hidden="true" />
                                 </button>
                             )}
                         </div>
 
-                        {/* Chips */}
                         <div role="group" aria-label="Filtrar por origem" className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                             {['Todos', 'Câmara', 'Senado', 'Urgente'].map(tag => (
                                 <button
@@ -443,10 +435,10 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                     type="button"
                                     onClick={() => setSelectedTag(tag)}
                                     aria-pressed={selectedTag === tag}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase whitespace-nowrap border transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
+                                    className={`min-h-11 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap border transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                                         selectedTag === tag 
-                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                                        : 'bg-white dark:bg-white/5 text-subtle border-gray-200 dark:border-white/10 hover:bg-gray-50'
+                                        ? 'bg-blue-600 text-white border-blue-600' 
+                                        : 'bg-white dark:bg-white/5 text-muted-strong border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
                                     }`}
                                 >
                                     {tag}
@@ -455,23 +447,20 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                         </div>
                     </div>
                     
-                    {/* Mobile Only Summary Button */}
                     <button 
                         type="button"
                         onClick={handleSmartSummary}
                         disabled={isGeneratingSummary || history.length === 0}
-                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 md:hidden flex items-center justify-center gap-2 px-4 py-3 bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs border border-purple-200 dark:border-purple-800 active:scale-95 transition-all"
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 md:hidden flex items-center justify-center gap-2 min-h-11 px-4 py-3 bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200 rounded-xl font-bold text-sm border border-purple-200 dark:border-purple-800 active:scale-[0.98] transition-colors"
                     >
                         {isGeneratingSummary ? <RefreshCw size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-                        Gerar Resumo Inteligente
+                        Gerar resumo inteligente
                     </button>
                 </div>
             </div>
 
-            {/* Content List */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-12 animate-in fade-in duration-300 px-safe">
                 <div className="max-w-[2000px] mx-auto space-y-8">
-                    
                     {filteredHistory.length === 0 ? (
                         <div className="py-10 flex justify-center">
                             <DataState
@@ -490,8 +479,8 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
 
                             return (
                                 <div key={groupName} className="space-y-4">
-                                    <h3 className="flex items-center gap-2 text-xs font-black uppercase text-gray-400 tracking-widest pl-2 border-b border-gray-200 dark:border-white/5 pb-2">
-                                        <Calendar size={12} aria-hidden="true" /> {groupName}
+                                    <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-strong pl-2 border-b border-slate-200/70 dark:border-white/10 pb-2">
+                                        <Calendar size={14} aria-hidden="true" /> {groupName}
                                     </h3>
                                     
                                     <div className={viewMode === 'grid' 
@@ -501,53 +490,50 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                         {items.map((item) => (
                                             <div 
                                                 key={item.id || item.title + item.time}
-                                                className={`group glass-panel overflow-hidden shadow-sm transition-all duration-300 relative break-inside-avoid ${
+                                                className={`group glass-panel overflow-hidden transition-colors duration-300 relative break-inside-avoid ${
                                                     viewMode === 'list' 
-                                                    ? 'flex flex-row items-center p-3 rounded-2xl gap-4 hover:shadow-md' 
-                                                    : 'flex flex-col rounded-[2rem] hover:shadow-2xl hover:-translate-y-2'
+                                                    ? 'flex flex-row items-center p-3 rounded-2xl gap-4' 
+                                                    : 'flex flex-col rounded-2xl'
                                                 }`}
                                             >
-                                                {/* Image Area */}
-                                                <div className={`relative shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800 ${
+                                                <div className={`relative shrink-0 overflow-hidden bg-slate-100 dark:bg-white/10 ${
                                                     viewMode === 'list' 
                                                     ? 'w-20 h-20 rounded-xl' 
                                                     : 'h-44 w-full'
                                                 }`}>
                                                     <ImageWithFallback 
-                                                        src={item.imageUrl} 
-alt="" 
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                                        src={item.imageUrl}
+                                                        alt=""
+                                                        className="w-full h-full object-cover" 
                                                     />
                                                     
                                                     {viewMode === 'grid' && (
                                                         <>
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
-                                                            <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                                                                <span className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-black dark:text-white text-[9px] font-black uppercase px-2 py-1 rounded-md shadow-sm">
+                                                                                                                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+                                                                <span className="bg-white dark:bg-slate-900 text-midnight dark:text-white text-xs font-semibold px-2 py-1 rounded-lg">
                                                                     {item.source}
                                                                 </span>
                                                                 <button 
                                                                     type="button"
                                                                     onClick={(e) => triggerShare(e, item)}
                                                                     aria-label={`Compartilhar notícia: ${item.title}`}
-                                                                    className={`p-1.5 rounded-full backdrop-blur-md transition-colors focus-visible:ring-4 focus-visible:ring-white/60 ${
+                                                                    className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors focus-visible:ring-4 focus-visible:ring-white/60 ${
                                                                         isSharing && sharingItem === item
-                                                                        ? 'bg-blue-600 text-white animate-pulse'
-                                                                        : 'bg-white/20 hover:bg-white text-white hover:text-black'
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white dark:bg-slate-900 text-midnight dark:text-white hover:bg-slate-100'
                                                                     }`}
                                                                     title="Compartilhar card"
                                                                     disabled={isSharing}
                                                                 >
-                                                                    {isSharing && sharingItem === item ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Share2 size={12} aria-hidden="true" />}
+                                                                    {isSharing && sharingItem === item ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Share2 size={16} aria-hidden="true" />}
                                                                 </button>
                                                             </div>
                                                         </>
                                                     )}
                                                 </div>
 
-                                                {/* Content Area */}
-                                                <div className={`flex flex-col flex-1 ${viewMode === 'list' ? 'py-1 pr-2 min-w-0' : 'p-5'}`}>
-                                                    <h3 className={`font-black text-gray-900 dark:text-white leading-tight group-hover:text-blue-600 transition-colors ${
+                                                <div className={`flex flex-col flex-1 ${viewMode === 'list' ? 'py-1 pr-2 min-w-0' : 'p-4 md:p-6'}`}>
+                                                    <h3 className={`font-black text-midnight dark:text-white leading-snug group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors ${
                                                         viewMode === 'list' ? 'text-sm mb-1.5 line-clamp-2' : 'text-sm md:text-base mb-3 line-clamp-3'
                                                     }`}>
                                                         {item.title}
@@ -555,10 +541,10 @@ alt=""
                                                     
                                                     {viewMode === 'grid' && (
                                                         <div className="mb-4">
-                                                            <span className="inline-block bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-[9px] font-black uppercase px-2 py-0.5 rounded mb-2 border border-blue-100 dark:border-blue-900/30">
+                                                            <span className="inline-block bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-semibold px-2 py-1 rounded-lg mb-2">
                                                                 {item.summary?.context}
                                                             </span>
-                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium leading-relaxed line-clamp-4">
+                                                            <p className="text-sm text-muted-strong font-medium leading-relaxed line-clamp-4">
                                                                 {item.summary?.main}
                                                             </p>
                                                         </div>
@@ -566,18 +552,18 @@ alt=""
 
                                                     {viewMode === 'list' && (
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-[9px] font-black uppercase bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                                                            <span className="text-xs font-semibold bg-slate-100 dark:bg-white/10 text-muted-strong px-2 py-1 rounded-lg">
                                                                 {item.summary?.context}
                                                             </span>
-                                                            <span className="text-[9px] text-gray-400 font-bold truncate">
+                                                            <span className="text-xs text-subtle font-medium truncate">
                                                                 {item.time?.split('às')[1] || item.time}
                                                             </span>
                                                         </div>
                                                     )}
                                                     
-                                                    <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-3 border-t border-gray-50 dark:border-white/5' : 'mt-1'}`}>
+                                                    <div className={`flex justify-between items-center ${viewMode === 'grid' ? 'mt-auto pt-4 border-t border-slate-200/70 dark:border-white/10' : 'mt-1'}`}>
                                                         {viewMode === 'grid' && (
-                                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                                                            <span className="text-xs font-medium text-subtle">
                                                                 {item.time?.split('às')[1] || item.time}
                                                             </span>
                                                         )}
@@ -587,7 +573,7 @@ alt=""
                                                                     type="button"
                                                                     onClick={(e) => triggerShare(e, item)}
                                                                     aria-label={`Compartilhar notícia: ${item.title}`}
-                                                                    className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                                                                    className="w-11 h-11 flex items-center justify-center text-subtle hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40"
                                                                     title="Compartilhar"
                                                                     disabled={isSharing}
                                                                 >
@@ -599,11 +585,9 @@ alt=""
                                                                     href={safeHttpUrl(item.url)} 
                                                                     target="_blank" 
                                                                     rel="noopener noreferrer"
-                                                                    className={`text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1 hover:underline rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
-                                                                        viewMode === 'list' ? 'bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5' : 'px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                                                    }`}
+                                                                    className="min-h-11 text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1 hover:underline underline-offset-2 rounded-lg transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 px-2"
                                                                 >
-                                                                    Ler Mais <ExternalLink size={10} aria-hidden="true" /><span className="sr-only"> sobre {item.title} (nova aba)</span>
+                                                                    Ler mais <ExternalLink size={12} aria-hidden="true" /><span className="sr-only"> sobre {item.title} (nova aba)</span>
                                                                 </a>
                                                             )}
                                                         </div>

@@ -13,11 +13,11 @@ interface ChatViewProps {
 type ModeColor = 'yellow' | 'blue' | 'green' | 'red' | 'purple';
 
 const MODE_STYLES: Record<ModeColor, { active: string; icon: string }> = {
-    yellow: { active: 'border-yellow-500 text-yellow-600', icon: 'text-yellow-500' },
-    blue: { active: 'border-blue-500 text-blue-600', icon: 'text-blue-500' },
-    green: { active: 'border-green-500 text-green-600', icon: 'text-green-500' },
-    red: { active: 'border-red-500 text-red-600', icon: 'text-red-500' },
-    purple: { active: 'border-purple-500 text-purple-600', icon: 'text-purple-500' },
+    yellow: { active: 'border-yellow-700 text-yellow-800 dark:border-yellow-300 dark:text-yellow-200', icon: 'text-yellow-700 dark:text-yellow-300' },
+    blue: { active: 'border-blue-700 text-blue-700 dark:border-blue-300 dark:text-blue-200', icon: 'text-blue-700 dark:text-blue-300' },
+    green: { active: 'border-green-700 text-green-800 dark:border-green-300 dark:text-green-200', icon: 'text-green-700 dark:text-green-300' },
+    red: { active: 'border-red-700 text-red-700 dark:border-red-300 dark:text-red-200', icon: 'text-red-700 dark:text-red-300' },
+    purple: { active: 'border-purple-700 text-purple-700 dark:border-purple-300 dark:text-purple-200', icon: 'text-purple-700 dark:text-purple-300' },
 };
 
 const ASPECT_RATIOS = ['1:1', '3:4', '4:3', '9:16', '16:9'];
@@ -41,13 +41,13 @@ const ModeButton: React.FC<ModeButtonProps> = ({ m, activeMode, onSelect, icon: 
             type="button"
             onClick={() => onSelect(m)}
             aria-pressed={isActive}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
+            className={`flex items-center gap-1.5 min-h-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                 isActive 
-                ? `bg-white dark:bg-gray-800 ${styles.active} shadow-sm scale-105` 
-                : 'border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? `bg-white dark:bg-white/10 ${styles.active}` 
+                : 'border-transparent text-muted-strong hover:bg-slate-100 dark:hover:bg-white/10'
             }`}
         >
-            <Icon size={12} className={isActive ? styles.icon : ''} strokeWidth={2.5} aria-hidden="true" />
+            <Icon size={14} className={isActive ? styles.icon : ''} strokeWidth={2.5} aria-hidden="true" />
             {label}
         </button>
     );
@@ -99,7 +99,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isLoading]);
 
-    // Process Initial Context automatically
     useEffect(() => {
         if (initialContext && !hasProcessedContext.current) {
             hasProcessedContext.current = true;
@@ -114,7 +113,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                 setIsLoading(true);
 
                 try {
-                    // For context explanations, we prefer standard or search mode
                     const response = await chatWithGemini(initialContext, 'standard', []);
                     
                     const modelMsg: ChatMessage = {
@@ -141,7 +139,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
         }
     }, [initialContext]);
 
-    // --- AUDIO HANDLING ---
     const pushErrorMessage = (text: string) => {
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text, isError: true, timestamp: Date.now() }]);
     };
@@ -194,7 +191,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
         }
     };
 
-    // --- IMAGE GENERATION ---
     const handleGenerateImage = async () => {
         if (isLoading) return;
         if (!inputValue.trim()) {
@@ -230,7 +226,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
         }
     };
 
-    // --- TEXT CHAT ---
     const handleSendMessage = async () => {
         if (isLoading || !inputValue.trim()) return;
         
@@ -239,7 +234,6 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
         setInputValue('');
         setIsLoading(true);
 
-        // Prepare history for API (last 10 messages)
         const history = messages.filter(m => !m.isError).slice(-10).map(m => ({
             role: m.role,
             parts: [{ text: m.text || "" }]
@@ -271,10 +265,8 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
 
     return (
         <div className="flex flex-col h-full bg-transparent relative">
-            
-            {/* Header / Mode Selector - Floating Style */}
             <div className="absolute top-0 left-0 right-0 z-20 p-2">
-                <div className="glass-panel p-2 rounded-[2rem] shadow-sm max-w-2xl mx-auto">
+                <div className="glass-panel p-2 rounded-2xl max-w-2xl mx-auto">
                     <div role="group" aria-label="Modo do assistente" className="flex gap-1 overflow-x-auto scrollbar-hide justify-between sm:justify-center">
                         <ModeButton m="fast" activeMode={mode} onSelect={setMode} icon={Zap} label="Rápido" color="yellow" />
                         <ModeButton m="standard" activeMode={mode} onSelect={setMode} icon={Sparkles} label="Padrão" color="blue" />
@@ -285,34 +277,31 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                 </div>
             </div>
 
-            {/* Messages Area */}
             <div role="log" aria-live="polite" aria-label="Conversa com o assistente" className="flex-1 overflow-y-auto px-4 pt-20 pb-4 space-y-6">
                 {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] md:max-w-[70%] p-5 shadow-sm relative group transition-transform ${
+                        <div className={`max-w-[85%] md:max-w-[70%] p-4 md:p-6 relative ${
                             msg.role === 'user' 
-                            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[1.5rem] rounded-tr-sm shadow-blue-500/20' 
-                            : 'glass-panel text-gray-800 dark:text-gray-100 rounded-[1.5rem] rounded-tl-sm'
+                            ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
+                            : 'glass-panel text-midnight dark:text-gray-100 rounded-2xl rounded-tl-sm'
                         }`}>
                             {msg.image && (
-                                <img src={msg.image} alt="Imagem gerada pelo assistente" className="w-full rounded-xl mb-3 border border-white/20 shadow-md" />
+                                <img src={msg.image} alt="Imagem gerada pelo assistente" className="w-full rounded-xl mb-3 border border-white/20" />
                             )}
-                            
                             <div role={msg.isError ? 'alert' : undefined} className={`prose dark:prose-invert text-sm leading-relaxed whitespace-pre-wrap font-medium ${msg.isError ? 'text-red-700 dark:text-red-300' : ''}`}>
                                 {msg.text}
                             </div>
 
-                            {/* Grounding Sources */}
                             {msg.groundingMetadata?.search && msg.groundingMetadata.search.length > 0 && (
                                 <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10">
-                                    <p className="text-[9px] font-black uppercase opacity-60 mb-2">Fontes Verificadas</p>
+                                    <p className="text-xs font-semibold text-subtle mb-2">Fontes verificadas</p>
                                     <div className="flex flex-wrap gap-2">
                                         {msg.groundingMetadata.search.map((s, i) => {
                                             const href = safeHttpUrl(s.uri);
                                             if (!href) return null;
                                             return (
-                                                <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-blue-500 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1">
-                                                    <Search size={10} aria-hidden="true" /> {s.title}
+                                                <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="min-h-11 text-xs font-medium text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline rounded flex items-center gap-1 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                                    <Search size={12} aria-hidden="true" /> {s.title}<span className="sr-only"> (abre em nova aba)</span>
                                                 </a>
                                             );
                                         })}
@@ -322,16 +311,16 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
 
                             {msg.groundingMetadata?.maps && msg.groundingMetadata.maps.length > 0 && (
                                 <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10">
-                                    <p className="text-[9px] font-black uppercase opacity-60 mb-2">Localização</p>
+                                    <p className="text-xs font-semibold text-subtle mb-2">Localização</p>
                                     {msg.groundingMetadata.maps.map((m, i) => {
                                         const href = safeHttpUrl(m.uri);
                                         return (
-                                            <div key={i} className="mb-2 bg-gray-50/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 dark:border-white/5">
+                                            <div key={i} className="mb-2 bg-slate-50 dark:bg-black/20 p-3 rounded-xl border border-slate-200/70 dark:border-white/10">
                                                 <p className="text-xs font-bold">{m.title}</p>
-                                                <p className="text-[10px] opacity-70 mb-1">{m.source}</p>
+                                                <p className="text-xs text-subtle mb-1">{m.source}</p>
                                                 {href && (
-                                                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[9px] font-black uppercase tracking-wider bg-blue-500 text-white px-2 py-1 rounded inline-flex items-center gap-1 hover:bg-blue-600 transition-colors">
-                                                        <MapPin size={8} aria-hidden="true" /> Ver no Mapa
+                                                    <a href={href} target="_blank" rel="noopener noreferrer" className="min-h-11 text-xs font-medium text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline rounded inline-flex items-center gap-1 focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                                                        <MapPin size={12} aria-hidden="true" /> Ver no mapa<span className="sr-only"> (abre em nova aba)</span>
                                                     </a>
                                                 )}
                                             </div>
@@ -345,9 +334,9 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                 
                 {isLoading && (
                     <div className="flex justify-start" role="status">
-                        <div className="glass-panel px-4 py-3 rounded-[1.5rem] rounded-tl-sm shadow-sm flex items-center gap-3">
-                            <Loader2 size={16} className="animate-spin text-blue-500" aria-hidden="true" />
-                            <span className="text-xs font-bold text-gray-400 animate-pulse uppercase tracking-wider">
+                        <div className="glass-panel px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-3">
+                            <Loader2 size={16} className="animate-spin text-blue-700 dark:text-blue-300" aria-hidden="true" />
+                            <span className="text-xs font-medium text-subtle">
                                 {mode === 'thinking' ? 'Analisando dados complexos...' : 
                                  mode === 'search' ? 'Conectando à internet...' : 
                                  'Processando...'}
@@ -358,14 +347,12 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area - Floating Modern Look */}
             <div className="p-4 pt-0">
-                <div className="max-w-3xl mx-auto glass-panel rounded-[2rem] shadow-xl p-2 flex items-center gap-2 relative z-30">
-                    
+                <div className="max-w-3xl mx-auto glass-panel rounded-2xl p-2 flex items-center gap-2 relative z-30">
                     <button 
                         type="button"
                         onClick={() => setShowImageModal(true)}
-                        className="p-3 text-gray-400 hover:text-blue-500 transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-gray-800 focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                        className="w-11 h-11 flex items-center justify-center text-subtle hover:text-blue-700 transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-blue-500/40"
                         title="Gerar imagem"
                         aria-label="Gerar imagem"
                         aria-haspopup="dialog"
@@ -382,7 +369,7 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                             if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSendMessage();
                         }}
                         placeholder={isRecording ? "Ouvindo sua voz..." : "Pergunte ao PapoReto..."}
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 h-10"
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-midnight dark:text-white placeholder:text-subtle h-11"
                         disabled={isRecording}
                     />
 
@@ -392,7 +379,7 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                             onClick={handleSendMessage}
                             disabled={isLoading}
                             aria-label="Enviar mensagem"
-                            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/30 focus-visible:ring-4 focus-visible:ring-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-11 h-11 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Send size={18} strokeWidth={2.5} aria-hidden="true" />
                         </button>
@@ -401,29 +388,27 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                             type="button"
                             onClick={isRecording ? stopRecording : startRecording}
                             aria-label={isRecording ? 'Parar gravação' : 'Gravar áudio'}
-                            className={`p-3 rounded-full transition-all duration-300 focus-visible:ring-4 focus-visible:ring-blue-500/40 ${isRecording ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse' : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-gray-800'}`}
+                            className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${isRecording ? 'bg-red-700 text-white' : 'text-subtle hover:text-red-700 hover:bg-red-50 dark:hover:bg-white/10'}`}
                         >
                             {isRecording ? <StopCircle size={20} strokeWidth={2.5} aria-hidden="true" /> : <Mic size={20} strokeWidth={2} aria-hidden="true" />}
                         </button>
                     )}
                 </div>
                 <div className="text-center mt-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">
+                    <p className="text-xs font-medium text-subtle">
                         IA opcional • Pode cometer erros
                     </p>
                 </div>
             </div>
 
-            {/* Image Settings Modal */}
             {showImageModal && (
-                <Modal onClose={() => setShowImageModal(false)} labelledBy="chat-imagem-titulo" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in">
-                    <div className="glass-panel p-6 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative">
-                        <button type="button" onClick={() => setShowImageModal(false)} aria-label="Fechar" className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full focus-visible:ring-4 focus-visible:ring-blue-500/40"><X size={20} aria-hidden="true" /></button>
-                        <h3 id="chat-imagem-titulo" className="font-black text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                            <ImageIcon size={20} className="text-blue-500" aria-hidden="true" /> Criar Imagem
+                <Modal onClose={() => setShowImageModal(false)} labelledBy="chat-imagem-titulo" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-in fade-in">
+                    <div className="glass-panel p-6 rounded-3xl w-full max-w-sm relative">
+                        <button type="button" onClick={() => setShowImageModal(false)} aria-label="Fechar" className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center text-subtle hover:bg-slate-100 dark:hover:bg-white/10 rounded-full focus-visible:ring-4 focus-visible:ring-blue-500/40"><X size={20} aria-hidden="true" /></button>
+                        <h3 id="chat-imagem-titulo" className="font-black text-lg mb-4 pr-10 text-midnight dark:text-white flex items-center gap-2">
+                            <ImageIcon size={20} className="text-blue-700 dark:text-blue-300" aria-hidden="true" /> Criar imagem
                         </h3>
-                        
-                        <p className="text-xs text-gray-500 font-medium mb-6 leading-relaxed">Escolha o formato e descreva o cenário no chat para gerar imagens de campanha ou simulações.</p>
+                                        <p className="text-sm text-muted-strong font-medium mb-6 leading-relaxed">Escolha o formato e descreva o cenário no chat para gerar imagens de campanha ou simulações.</p>
                         
                         <div className="grid grid-cols-3 gap-3 mb-6" role="group" aria-label="Formato da imagem">
                             {ASPECT_RATIOS.map(ratio => (
@@ -432,10 +417,10 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                                     type="button"
                                     onClick={() => setSelectedAspectRatio(ratio)}
                                     aria-pressed={selectedAspectRatio === ratio}
-                                    className={`py-3 px-2 rounded-2xl text-[10px] font-black transition-all focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
+                                    className={`min-h-11 py-3 px-2 rounded-2xl text-xs font-semibold transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                                         selectedAspectRatio === ratio 
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105' 
-                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-slate-100 dark:bg-white/10 text-muted-strong hover:bg-slate-200 dark:hover:bg-white/20'
                                     }`}
                                 >
                                     {ratio}
@@ -446,9 +431,9 @@ const ChatView: React.FC<ChatViewProps> = ({ initialContext }) => {
                         <button 
                             type="button"
                             onClick={handleGenerateImage}
-                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] transition-all shadow-xl focus-visible:ring-4 focus-visible:ring-blue-500/40"
+                            className="w-full min-h-11 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-colors active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-blue-500/40"
                         >
-                            Gerar Agora
+                            Gerar agora
                         </button>
                     </div>
                 </Modal>

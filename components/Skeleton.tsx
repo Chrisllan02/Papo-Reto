@@ -6,11 +6,11 @@ interface SkeletonProps {
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({ className }) => (
-  <div className={`animate-pulse bg-gray-200/80 dark:bg-white/5 rounded-2xl ${className}`} />
+  <div className={`animate-pulse bg-slate-200/80 dark:bg-white/10 rounded-2xl ${className}`} />
 );
 
 export const SkeletonFeedItem = () => (
-    <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+    <div className="p-4 border-b border-slate-200/70 dark:border-white/10">
         <div className="flex gap-3">
             <Skeleton className="w-10 h-10 rounded-full shrink-0" />
             <div className="flex-1 space-y-3">
@@ -29,14 +29,13 @@ export const SkeletonFeedItem = () => (
     </div>
 );
 
-// Skeleton desenhado para imitar exatamente o Header do ProfileView
 export const SkeletonProfileHeader = () => (
-    <div className="relative w-full overflow-hidden rounded-b-[2.5rem] md:rounded-b-[4rem] shadow-2xl bg-gray-200 dark:bg-gray-800 min-h-[240px] md:min-h-[280px] flex items-end animate-pulse">
+    <div className="relative w-full overflow-hidden rounded-b-3xl bg-slate-200 dark:bg-white/10 min-h-[240px] md:min-h-[280px] flex items-end animate-pulse">
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
         
         <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24">
             <div className="shrink-0 relative">
-                <div className="w-20 h-20 md:w-44 md:h-44 rounded-full shadow-2xl overflow-hidden bg-gray-300 dark:bg-gray-700 border-[4px] border-white/10"></div>
+                <div className="w-20 h-20 md:w-44 md:h-44 rounded-full overflow-hidden bg-slate-300 dark:bg-white/15 border-2 border-white/10"></div>
             </div>
             <div className="flex-1 text-center md:text-left w-full mb-2">
                 <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
@@ -50,10 +49,9 @@ export const SkeletonProfileHeader = () => (
     </div>
 );
 
-// Skeleton para os gráficos de barras (Presença) e Dashboard
 export const SkeletonStats = () => (
-    <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 w-full mb-8">
-        <div className="flex justify-between items-center mb-8 border-b border-gray-100 dark:border-white/10 pb-4">
+    <div className="glass-panel rounded-2xl p-4 md:p-6 w-full mb-8">
+        <div className="flex justify-between items-center mb-8 border-b border-slate-200/70 dark:border-white/10 pb-4">
             <Skeleton className="h-6 w-48" />
             <div className="flex gap-2">
                 <Skeleton className="h-8 w-16 rounded-xl" />

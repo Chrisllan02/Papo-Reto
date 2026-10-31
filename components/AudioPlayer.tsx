@@ -167,17 +167,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
         return buffer;
     }
 
-    // Estilo Compacto (Apenas Ícone)
     if (compact) {
         return (
             <button
+                type="button"
                 onClick={handlePlay}
                 disabled={isLoading}
                 aria-label={isPlaying ? "Parar áudio" : "Ouvir resumo"}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40 ${
                     isPlaying
-                    ? 'bg-orange-700 text-white animate-pulse'
-                    : 'bg-white/80 dark:bg-white/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-white/20'
+                    ? 'bg-orange-700 text-white'
+                    : 'bg-slate-100 dark:bg-white/10 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-white/20'
                 }`}
             >
                 {isLoading ? <Loader2 className="animate-spin" size={16}/> : isPlaying ? <VolumeX size={16}/> : <Volume2 size={16}/>}
@@ -185,22 +185,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, isDarkText, compact = f
         );
     }
 
-    // Estilo Padrão (Modal)
     const buttonClass = isPlaying
-        ? 'bg-orange-700 text-white animate-pulse border-orange-600'
+        ? 'bg-orange-700 text-white border-orange-700'
         : isDarkText
-            ? 'bg-white/80 hover:bg-white text-gray-900 border-white/40 shadow-sm'
+            ? 'bg-white/80 hover:bg-white text-midnight border-white/40'
             : 'bg-white/20 hover:bg-white/30 text-white border-white/20';
 
     return (
         <button
+            type="button"
             onClick={handlePlay}
             disabled={isLoading}
             aria-label={isPlaying ? "Parar áudio" : "Ouvir conteúdo"}
-            className={`p-2.5 rounded-full transition-all flex items-center justify-center gap-2 backdrop-blur-md border ${buttonClass}`}
+            className={`min-w-11 h-11 px-2.5 rounded-full transition-colors flex items-center justify-center gap-2 border focus-visible:ring-4 focus-visible:ring-blue-500/40 ${buttonClass}`}
         >
             {isLoading ? <Loader2 className="animate-spin" size={18}/> : isPlaying ? <VolumeX size={18}/> : <Volume2 size={18}/>}
-            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline pt-[1px]">
+            <span className="text-xs font-semibold hidden sm:inline pr-1">
                 {isLoading ? "Processando..." : isPlaying ? "Ouvindo" : "Ouvir"}
             </span>
         </button>
