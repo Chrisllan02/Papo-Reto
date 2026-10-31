@@ -9,7 +9,6 @@ import DataState from '../components/DataState';
 import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';
 
-// Fix for "module does not provide an export named 'default'" error in some ESM environments
 const AutoSizer = (AutoSizerModule as any).default || AutoSizerModule;
 const List = (ReactWindow as any).FixedSizeList;
 
@@ -28,7 +27,6 @@ const ESTADOS_BRASIL = [
 type IdeologyFilter = 'Todos' | 'Esquerda' | 'Centro' | 'Direita';
 type ViewMode = 'parties' | 'candidates';
 
-// Helper de Normalização para Busca (Remove acentos e lowercase)
 const normalizeString = (str: string | undefined | null) => {
     if (!str) return "";
     return str
@@ -43,50 +41,49 @@ interface PartyCardProps {
   onSelect: (name: string) => void;
 }
 
+const flatShadow = (classes: string) => classes.replace(/\s*shadow-\S+/g, '');
+const pluralize = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+
 const UNCLASSIFIED_IDEOLOGY = 'Não classificado';
 const IDEOLOGY_SECTION_ORDER = ['Direita', 'Centro', 'Esquerda', UNCLASSIFIED_IDEOLOGY];
 
 const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
     const theme = getIdeologyTheme(group.ideology);
-    
-    const badgeLabel = group.name;
     const previewMembers = group.members.slice(0, 4);
 
     return (
-        <button 
+        <button
             type="button"
             onClick={() => onSelect(group.name)}
-            className={`group relative glass-panel rounded-[2rem] p-4 text-left shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} hover:bg-white dark:hover:bg-white/5 hover:border-blue-200 dark:hover:border-white/10 focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none`}
-            aria-label={`Ver detalhes do partido ${group.name}, ideologia ${theme.label}`}
+            className={`group relative glass-panel rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] flex flex-col min-h-[140px] border ${theme.bg} ${theme.border} focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none`}
+            aria-label={`Ver detalhes do partido ${group.name}, ${group.ideology}`}
         >
             <div className="w-full relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-2">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-[10px] shadow-md ${theme.iconBg}`}>
-                        {badgeLabel.substring(0, 4)}
+                <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs ${theme.iconBg}`}>
+                        {group.name.substring(0, 4)}
                     </div>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider ${theme.badgeBg} ${theme.badgeText}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${theme.badgeBg} ${theme.badgeText}`}>
                         {theme.label}
                     </span>
                 </div>
 
                 <div className="mt-auto">
-                    <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tighter mb-0.5 truncate leading-none">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight mb-0.5 line-clamp-2 leading-tight">
                         {group.name}
                     </h3>
-                    <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                        {group.members.length} Parlamentares
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-2">
+                        {pluralize(group.members.length, 'parlamentar', 'parlamentares')}
                     </p>
 
                     <div className="flex -space-x-2 items-center">
                         {previewMembers.map((m: any) => (
-                            <div key={m.id} className="relative transition-transform duration-200 hover:scale-110 hover:z-30">
-                                <div className="w-8 h-8 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-200 overflow-hidden shadow-sm">
-                                    <img src={m.photo} className="w-full h-full object-cover" alt="" loading="lazy" />
-                                </div>
+                            <div key={m.id} className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 overflow-hidden">
+                                <img src={m.photo} className="w-full h-full object-cover" alt="" loading="lazy" />
                             </div>
                         ))}
                         {group.members.length > 4 && (
-                            <div className="w-8 h-8 rounded-full border-[2px] border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[8px] font-black text-gray-500 shadow-sm relative z-0">
+                            <div className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
                                 +{group.members.length - 4}
                             </div>
                         )}
@@ -100,7 +97,6 @@ const PartyCard: React.FC<PartyCardProps> = ({ group, onSelect }) => {
 const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSelect: (p: Politician) => void, isFollowing: boolean }) => {
     const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Handler para teclado (Acessibilidade)
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -140,24 +136,21 @@ const PoliticianCard = ({ pol, onSelect, isFollowing }: { pol: Politician, onSel
             onBlur={cancelPrefetch}
             role="button"
             tabIndex={0}
-            aria-label={`Ver perfil de ${pol.name}, ${pol.party} do ${pol.state}`}
-            className="glass-surface shadow-lg hover:shadow-2xl transition-all active:scale-95 group flex flex-col items-center text-center relative rounded-[1.5rem] p-2 h-full cursor-pointer min-h-[150px] focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
+            aria-label={`Ver perfil de ${pol.name}, ${pol.party} do ${pol.state}${isFollowing ? ', você segue' : ''}`}
+            className="glass-surface border border-white/60 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] group flex flex-col items-center text-center relative rounded-2xl p-2 h-full cursor-pointer min-h-[150px] focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
         >
             {isFollowing && (
                 <div className="absolute top-2 left-2 z-20">
-                    <div className="bg-orange-500 p-1.5 rounded-full shadow-md border-2 border-white dark:border-gray-800">
-                        <Heart size={8} className="fill-white text-white" aria-hidden="true" />
+                    <div className="bg-orange-700 p-1.5 rounded-full border-2 border-white dark:border-gray-800">
+                        <Heart size={12} className="fill-white text-white" aria-hidden="true" />
                     </div>
                 </div>
             )}
-            <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden mb-2 border-[2px] border-white/80 dark:border-gray-700 shadow-md relative z-10 bg-gray-200">
-                <img src={pol.photo} alt="" loading="lazy" className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"/>
+            <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden mb-2 border-2 border-white/80 dark:border-gray-700 relative z-10 bg-gray-200">
+                <img src={pol.photo} alt="" loading="lazy" className="w-full h-full object-cover object-center"/>
             </div>
-            <h3 className="font-black text-blue-900 dark:text-white text-[10px] md:text-xs line-clamp-2 w-full leading-tight min-h-[2.5em] flex items-center justify-center mb-1">{pol.name}</h3>
-            <div className="mt-auto flex flex-wrap justify-center gap-1 w-full">
-                <span className="text-[8px] font-black bg-gray-100/80 dark:bg-white/10 px-1.5 py-0.5 rounded-md text-gray-700 dark:text-gray-300 uppercase tracking-tighter border border-blue-200/50 dark:border-white/10">{pol.party}</span>
-                <span className="text-[8px] font-black bg-blue-50/80 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md text-blue-600 dark:text-blue-300 uppercase tracking-tighter border border-blue-100/50 dark:border-blue-900/50">{pol.state}</span>
-            </div>
+            <h3 className="font-bold text-blue-900 dark:text-white text-xs line-clamp-2 w-full leading-tight min-h-[2.5em] flex items-center justify-center mb-1">{pol.name}</h3>
+            <p className="mt-auto w-full truncate text-xs font-medium text-slate-600 dark:text-slate-300">{pol.party} · {pol.state}</p>
         </div>
     );
 };
@@ -175,7 +168,7 @@ const VirtualRow = ({ index, style, data }: { index: number; style: React.CSSPro
     const rowItems = items.slice(startIndex, startIndex + numColumns);
 
     return (
-        <div style={style} className="flex gap-3 md:gap-4 px-1 pb-4">
+        <div style={style} className="flex gap-4 px-1 pb-4">
             {rowItems.map((pol: Politician) => (
                 <div key={pol.id} className="flex-1 min-w-0 h-full">
                     <PoliticianCard 
@@ -390,15 +383,14 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
         <div className="w-full h-full bg-transparent flex flex-col">
             
             <div className="sticky top-0 z-30 pt-2 px-2 md:pt-11 md:px-6 pb-2">
-                <div className="w-full glass-panel rounded-[2.5rem] p-4 flex flex-col gap-4">
+                <div className="w-full glass-panel rounded-2xl p-4 flex flex-col gap-4">
                     
-                    {/* Header Controls */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                          {selectedParty ? (
                              <button 
                                 type="button"
                                 onClick={() => setSelectedParty(null)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-white text-white dark:text-black rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                className="flex min-h-11 items-center gap-2 px-4 py-2 bg-blue-700 dark:bg-white text-white dark:text-black rounded-xl font-semibold text-sm active:scale-[0.98] transition-colors focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none"
                              >
                                  <ChevronLeft size={16} aria-hidden="true" /> Voltar
                              </button>
@@ -407,20 +399,19 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-900 dark:text-blue-400">
                                      {viewMode === 'parties' ? <LayoutGrid size={20} aria-hidden="true" /> : <Users size={20} aria-hidden="true" />}
                                  </div>
-                                 <span className="text-lg font-black text-midnight dark:text-white tracking-tight">
+                                 <span className="text-lg font-bold text-midnight dark:text-white tracking-tight">
                                      {viewMode === 'parties' ? 'Partidos' : 'Parlamentares'}
                                  </span>
                              </div>
                          )}
                          
-                         {/* Segmented Control Toggle */}
                          {!selectedParty && (
-                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-white/20 self-end sm:self-auto">
+                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-slate-200 dark:border-white/10 self-end sm:self-auto">
                                  <button 
                                     type="button"
                                     aria-pressed={viewMode === 'parties'}
                                     onClick={() => setViewMode('parties')}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'parties' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'}`}
+                                    className={`flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-semibold focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'parties' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-white/50'}`}
                                 >
                                      <LayoutGrid size={16} aria-hidden="true" />
                                      <span>Partidos</span>
@@ -429,7 +420,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     type="button"
                                     aria-pressed={viewMode === 'candidates'}
                                     onClick={() => setViewMode('candidates')}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'}`}
+                                    className={`flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-semibold focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${viewMode === 'candidates' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-white/50'}`}
                                 >
                                      <Contact size={16} aria-hidden="true" />
                                      <span>Candidatos</span>
@@ -438,7 +429,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                          )}
                     </div>
 
-                    {/* Search Bar - Com Handler Misto */}
                     <div className="relative group w-full">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" aria-hidden="true" />
@@ -448,31 +438,28 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                             aria-label={selectedParty ? `Buscar em ${selectedParty}` : viewMode === 'candidates' ? 'Buscar parlamentar por nome ou estado' : 'Buscar partido ou parlamentar'}
                             value={search}
                             onChange={handleSearch}
-                            placeholder={selectedParty ? `Buscar em ${selectedParty}...` : viewMode === 'candidates' ? "Nome, estado..." : "Buscar partido ou político..."}
-                            className="block w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-bold text-gray-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-600 dark:focus:ring-blue-300 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm"
+                            placeholder={selectedParty ? `Buscar em ${selectedParty}` : viewMode === 'candidates' ? "Nome ou estado" : "Buscar partido ou político"}
+                            className="block w-full pl-11 pr-12 py-3.5 bg-white dark:bg-slate-950/40 border border-blue-100 dark:border-white/10 rounded-2xl text-base font-medium text-gray-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-600 dark:focus:ring-blue-300 focus:border-blue-600 focus:bg-white dark:focus:bg-gray-900 transition-colors shadow-sm"
                         />
                         {search && (
-                          <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-blue-100 dark:bg-gray-700 rounded-full text-blue-500 hover:text-red-500 transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none">
-                            <X size={14} aria-hidden="true" />
+                          <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:text-red-700 dark:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 focus-visible:outline-none">
+                            <X size={18} aria-hidden="true" />
                           </button>
                         )}
                     </div>
 
-                    {/* Filters Row */}
                     {!selectedParty && (
                         <div className="relative group/filters">
                             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-midnight to-transparent pointer-events-none z-10 md:hidden rounded-r-2xl"></div>
                             
                             <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory pr-4">
                                 
-                                {/* Ideology Group (Cores Semânticas) */}
-                                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-white/5 shrink-0 snap-start">
+                                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-white/10 shrink-0 snap-start">
                                     {(['Todos', 'Esquerda', 'Centro', 'Direita'] as IdeologyFilter[]).map((ideology) => {
                                         const isActive = selectedIdeology === ideology;
-                                        let activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-600/20'; // Default
-                                        if (ideology !== 'Todos') {
-                                            activeClass = getIdeologyTheme(ideology).activeClass;
-                                        }
+                                        const activeClass = ideology === 'Todos'
+                                            ? 'bg-blue-700 text-white'
+                                            : flatShadow(getIdeologyTheme(ideology).activeClass);
 
                                         return (
                                             <button
@@ -480,10 +467,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                 type="button"
                                                 aria-pressed={isActive}
                                                 onClick={() => setSelectedIdeology(ideology)}
-                                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                                className={`min-h-11 px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
                                                     isActive 
                                                     ? activeClass
-                                                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 hover:bg-white dark:hover:bg-white/5'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/5'
                                                 }`}
                                             >
                                                 {ideology}
@@ -492,7 +479,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     })}
                                 </div>
 
-                                {/* Inline state selector */}
                                 <div className="relative shrink-0 snap-start" ref={stateSelectorRef}>
                                     <button
                                         type="button"
@@ -500,7 +486,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         onClick={() => setIsStateSelectorOpen(prev => !prev)}
                                         aria-expanded={isStateSelectorOpen}
                                         aria-label="Filtrar por estado"
-                                        className="flex h-full min-w-[7.25rem] items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-2 text-xs font-black uppercase text-blue-900 shadow-sm transition-colors hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                                        className="flex h-full min-h-11 min-w-[7.25rem] items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 py-2 pl-3 pr-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40"
                                     >
                                         <span className="flex items-center gap-2">
                                             <MapPin size={16} aria-hidden="true" />
@@ -510,9 +496,9 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     </button>
 
                                     {isStateSelectorOpen && (
-                                        <div className="absolute left-0 top-full z-50 mt-2 w-[18.5rem] rounded-2xl border border-blue-100 bg-white/95 p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-midnight/95">
+                                        <div className="absolute left-0 top-full z-50 mt-2 w-[20rem] rounded-2xl border border-blue-100 bg-white/95 p-3 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-midnight/95">
                                             <div className="mb-2 flex items-center justify-between px-1">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</span>
+                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Estado</span>
                                                 {selectedUF && (
                                                     <button
                                                         type="button"
@@ -520,13 +506,13 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                             setSelectedUF('');
                                                             setIsStateSelectorOpen(false);
                                                         }}
-                                                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 dark:text-blue-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                        className="min-h-11 px-2 text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
                                                     >
                                                         Brasil
                                                     </button>
                                                 )}
                                             </div>
-                                            <div className="grid grid-cols-6 gap-1.5" role="group" aria-label="Estados do Brasil">
+                                            <div className="grid grid-cols-6 gap-1" role="group" aria-label="Estados do Brasil">
                                                 {ESTADOS_BRASIL.map(uf => {
                                                     const active = selectedUF === uf;
                                                     return (
@@ -538,9 +524,9 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                                                 setSelectedUF(uf);
                                                                 setIsStateSelectorOpen(false);
                                                             }}
-                                                            className={`rounded-xl px-2 py-2 text-xs font-black transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                                            className={`min-h-11 rounded-xl px-2 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
                                                                 active
-                                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                                                                    ? 'bg-blue-700 text-white'
                                                                     : 'bg-blue-50 text-blue-900 hover:bg-blue-100 dark:bg-white/5 dark:text-blue-100 dark:hover:bg-white/10'
                                                             }`}
                                                         >
@@ -558,7 +544,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                 </div>
             </div>
 
-            {/* Content List */}
             <div className="flex-1 min-h-0 p-3 md:p-8 pb-24 md:pb-16 animate-in fade-in slide-in-from-bottom-4 duration-500 px-safe overflow-hidden">
                 <div className="w-full max-w-[2000px] mx-auto h-full flex flex-col">
                     
@@ -574,18 +559,18 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                     <section key={section.ideology} className="space-y-4" aria-labelledby={`section-${section.ideology.replace(/\s+/g, '-')}`}>
                                         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between px-1">
                                             <div className="flex items-center gap-3">
-                                                <span className={`h-10 w-2 rounded-full ${theme.iconBg}`} aria-hidden="true" />
+                                                <span className={`h-10 w-1.5 rounded-full ${theme.iconBg}`} aria-hidden="true" />
                                                 <div>
-                                                    <h2 id={`section-${section.ideology.replace(/\s+/g, '-')}`} className="text-xl md:text-2xl font-black text-gray-950 dark:text-white tracking-tight">
+                                                    <h2 id={`section-${section.ideology.replace(/\s+/g, '-')}`} className="text-xl md:text-2xl font-bold text-gray-950 dark:text-white tracking-tight">
                                                         {section.ideology}
                                                     </h2>
-                                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                                                        {section.groups.length} partidos nesta posição
+                                                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                                                        {pluralize(section.groups.length, 'partido', 'partidos')} nesta posição
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${theme.badgeBg} ${theme.badgeText}`}>
-                                                {section.representatives} parlamentares
+                                            <div className={`w-fit rounded-lg px-3 py-1 text-xs font-semibold ${theme.badgeBg} ${theme.badgeText}`}>
+                                                {pluralize(section.representatives, 'parlamentar', 'parlamentares')}
                                             </div>
                                         </div>
 
@@ -608,11 +593,11 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                         <div className="h-full flex flex-col">
                             {viewMode === 'candidates' && !selectedParty && (
                                 <div className="mb-4 flex items-center justify-between px-2">
-                                    <h3 className="font-black text-gray-900 dark:text-white text-lg">
-                                        {selectedUF ? `Bancada de ${selectedUF}` : 'Todos os Parlamentares'}
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-lg">
+                                        {selectedUF ? `Bancada de ${selectedUF}` : 'Todos os parlamentares'}
                                     </h3>
-                                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold">
-                                        {itemsToRender.length} encontrados
+                                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-lg text-xs font-semibold">
+                                        {pluralize(itemsToRender.length, 'encontrado', 'encontrados')}
                                     </span>
                                 </div>
                             )}
@@ -636,7 +621,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], on
                                         {({ height, width }: { height: number, width: number }) => {
                                             const numColumns = getColumnCount(width);
                                             const rowCount = Math.ceil(itemsToRender.length / numColumns);
-                                            const itemHeight = width < 768 ? 165 : 180; 
+                                            const itemHeight = width < 768 ? 165 : 184; 
 
                                             return (
                                                 <List
