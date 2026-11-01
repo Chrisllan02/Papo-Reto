@@ -20,9 +20,7 @@ type EducationalArticle = {
 
 type ApiAction =
   | 'generateEducationalContent'
-  | 'generateNewsImage'
   | 'speakContent'
-  | 'getSearchContext'
   | 'chatWithGemini'
   | 'generateCampaignImage'
   | 'transcribeAudio';
@@ -52,9 +50,7 @@ const AUDIO_MIME_PATTERN = /^audio\/(webm|ogg|mp4|mpeg|wav)( *;[\w ="'.,+-]*)?$/
 const BASE64_PATTERN = /^[A-Za-z0-9+/=\s]+$/;
 const SUPPORTED_ACTIONS: ApiAction[] = [
   'generateEducationalContent',
-  'generateNewsImage',
   'speakContent',
-  'getSearchContext',
   'chatWithGemini',
   'generateCampaignImage',
   'transcribeAudio'
@@ -255,7 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'generateEducationalContent') {
       return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
     }
-    if (action === 'generateNewsImage' || action === 'generateCampaignImage') {
+    if (action === 'generateCampaignImage') {
       return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
     }
     if (action === 'speakContent') {
@@ -263,9 +259,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (action === 'transcribeAudio') {
       return jsonResponse(res, 200, { ok: true, data: { text: '' } });
-    }
-    if (action === 'getSearchContext') {
-      return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT, sources: [] } });
     }
     if (action === 'chatWithGemini') {
       return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT, searchSources: [], mapSources: [] } });
@@ -307,24 +300,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return jsonResponse(res, 200, { ok: true, data: articles.length > 0 ? articles : staticEducationalContent });
       }
 
-      case 'generateNewsImage': {
-        const headline = cleanText(body?.headline, 300).replace(/["\r\n]+/g, ' ');
-        if (!headline) return jsonResponse(res, 400, { error: 'Missing headline.' });
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: { parts: [{ text: `Create a high-quality abstract 3D isometric editorial illustration for a news article titled: "${headline}". Style: Minimalist, Corporate Memphis 3D, Political symbolism. Mandatory Constraints: NO TEXT, NO HUMAN FACES, NO REALISTIC PEOPLE, NO CROWDS. Colors: Professional palette inspired by Brazil (Deep Green, Navy Blue, Golden Yellow, White, Grey). Composition: Clean background, single central subject (e.g. 3D gavel, document, stylized building, chart, abstract shapes).` }] },
-          config: { imageConfig: { aspectRatio: '16:9' } }
-        });
-
-        const parts = response.candidates?.[0]?.content?.parts || [];
-        for (const part of parts) {
-          if (part.inlineData?.data) {
-            return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: `data:image/png;base64,${part.inlineData.data}` } });
-          }
-        }
-        return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
-      }
-
       case 'speakContent': {
         const rawText = typeof body?.text === 'string' ? body.text.trim() : '';
         if (!rawText) return jsonResponse(res, 400, { error: 'Missing text.' });
@@ -348,21 +323,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         const audioBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
         return jsonResponse(res, 200, { ok: true, data: { audioBase64 } });
-      }
-
-      case 'getSearchContext': {
-        const query = cleanText(body?.query, 300).replace(/["\r\n]+/g, ' ');
-        if (!query) return jsonResponse(res, 400, { error: 'Missing query.' });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: `Pesquise e resuma em português do Brasil, em linguagem simples, o que fontes confiáveis dizem sobre: "${query}". Traga só fatos verificáveis, com tom neutro e sem opinião, e cite a fonte de cada informação. Se não encontrar informação confiável, diga isso claramente em vez de supor.`,
-          config: { tools: [{ googleSearch: {} }] }
-        });
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const sources = groundingChunks
-          .map((chunk: any) => (chunk.web ? { web: { uri: chunk.web.uri, title: chunk.web.title } } : null))
-          .filter(Boolean);
-        return jsonResponse(res, 200, { ok: true, data: { text: response.text || 'Sem resumo.', sources } });
       }
 
       case 'chatWithGemini': {

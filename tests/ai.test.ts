@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AiUnavailableError, chatWithGemini, fetchDailyNews, generateEducationalContent, getNewsHistory } from '../services/ai';
+import { AiUnavailableError, chatWithGemini, fetchDailyNews, generateEducationalContent } from '../services/ai';
 
 const json = (body: unknown, ok = true) => ({ ok, status: ok ? 200 : 404, json: async () => body });
-const GENERATED = 'data:image/png;base64,AAAA';
 
 const installFetch = (opts: { ai?: unknown; events?: unknown[]; brokenProposicoes?: boolean } = {}) => {
-  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+  const fetchMock = vi.fn(async (url: string) => {
     const decoded = decodeURIComponent(String(url));
     if (decoded.includes('/api/ai')) {
-      const action = JSON.parse(String(init?.body)).action;
-      if (action === 'generateNewsImage') return json({ data: { imageDataUrl: GENERATED } });
       return json({ data: opts.ai ?? null }, opts.ai !== undefined);
     }
     if (decoded.includes('/votacoes')) {
@@ -26,26 +23,9 @@ const installFetch = (opts: { ai?: unknown; events?: unknown[]; brokenProposicoe
   return fetchMock;
 };
 
-const imageCalls = (fetchMock: ReturnType<typeof installFetch>) =>
-  fetchMock.mock.calls.filter(([, init]) => String(init?.body || '').includes('generateNewsImage')).length;
-
 describe('ai: notícias e conteúdo', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
-
-  it('não espera nem regera a imagem a cada atualização e não persiste base64', async () => {
-    const fetchMock = installFetch();
-    const first = await fetchDailyNews();
-    expect(first[0].imageUrl).not.toBe(GENERATED);
-
-    await vi.waitFor(async () => expect((await fetchDailyNews())[0].imageUrl).toBe(GENERATED));
-    await fetchDailyNews();
-
-    expect(imageCalls(fetchMock)).toBe(1);
-    const stored = Object.keys(localStorage).map(key => localStorage.getItem(key) || '').join('');
-    expect(stored).not.toContain('data:image');
-    expect(getNewsHistory().every(item => !item.imageUrl?.startsWith('data:'))).toBe(true);
-  });
 
   it('item sem data não vira NaN nem "hoje"', async () => {
     installFetch();

@@ -8,7 +8,7 @@ const normalize = (text?: string) =>
 
 const CODE_ONLY_TITLE = /^[A-Za-zÀ-ú]{2,8}\s+[\d][\d./-]*$/;
 
-export const isCodeOnlyTitle = (title?: string) => CODE_ONLY_TITLE.test((title || '').trim());
+const isCodeOnlyTitle = (title?: string) => CODE_ONLY_TITLE.test((title || '').trim());
 
 export const resolveFeedTitle = (title: string, description?: string) => {
   const official = (description || '').replace(/\s+/g, ' ').trim();

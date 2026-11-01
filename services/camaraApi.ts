@@ -4,7 +4,7 @@ import { PARTY_METADATA } from '../constants';
 import { detectCategory } from '../utils/legislativeTranslator';
 import { timeoutSignal } from '../utils/timeoutSignal';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
-import { cleanText, formatPersonName } from '../domain/legislative/text';
+import { cleanText, deputyRole, formatBrazilianDate, formatPersonName, normalizeSex, stableNegativeId } from '../domain/legislative/text';
 import { safeGetItem, safeSetItem, safeSetItemWithEviction, purgeStaleKeys } from './storage';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
@@ -15,7 +15,7 @@ purgeStaleKeys(/^paporeto_cache_v\d+_/, key => key.startsWith(CACHE_PREFIX));
 purgeStaleKeys(/^paporeto_prefetched_profiles_v\d+$/, key => key === PREFETCH_MARK_KEY);
 
 export const getFullProfileCacheKey = (id: number) => `${CACHE_PREFIX}pol_full_v2_${id}`;
-export const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
+const TTL_DYNAMIC = 1000 * 60 * 15; // 15 minutos
 export const PROFILE_DETAIL_FRESH_TTL = 1000 * 60 * 60 * 24; // 24 horas
 export const PROFILE_DETAIL_STALE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 dias
 const TTL_STATIC = 1000 * 60 * 60 * 24; // 24 horas
@@ -23,7 +23,7 @@ const STALE_FALLBACK_TTL = 1000 * 60 * 60 * 24 * 7; // 7 dias
 const inFlightCacheRequests = new Map<string, Promise<any>>();
 
 // --- CACHE UTILS ---
-export const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T | null> => {
+const fetchWithCache = async <T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T | null> => {
     const cacheKey = `${CACHE_PREFIX}${key}`;
     let stale: T | null = null;
     try {
@@ -207,18 +207,7 @@ export const fetchAPI = async (url: string, retries = 3, json = true, delay = 10
     }
 };
 
-export { cleanText, formatPersonName };
-
-export const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
-    if (!value) return undefined;
-    const cleaned = value.trim().toUpperCase();
-    if (cleaned.startsWith('F')) return 'F';
-    if (cleaned.startsWith('M')) return 'M';
-    return undefined;
-};
-
-export const deputyRole = (sex?: 'F' | 'M') =>
-    sex === 'F' ? 'Deputada Federal' : sex === 'M' ? 'Deputado Federal' : 'Deputado(a) Federal';
+export { cleanText, formatPersonName, normalizeSex };
 
 // --- HELPERS ---
 
@@ -253,25 +242,6 @@ const BRAZIL_DATE_FORMAT = new Intl.DateTimeFormat('en-CA', {
 
 export const getBrazilDateString = (daysAgo = 0, now: Date = new Date()): string =>
     BRAZIL_DATE_FORMAT.format(new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000));
-
-export const formatBrazilianDate = (value?: string | null, options?: { withYear?: boolean }): string | undefined => {
-    if (!value) return undefined;
-    const withYear = options?.withYear !== false;
-    const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-    if (iso) return withYear ? `${iso[3]}/${iso[2]}/${iso[1]}` : `${iso[3]}/${iso[2]}`;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return undefined;
-    return date.toLocaleDateString('pt-BR', withYear ? undefined : { day: '2-digit', month: '2-digit' });
-};
-
-// Id numérico estável e negativo para votações (ids como "2367475-47" colidiam com ids de proposições).
-const stableNegativeId = (value: string): number => {
-    let hash = 5381;
-    for (let i = 0; i < value.length; i++) {
-        hash = ((hash * 33) ^ value.charCodeAt(i)) >>> 0;
-    }
-    return -(hash + 1);
-};
 
 // --- HELPER: TRAMITÔMETRO (STATUS CALCULATOR) ---
 const CLOSED_SITUATIONS: Array<{ pattern: RegExp; label: string }> = [

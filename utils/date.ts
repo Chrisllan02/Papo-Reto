@@ -1,5 +1,3 @@
-const pad = (n: number) => String(n).padStart(2, '0');
-
 const buildLocalDate = (year: number, month: number, day: number): Date | null => {
   const date = new Date(year, month - 1, day);
   if (
@@ -30,9 +28,6 @@ export const parseLocalDate = (value?: string | null): Date | null => {
 
   return null;
 };
-
-export const toDateInputValue = (date: Date): string =>
-  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 export const formatLocalDate = (
   value: string | null | undefined,

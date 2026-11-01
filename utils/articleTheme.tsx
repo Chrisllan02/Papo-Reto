@@ -1,14 +1,13 @@
-import React from 'react';
 import { Banknote, Lightbulb, ScrollText } from 'lucide-react';
 
-export interface ArticleTheme {
+interface ArticleTheme {
   bg: string;
   text: string;
   icon: string;
   badge: string;
 }
 
-export const ARTICLE_THEMES: ArticleTheme[] = [
+const ARTICLE_THEMES: ArticleTheme[] = [
   { bg: 'bg-gradient-to-br from-picture to-midnight', text: 'text-picture', icon: 'bg-white/20', badge: 'bg-white/20' },
   { bg: 'bg-gradient-to-br from-nuit to-midnight', text: 'text-nuit', icon: 'bg-white/20', badge: 'bg-white/20' },
   { bg: 'bg-gradient-to-br from-blue-700 to-midnight', text: 'text-blue-600', icon: 'bg-white/20', badge: 'bg-white/20' },

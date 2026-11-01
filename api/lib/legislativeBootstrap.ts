@@ -1,6 +1,7 @@
 import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } from '../../types';
 import { detectLegislativeCategory } from '../../domain/legislative/classification.js';
-import { cleanText, formatPersonName } from '../../domain/legislative/text.js';
+import { cleanText, deputyRole, formatBrazilianDate, formatPersonName, normalizeSex, stableNegativeId } from '../../domain/legislative/text.js';
+import type { SexCode } from '../../domain/legislative/text.js';
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
@@ -400,15 +401,6 @@ const fetchText = async (url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<
   }
 };
 
-const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
-  if (!value) return undefined;
-  const cleaned = value.trim().toUpperCase();
-  if (cleaned.startsWith('F')) return 'F';
-  if (cleaned.startsWith('M')) return 'M';
-  return undefined;
-};
-
-type SexCode = 'F' | 'M';
 type DeputySexCache = Record<string, SexCode>;
 
 const getXmlTag = (source: string, tag: string) => {
@@ -426,8 +418,6 @@ const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   );
   return normalizeSex(data?.dados?.sexo);
 };
-
-const deputyRole = (sex?: SexCode) => (sex === 'F' ? 'Deputada Federal' : sex === 'M' ? 'Deputado Federal' : 'Deputado(a) Federal');
 
 const fetchLegislatureMandate = async (legislatureId: unknown) => {
   const id = Number(legislatureId);
@@ -615,22 +605,6 @@ const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> 
     })),
     fallback: true,
   };
-};
-
-const stableNegativeId = (value: string): number => {
-  let hash = 5381;
-  for (let i = 0; i < value.length; i++) {
-    hash = ((hash * 33) ^ value.charCodeAt(i)) >>> 0;
-  }
-  return -(hash + 1);
-};
-
-const formatBrazilianDate = (value?: string | null): string | undefined => {
-  if (!value) return undefined;
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date.toLocaleDateString('pt-BR');
 };
 
 const brasiliaDateDaysAgo = (days: number) => {

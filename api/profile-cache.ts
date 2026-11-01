@@ -4,7 +4,7 @@ import { hasBearerToken } from './lib/auth.js';
 import { createRateLimiter, getClientBucket } from './lib/rateLimit.js';
 import { BOOTSTRAP_CACHE_KEY, readServerCache } from './lib/serverCache.js';
 import type { LegislativeBootstrap } from './lib/legislativeBootstrap.js';
-import { formatPersonName } from '../domain/legislative/text.js';
+import { formatPersonName, normalizeSex } from '../domain/legislative/text.js';
 
 type VercelRequest = IncomingMessage & { query?: Record<string, string | string[]>; body?: any; method?: string; };
 
@@ -101,14 +101,6 @@ const readBody = async (req: VercelRequest) => {
 };
 
 const pathForId = (id: string) => `politicians/${id}.json`;
-
-const normalizeSex = (value?: string | null): 'F' | 'M' | undefined => {
-  if (!value) return undefined;
-  const cleaned = value.trim().toUpperCase();
-  if (cleaned.startsWith('F')) return 'F';
-  if (cleaned.startsWith('M')) return 'M';
-  return undefined;
-};
 
 async function readFromBlob(pathname: string) {
   try {

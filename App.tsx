@@ -1,5 +1,5 @@
 
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import DataTransparencyModal from './components/DataTransparencyModal';

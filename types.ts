@@ -387,36 +387,6 @@ export interface ChatMessage {
 
 export type ChatMode = 'fast' | 'standard' | 'search' | 'location' | 'thinking';
 
-// --- Workspace / Gabinete Digital Types ---
-export interface WorkspaceEmail {
-  id: string;
-  from: string;
-  subject: string;
-  preview: string;
-  date: string;
-  read: boolean;
-  tag: 'Câmara' | 'Partido' | 'Eleitor' | 'Urgente';
-  folder?: 'inbox' | 'sent' | 'trash'; // NOVO
-}
-
-export interface WorkspaceFile {
-  id: string;
-  name: string;
-  type: 'doc' | 'sheet' | 'slide' | 'pdf' | 'folder';
-  owner: string;
-  date: string;
-  size?: string;
-  parentId?: string | null; // NOVO
-}
-
-export interface WorkspaceEvent {
-  id: number;
-  day: number;
-  title: string;
-  time: string;
-  type: 'Sessão' | 'Reunião' | 'Pessoal';
-}
-
 export interface NewsArticle {
   id?: string;
   title: string;

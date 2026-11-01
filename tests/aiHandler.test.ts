@@ -95,12 +95,6 @@ describe('/api/ai', () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it('returns search fallback sources in the shape the client reads', async () => {
-      const response = await call({ action: 'getSearchContext', query: 'reforma tributaria' });
-
-      expect(response.json<{ data: { sources: unknown[] } }>().data.sources).toEqual([]);
-    });
-
     it('enforces the 2MB body limit even when the body was already parsed', async () => {
       const response = await call({ action: 'transcribeAudio', base64Audio: 'A'.repeat(2_100_000) });
 

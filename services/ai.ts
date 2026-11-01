@@ -3,7 +3,8 @@ import { NewsArticle } from '../types';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 import { timeoutSignal } from '../utils/timeoutSignal';
 import { compileTerms, normalizeForMatch } from '../domain/legislative/classification';
-import { BASE_URL_CAMARA, formatBrazilianDate, getBrazilDateString } from './camaraApi';
+import { formatBrazilianDate } from '../domain/legislative/text';
+import { BASE_URL_CAMARA, getBrazilDateString } from './camaraApi';
 import { safeGetItem, safeSetItem, purgeStaleKeys } from './storage';
 
 // Cache Utils
@@ -15,8 +16,6 @@ const NEWS_FETCH_TIMEOUT_MS = 10000;
 const EDUCATION_CACHE_KEY = 'paporeto_education_articles_v1';
 const EDUCATION_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 horas
 let educationalContentInFlight: Promise<EducationalContentResult> | null = null;
-const generatedNewsImages = new Map<string, string>();
-const newsImagesInFlight = new Set<string>();
 
 purgeStaleKeys(/^paporeto_news_v\d+_/, key => key === NEWS_CACHE_KEY);
 purgeStaleKeys(/^paporeto_news_history_v\d+_/, key => key === NEWS_HISTORY_KEY);
@@ -101,16 +100,11 @@ const getSmartImage = (text: string): string => {
     return SMART_IMAGE_RULES.find(rule => rule.pattern.test(t))?.image ?? SEMANTIC_IMAGES_MAP.brazil;
 };
 
-export interface AIResponse {
-    text: string;
-    sources: { web?: { uri: string; title: string }; maps?: { uri: string; title: string; source: string } }[];
-}
-
-export interface GeneratedArticle {
+interface GeneratedArticle {
     title: string; text: string; topic: string; legislation?: string; impact?: string;
 }
 
-export interface EducationalContentResult {
+interface EducationalContentResult {
     articles: GeneratedArticle[];
     isFallback: boolean;
 }
@@ -358,33 +352,6 @@ export function getEmergencyNews(): NewsArticle[] {
     return [];
 }
 
-// --- GERAÇÃO DE IMAGEM DE NOTÍCIA (GOOGLE GEMINI) ---
-export const generateNewsImage = async (headline: string): Promise<string | null> => {
-    try {
-        const data = await callAiApi<{ imageDataUrl: string | null }>('generateNewsImage', { headline });
-        return data?.imageDataUrl || null;
-    } catch {
-        return null;
-    }
-};
-
-// --- FETCH REAL API DATA ---
-// A imagem gerada (base64) fica só em memória, por id da notícia: não bloqueia a lista nem é regerada a cada atualização.
-const withGeneratedImage = (news: NewsArticle[]): NewsArticle[] => {
-    const lead = news[0];
-    if (!lead?.id) return news;
-    const image = generatedNewsImages.get(lead.id);
-    if (image) return [{ ...lead, imageUrl: image }, ...news.slice(1)];
-    if (!newsImagesInFlight.has(lead.id)) {
-        const leadId = lead.id;
-        newsImagesInFlight.add(leadId);
-        void generateNewsImage(lead.title)
-            .then(generated => { if (generated) generatedNewsImages.set(leadId, generated); })
-            .finally(() => newsImagesInFlight.delete(leadId));
-    }
-    return news;
-};
-
 const readDados = async (result: PromiseSettledResult<Response>): Promise<any[]> => {
     if (result.status !== 'fulfilled' || !result.value.ok) return [];
     try {
@@ -397,7 +364,7 @@ const readDados = async (result: PromiseSettledResult<Response>): Promise<any[]>
 
 export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
     const cachedNews = getCache(NEWS_CACHE_KEY, NEWS_CACHE_TTL);
-    if (cachedNews && cachedNews.length > 0) return withGeneratedImage(cachedNews);
+    if (cachedNews && cachedNews.length > 0) return cachedNews;
 
     try {
         const buildFetchConfig = () => ({
@@ -475,7 +442,7 @@ export const fetchDailyNews = async (): Promise<NewsArticle[]> => {
         setCache(NEWS_CACHE_KEY, sortedNews);
         saveToHistory(sortedNews);
 
-        return withGeneratedImage(sortedNews);
+        return sortedNews;
 
     } catch (error: any) {
         console.warn("News Fetch Error:", error);
@@ -499,14 +466,6 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     } catch {
         return null;
     }
-};
-
-// ... Resto das funções auxiliares (getSearchContext, chatWithGemini, etc.) mantidas intactas ...
-export const getSearchContext = async (query: string): Promise<AIResponse | null> => {
-    try {
-        const data = await callAiApi<AIResponse>('getSearchContext', { query });
-        return data || null;
-    } catch { return null; }
 };
 
 export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {

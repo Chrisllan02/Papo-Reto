@@ -1,4 +1,3 @@
-import React from 'react';
 import { GraduationCap, HeartPulse, Banknote, Shield, Briefcase, Leaf, Gavel, Activity } from 'lucide-react';
 import { Glossary } from '../components/Glossary';
 import { DICTIONARY } from './glossary';
@@ -6,7 +5,7 @@ import { FeedCategory } from '../types';
 import { detectLegislativeCategory, normalizeForMatch } from '../domain/legislative/classification';
 
 // Dicionário Constitucional
-export const CONSTITUTION_TOPICS: Record<string, { art: string, text: string }> = {
+const CONSTITUTION_TOPICS: Record<string, { art: string, text: string }> = {
     'educação': { art: 'Art. 205', text: 'A educação é direito de todos e dever do Estado.' },
     'escola': { art: 'Art. 206', text: 'Ensino será ministrado com igualdade de condições.' },
     'saúde': { art: 'Art. 196', text: 'A saúde é direito de todos e dever do Estado.' },
@@ -35,7 +34,7 @@ const CONSTITUTION_MATCHERS = Object.entries(CONSTITUTION_TOPICS).map(([key, val
     return { regex: new RegExp(pattern), value };
 });
 
-export const LEGISLATIVE_TYPES: Record<string, string> = {
+const LEGISLATIVE_TYPES: Record<string, string> = {
     'PEC': 'Esta é uma Proposta de Emenda à Constituição. É a mudança mais difícil e poderosa das leis, exigindo 3/5 dos votos para passar. Altera a base do país.',
     'PL': 'Este é um Projeto de Lei Ordinária. Define as regras do dia a dia. Precisa da maioria simples dos presentes para ser aprovado.',
     'MPV': 'Medida Provisória: tem força de lei imediata e é assinada pelo Presidente. O Congresso precisa confirmar depois.',

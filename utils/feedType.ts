@@ -1,7 +1,7 @@
 import { Banknote, Calendar, FileText, Landmark, Lightbulb, type LucideIcon } from 'lucide-react';
 import type { FeedItem } from '../types';
 
-export interface FeedTypeMeta {
+interface FeedTypeMeta {
   label: string;
   Icon: LucideIcon;
   /** Chip claro usado em cards e listas. */

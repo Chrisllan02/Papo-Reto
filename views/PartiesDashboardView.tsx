@@ -313,7 +313,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
             partyCounts[pName] = (partyCounts[pName] || 0) + 1;
         });
 
-        const getPartyColor = (idx: number, name: string) => {
+        const getPartyColor = (name: string) => {
             if (name === 'OUTROS') return '#94a3b8'; // Neutral gray
             const ide = getIdeology(name);
             return getIdeologyTheme(ide).baseColor;
@@ -326,11 +326,11 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
         const top5 = sorted.slice(0, 5);
         const othersCount = sorted.slice(5).reduce((acc, curr) => acc + curr[1], 0);
         
-        const finalData = top5.map(([name, val], i) => ({
+        const finalData = top5.map(([name, val]) => ({
             name,
             value: val,
             percent: (val / total) * 100,
-            color: getPartyColor(i, name)
+            color: getPartyColor(name)
         }));
 
         if (othersCount > 0) {

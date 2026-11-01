@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 const digest = (value: string) => createHash('sha256').update(value).digest();
 
-export const safeEqual = (a: string, b: string) => timingSafeEqual(digest(a), digest(b));
+const safeEqual = (a: string, b: string) => timingSafeEqual(digest(a), digest(b));
 
 export const hasBearerToken = (authorization: string | string[] | undefined, secret: string) => {
   const header = Array.isArray(authorization) ? authorization[0] : authorization;
