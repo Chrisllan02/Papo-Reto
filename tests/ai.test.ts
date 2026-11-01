@@ -3,14 +3,14 @@ import { AiUnavailableError, chatWithGemini, fetchDailyNews, generateEducational
 
 const json = (body: unknown, ok = true) => ({ ok, status: ok ? 200 : 404, json: async () => body });
 
-const installFetch = (opts: { ai?: unknown; events?: unknown[]; brokenProposicoes?: boolean } = {}) => {
+const installFetch = (opts: { ai?: unknown; events?: unknown[]; brokenProposicoes?: boolean; voteText?: string } = {}) => {
   const fetchMock = vi.fn(async (url: string) => {
     const decoded = decodeURIComponent(String(url));
     if (decoded.includes('/api/ai')) {
       return json({ data: opts.ai ?? null }, opts.ai !== undefined);
     }
     if (decoded.includes('/votacoes')) {
-      return json({ dados: [{ id: '2367475-47', siglaOrgao: 'CCJC', descricao: 'Aprovado o requerimento de urgência', dataHoraRegistro: '2024-05-09T22:30:00' }] });
+      return json({ dados: [{ id: '2367475-47', siglaOrgao: 'CCJC', descricao: opts.voteText ?? 'Aprovado o requerimento de urgência', dataHoraRegistro: '2024-05-09T22:30:00' }] });
     }
     if (decoded.includes('/proposicoes')) {
       if (opts.brokenProposicoes) return { ok: true, status: 200, json: async () => { throw new SyntaxError('bad json'); } };
@@ -57,12 +57,28 @@ describe('ai: notícias e conteúdo', () => {
     expect(news.find(item => item.id === '2367475-47')?.source).toBe('CCJC');
   });
 
+  it('votação não aprovada não vira aprovação no título nem no resumo', async () => {
+    installFetch({ voteText: 'Não aprovado o requerimento de urgência' });
+    const vote = (await fetchDailyNews()).find(item => item.id === '2367475-47')!;
+
+    expect(vote.title).not.toBe('Urgência Aprovada');
+    expect(vote.summary?.main).not.toContain('Aprovação');
+  });
+
   it('não cacheia o conteúdo estático quando a IA falha', async () => {
     installFetch();
     const content = await generateEducationalContent();
 
     expect(content.isFallback).toBe(true);
     expect(content.articles[0]).toMatchObject({ title: 'O Orçamento Público', legislation: 'Art. 165 da Constituição Federal' });
+    expect(localStorage.getItem('paporeto_education_articles_v1')).toBeNull();
+  });
+
+  it('não cacheia os artigos de reserva que o servidor marca como fallback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ ok: true, isFallback: true, data: [{ title: 'Reserva', text: 'Texto', topic: 'x' }] })));
+    const content = await generateEducationalContent();
+
+    expect(content.isFallback).toBe(true);
     expect(localStorage.getItem('paporeto_education_articles_v1')).toBeNull();
   });
 

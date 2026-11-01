@@ -13,6 +13,8 @@ export interface RegionStats {
 export interface PartyStats {
   name: string;
   totalMembers: number;
+  /** Membros da Câmara (base da presença, que só existe para deputados). */
+  deputyCount: number;
   femaleCount: number;
   totalSpending: number;
   /** Média apenas de quem tem gasto informado pela fonte. */
@@ -55,6 +57,7 @@ export const computePartyStats = (politicians: Politician[]) => {
       groups[partyName] = {
         name: partyName,
         totalMembers: 0,
+        deputyCount: 0,
         femaleCount: 0,
         totalSpending: 0,
         avgSpending: 0,
@@ -69,6 +72,7 @@ export const computePartyStats = (politicians: Politician[]) => {
     const g = groups[partyName];
     g.members.push(pol);
     g.totalMembers += 1;
+    if (pol.hasApiIntegration !== false) g.deputyCount += 1;
     if (normalizeSex(pol.sex) === 'F') g.femaleCount += 1;
     if (hasSpendingData(pol)) {
       g.totalSpending += pol.stats?.spending || 0;
@@ -103,7 +107,7 @@ export const summarizeAttendance = (data: PartyStats[]) => {
   let sample = 0;
   let total = 0;
   data.forEach((p) => {
-    total += p.totalMembers;
+    total += p.deputyCount;
     if (p.avgAttendance !== null) {
       sum += p.avgAttendance * p.attendanceSampleCount;
       sample += p.attendanceSampleCount;

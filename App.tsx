@@ -5,6 +5,7 @@ import MobileNav from './components/MobileNav';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
 import LoadingScreen from './components/LoadingScreen';
+import DataState from './components/DataState';
 import { Skeleton, SkeletonFeedItem } from './components/Skeleton';
 import { useAppContext } from './contexts/AppContext';
 
@@ -40,6 +41,8 @@ function App() {
 
   if (isLoading) return <LoadingScreen />;
 
+  const hasSelectedArticle = selectedEducationId !== null && articles.some(article => article.id === selectedEducationId);
+
   // Lógica de Roteamento de Views
   let content;
   if (selectedCandidate) {
@@ -56,7 +59,7 @@ function App() {
             onToggleFollow={() => {}}
         />
       );
-  } else if (selectedEducationId) {
+  } else if (hasSelectedArticle) {
       content = (
         <EducationView 
             key={selectedEducationId} // Força reset de scroll e animação
@@ -96,8 +99,8 @@ function App() {
     <div className={`flex h-[100dvh] w-full overflow-hidden font-sans transition-colors duration-500`}>
         {showOnboarding && <OnboardingModal onFinish={() => actions.setShowOnboarding(false)} />}
         {error && (
-            <div role="alert" className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
-                {error}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-md">
+                <DataState variant="error" title="Não foi possível carregar os dados" description={error} actionLabel="Tentar de novo" onAction={actions.reloadData} />
             </div>
         )}
 

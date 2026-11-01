@@ -15,7 +15,18 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       proxy: apiProxyTarget
-        ? { '/api': { target: apiProxyTarget, changeOrigin: true, secure: true } }
+        ? {
+            '/api': {
+              target: apiProxyTarget,
+              changeOrigin: true,
+              secure: true,
+              configure: (proxy) => {
+                proxy.on('proxyReq', (proxyReq) => {
+                  if (proxyReq.getHeader('origin')) proxyReq.setHeader('origin', new URL(apiProxyTarget).origin);
+                });
+              },
+            },
+          }
         : undefined,
     },
     build: {

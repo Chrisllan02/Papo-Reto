@@ -88,7 +88,7 @@ const isJsonContentType = (req: VercelRequest) =>
 const isCrossSiteRequest = (req: VercelRequest) => {
   if (getHeader(req, 'sec-fetch-site').toLowerCase() === 'cross-site') return true;
   const origin = getHeader(req, 'origin');
-  if (!origin) return false;
+  if (!origin) return true;
   try {
     return new URL(origin).host.toLowerCase() !== getHeader(req, 'host').toLowerCase();
   } catch {
@@ -249,7 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!ai) {
     if (action === 'generateEducationalContent') {
-      return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
+      return jsonResponse(res, 200, { ok: true, data: staticEducationalContent, isFallback: true });
     }
     if (action === 'generateCampaignImage') {
       return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
@@ -292,12 +292,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         const raw = response.text?.trim();
-        if (!raw) {
-          return jsonResponse(res, 200, { ok: true, data: staticEducationalContent });
+        const articles = raw ? parseEducationalArticles(raw) : [];
+        if (articles.length === 0) {
+          return jsonResponse(res, 200, { ok: true, data: staticEducationalContent, isFallback: true });
         }
-
-        const articles = parseEducationalArticles(raw);
-        return jsonResponse(res, 200, { ok: true, data: articles.length > 0 ? articles : staticEducationalContent });
+        return jsonResponse(res, 200, { ok: true, data: articles });
       }
 
       case 'speakContent': {

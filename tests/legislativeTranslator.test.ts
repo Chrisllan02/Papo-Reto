@@ -67,4 +67,11 @@ describe('legislativeTranslator: falsos positivos por substring', () => {
   it('casa chaves acentuadas com texto sem acento', () => {
     expect(getDidacticContext('x', 'Projeto sobre educacao basica', 'voto').constitution?.art).toBe('Art. 205');
   });
+
+  it('não confunde indeferimento com deferimento nem desarquivamento com arquivamento', () => {
+    expect(getDidacticContext('REQ 1', 'Indeferido o Requerimento n. 10/2024', 'voto').text).toContain('Pedido negado');
+    expect(getDidacticContext('REQ 1', 'Deferido o Requerimento n. 10/2024', 'voto').text).toContain('Pedido aceito');
+    expect(getDidacticContext('PL 1', 'Desarquivado nos termos do Artigo 105 do RICD', 'voto').text).toContain('desarquivado');
+    expect(getDidacticContext('PL 1', 'Arquivado nos termos do Artigo 105 do RICD', 'voto').text).toContain('encerrado/arquivado');
+  });
 });

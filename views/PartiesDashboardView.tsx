@@ -25,8 +25,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
         const unknownSexCount = Math.max(politicians.length - knownTotal, 0);
         const women = knownPoliticians.filter(p => normalizeSex(p.sex) === 'F');
         const womenCount = women.length;
-        const percentageBase = Math.max(knownTotal || politicians.length, 1);
-        const percentage = ((womenCount / percentageBase) * 100).toFixed(1);
+        const percentage = knownTotal > 0 ? ((womenCount / knownTotal) * 100).toFixed(1) : null;
 
         // Agrupamento por partido
         const partyWomenCounts: Record<string, number> = {};
@@ -53,7 +52,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
     // Configuração do SVG Donut
     const radius = 42;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (parseFloat(stats.percentage) / 100) * circumference;
+    const offset = circumference - (stats.percentage ? parseFloat(stats.percentage) / 100 : 0) * circumference;
 
     const visibleWithWomen = isExpanded ? stats.withWomen : stats.withWomen.slice(0, 6);
     const visibleWithoutWomen = isExpanded ? stats.withoutWomen : stats.withoutWomen.slice(0, 8);
@@ -80,8 +79,14 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
-                        <span className="text-sm font-bold text-gray-600 dark:text-gray-400">mulheres</span>
+                        {stats.percentage !== null ? (
+                            <>
+                                <span className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
+                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400">mulheres</span>
+                            </>
+                        ) : (
+                            <span className="text-base font-black text-gray-900 dark:text-white">Sem dados</span>
+                        )}
                     </div>
                 </div>
                 <div className="mt-2 text-center">
@@ -696,7 +701,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
     const stats = selectedParty ? data.find(p => p.name === selectedParty) : null;
     const value = stats ? stats.avgAttendance : overall.average;
     const sampleCount = stats ? stats.attendanceSampleCount : overall.sample;
-    const totalCount = stats ? stats.totalMembers : overall.total;
+    const totalCount = stats ? stats.deputyCount : overall.total;
     const hasData = value !== null && sampleCount > 0;
     const displayValue = hasData ? value : 0;
     const coverageLabel = hasData

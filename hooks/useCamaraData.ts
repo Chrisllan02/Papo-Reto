@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
 import { Politician, FeedItem, Party, EducationalArticle } from '../types';
 import { 
     BASE_URL_CAMARA,
@@ -186,8 +186,9 @@ export const useInitialData = () => {
     const [articles, setArticles] = useState<EducationalArticle[]>(bootstrapCache?.articles || (EDUCATION_CAROUSEL as EducationalArticle[])); 
     const [isLoading, setIsLoading] = useState(!bootstrapCache);
     const [error, setError] = useState<string | null>(null);
+    const [reloadCount, setReloadCount] = useState(0);
     const [isEducationalContentLoading, setIsEducationalContentLoading] = useState(false);
-    const [educationalContentLoaded, setEducationalContentLoaded] = useState(
+    const educationalContentRequested = useRef(
         Boolean(bootstrapCache?.articles?.some(article => article.id >= 100))
     );
 
@@ -288,10 +289,17 @@ export const useInitialData = () => {
         return () => {
             cancelled = true;
         };
-    }, [bootstrapCache]);
+    }, [bootstrapCache, reloadCount]);
+
+    const reload = useCallback(() => {
+        setError(null);
+        setIsLoading(true);
+        setReloadCount(count => count + 1);
+    }, []);
 
     const loadEducationalContent = useCallback(async () => {
-        if (educationalContentLoaded || isEducationalContentLoading) return;
+        if (educationalContentRequested.current) return;
+        educationalContentRequested.current = true;
         setIsEducationalContentLoading(true);
 
         try {
@@ -329,18 +337,17 @@ export const useInitialData = () => {
                 ...mapArticleStyle(index, item.topic)
             }));
 
-            setArticles(newArticles);
             if (isFallback) return;
-            setEducationalContentLoaded(true);
+            setArticles(newArticles);
             updateBootstrapCacheArticles(newArticles);
         } catch (error) {
             console.warn('Educational content load failed', error);
         } finally {
             setIsEducationalContentLoading(false);
         }
-    }, [educationalContentLoaded, isEducationalContentLoading]);
+    }, []);
 
-    return { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent, isEducationalContentLoading };
+    return { politicians, feedItems, parties, articles, isLoading, error, reload, setPoliticians, loadEducationalContent, isEducationalContentLoading };
 };
 
 // --- Hook para Perfil Detalhado (Progressive Enrichment) ---

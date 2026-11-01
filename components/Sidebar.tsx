@@ -50,6 +50,7 @@ const Toggle: React.FC<{ on: boolean }> = ({ on }) => (
 const Sidebar: React.FC = () => {
   const { state, actions } = useAppContext();
   const { activeTab, darkMode, highContrast, fontSizeLevel, userLocation, isLocating } = state;
+  const isDarkModeOn = darkMode && !highContrast;
   const [showAccessMenu, setShowAccessMenu] = useState(false);
   const accessMenuRef = useRef<HTMLDivElement | null>(null);
   const accessButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -190,12 +191,15 @@ const Sidebar: React.FC = () => {
                      <Toggle on={highContrast} />
                  </button>
 
-                 <button type="button" role="switch" aria-checked={darkMode} onClick={actions.toggleDarkMode} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left focus-visible:ring-4 focus-visible:ring-blue-500/40">
+                 <button type="button" role="switch" aria-checked={isDarkModeOn} aria-disabled={highContrast} aria-describedby={highContrast ? 'modo-escuro-motivo' : undefined} onClick={highContrast ? undefined : actions.toggleDarkMode} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors w-full text-left focus-visible:ring-4 focus-visible:ring-blue-500/40 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent">
                      <div className="flex items-center gap-3">
-                         {darkMode ? <Moon size={18} className="text-nuit dark:text-blue-400" aria-hidden="true" /> : <Sun size={18} className="text-orange-500" aria-hidden="true" />}
-                         <span className="text-sm font-bold text-gray-800 dark:text-white">Modo Escuro</span>
+                         {isDarkModeOn ? <Moon size={18} className="text-nuit dark:text-blue-400" aria-hidden="true" /> : <Sun size={18} className="text-orange-500" aria-hidden="true" />}
+                         <span className="flex flex-col">
+                             <span className="text-sm font-bold text-gray-800 dark:text-white">Modo Escuro</span>
+                             {highContrast && <span id="modo-escuro-motivo" className="text-xs font-medium text-gray-600 dark:text-gray-300">Indisponível com o alto contraste ligado</span>}
+                         </span>
                      </div>
-                     <Toggle on={darkMode} />
+                     <Toggle on={isDarkModeOn} />
                  </button>
 
                  <button type="button" onClick={() => { actions.setShowOnboarding(true); setShowAccessMenu(false); }} className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex items-center justify-between p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors w-full text-left mt-1">

@@ -36,6 +36,8 @@ interface UseDialogOptions {
   onClose: () => void;
   /** Elemento que recebe o foco ao abrir. Por padrão, o primeiro item focável. */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** Para painéis que ficam montados: o comportamento só vale enquanto ativo. */
+  active?: boolean;
 }
 
 /**
@@ -44,7 +46,7 @@ interface UseDialogOptions {
  */
 export const useDialog = (
   containerRef: RefObject<HTMLElement | null>,
-  { onClose, initialFocusRef }: UseDialogOptions
+  { onClose, initialFocusRef, active = true }: UseDialogOptions
 ) => {
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -53,7 +55,7 @@ export const useDialog = (
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!active || !container) return;
 
     const id = Symbol('dialog');
     openDialogs.push(id);
@@ -100,5 +102,5 @@ export const useDialog = (
       unlockScroll();
       if (opener && opener.isConnected) opener.focus({ preventScroll: true });
     };
-  }, [containerRef, initialFocusRef]);
+  }, [containerRef, initialFocusRef, active]);
 };

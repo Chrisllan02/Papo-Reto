@@ -56,4 +56,11 @@ describe('computePartyStats', () => {
     const { partyStats } = computePartyStats([pol(1, 'PT', 100), pol(2, 'PL', 0), pol(3, 'PL', 50)]);
     expect(summarizeAttendance(partyStats)).toEqual({ average: 75, sample: 2, total: 3 });
   });
+
+  it('cobertura de presença conta só deputados, sem somar senadores', () => {
+    const senador = { ...pol(3, 'PT', 0), hasApiIntegration: false } as Politician;
+    const { partyStats } = computePartyStats([pol(1, 'PT', 100), pol(2, 'PT', 0), senador]);
+    expect(partyStats[0].deputyCount).toBe(2);
+    expect(summarizeAttendance(partyStats).total).toBe(2);
+  });
 });

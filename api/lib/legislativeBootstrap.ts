@@ -367,7 +367,9 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retrie
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
-      if (retries > 0 && (res.status >= 500 || res.status === 429)) {
+      const recoverable = res.status >= 500 || res.status === 429;
+      if (!recoverable) return null;
+      if (retries > 0) {
         return fetchJson<T>(url, timeoutMs, retries - 1, allowProxyFallback);
       }
       const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
@@ -534,6 +536,8 @@ const fetchSenadores = async (): Promise<Politician[]> => {
     const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
     const sex = normalizeSex(getXmlTag(block, 'SexoParlamentar'));
     const mandateBlock = getXmlBlocks(block, 'Mandato')[0] || '';
+    const currentExercise = getXmlBlocks(block, 'Exercicio')
+      .sort((a, b) => getXmlTag(b, 'DataInicio').localeCompare(getXmlTag(a, 'DataInicio')))[0] || '';
     const mandateStarts = getXmlBlocks(mandateBlock, 'DataInicio').map(item => getXmlTag(item, 'DataInicio')).filter(Boolean).sort();
     const mandateEnds = getXmlBlocks(mandateBlock, 'DataFim').map(item => getXmlTag(item, 'DataFim')).filter(Boolean).sort();
     const suplentes = getXmlBlocks(mandateBlock, 'Suplente').map((item) => {
@@ -560,8 +564,8 @@ const fetchSenadores = async (): Promise<Politician[]> => {
       isBoardMember: getXmlTag(block, 'MembroMesa').toLowerCase() === 'sim',
       isLeader: getXmlTag(block, 'MembroLideranca').toLowerCase() === 'sim',
       participation: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
-      exerciseStart: getXmlTag(block, 'DataInicio'),
-      exerciseEnd: getXmlTag(block, 'DataFim'),
+      exerciseStart: getXmlTag(currentExercise, 'DataInicio'),
+      exerciseEnd: getXmlTag(currentExercise, 'DataFim'),
       condition: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
       suplentes,
       matchScore: 0,

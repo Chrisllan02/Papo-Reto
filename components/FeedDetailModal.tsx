@@ -432,9 +432,9 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                     )}
                                 </div>
                             </div>
-                            {item.approval !== undefined && (
-                                <div className={`rounded-2xl border p-4 text-sm font-semibold ${Number(item.approval) === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'}`}>
-                                    Resultado oficial: {Number(item.approval) === 1 ? 'aprovação registrada' : 'aprovação não registrada'}
+                            {(item.approval === 1 || item.approval === 0) && (
+                                <div className={`rounded-2xl border p-4 text-sm font-semibold ${item.approval === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'}`}>
+                                    Resultado oficial: {item.approval === 1 ? 'aprovada' : 'rejeitada'}
                                 </div>
                             )}
                             {extraDetails && (extraDetails.detailedSummary || extraDetails.justification || extraDetails.statusDescription || extraDetails.dispatch || extraDetails.keywords?.length || extraDetails.relatedPropositions?.length || extraDetails.finalUrn) && (

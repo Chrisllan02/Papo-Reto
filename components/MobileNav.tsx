@@ -2,10 +2,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollText, Users, Menu, X, Sun, Moon, Eye, Type, HelpCircle, BookOpen, BarChart3, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
+import { useDialog } from '../hooks/useDialog';
 
 const MobileNav: React.FC = () => {
   const { state, actions } = useAppContext();
   const { activeTab, darkMode, highContrast, fontSizeLevel } = state;
+  const isDarkModeOn = darkMode && !highContrast;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,17 +24,10 @@ const MobileNav: React.FC = () => {
   };
 
   useEffect(() => {
-      if (!isMenuOpen) return;
-      const handleEscape = (event: KeyboardEvent) => {
-          if (event.key === 'Escape') setIsMenuOpen(false);
-      };
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-  }, [isMenuOpen]);
-
-  useEffect(() => {
       if (menuRef.current) (menuRef.current as HTMLDivElement & { inert: boolean }).inert = !isMenuOpen;
   }, [isMenuOpen]);
+
+  useDialog(menuRef, { onClose: () => setIsMenuOpen(false), active: isMenuOpen });
 
   const toggleMenu = () => {
       setIsMenuOpen(!isMenuOpen);
@@ -43,13 +38,16 @@ const MobileNav: React.FC = () => {
         <div 
             id="menu-movel"
             ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="menu-movel-titulo"
             aria-hidden={!isMenuOpen}
             className={`fixed inset-x-0 bottom-0 z-[60] glass-panel rounded-t-3xl transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-[110%]'}`}
             style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}
         >
             <div className="p-6 space-y-6">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-black text-midnight dark:text-white">Configurações</h3>
+                    <h3 id="menu-movel-titulo" className="text-lg font-black text-midnight dark:text-white">Configurações</h3>
                     <button type="button" onClick={() => setIsMenuOpen(false)} aria-label="Fechar configurações" className="w-11 h-11 flex items-center justify-center bg-slate-100 dark:bg-white/10 rounded-full text-muted-strong focus-visible:ring-4 focus-visible:ring-blue-500/40">
                         <X size={20} aria-hidden="true" />
                     </button>
@@ -60,11 +58,14 @@ const MobileNav: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <button 
                         type="button"
-                        onClick={actions.toggleDarkMode}
-                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 active:scale-[0.98] transition-colors"
+                        onClick={highContrast ? undefined : actions.toggleDarkMode}
+                        aria-disabled={highContrast}
+                        aria-describedby={highContrast ? 'menu-modo-escuro-motivo' : undefined}
+                        className="focus-visible:ring-4 focus-visible:ring-blue-500/40 flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 active:scale-[0.98] transition-colors aria-disabled:cursor-not-allowed"
                     >
-                        {darkMode ? <Sun size={20} className="text-yellow-700" aria-hidden="true" /> : <Moon size={20} className="text-blue-700" aria-hidden="true" />}
-                        <span className="text-xs font-semibold text-muted-strong">{darkMode ? 'Modo claro' : 'Modo escuro'}</span>
+                        {isDarkModeOn ? <Sun size={20} className="text-yellow-700" aria-hidden="true" /> : <Moon size={20} className="text-blue-700" aria-hidden="true" />}
+                        <span className="text-xs font-semibold text-muted-strong">{isDarkModeOn ? 'Modo claro' : 'Modo escuro'}</span>
+                        {highContrast && <span id="menu-modo-escuro-motivo" className="text-xs text-muted-strong">Indisponível com o alto contraste</span>}
                     </button>
 
                     <button 

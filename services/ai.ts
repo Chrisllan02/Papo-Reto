@@ -52,7 +52,7 @@ const setCachedEducationalContent = (data: GeneratedArticle[]) => {
     setCache(EDUCATION_CACHE_KEY, data);
 };
 
-const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): Promise<T | null> => {
+const callAiApiEnvelope = async <T>(action: string, payload: Record<string, any> = {}): Promise<{ data: T | null; isFallback: boolean }> => {
     try {
         const apiOrigin = getConfiguredApiOrigin();
         const response = await fetch(`${apiOrigin}/api/ai`, {
@@ -61,13 +61,16 @@ const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): 
             body: JSON.stringify({ action, ...payload }),
             signal: timeoutSignal(AI_REQUEST_TIMEOUT_MS)
         });
-        if (!response.ok) return null;
+        if (!response.ok) return { data: null, isFallback: true };
         const json = await response.json();
-        return (json?.data ?? null) as T | null;
+        return { data: (json?.data ?? null) as T | null, isFallback: json?.isFallback === true };
     } catch {
-        return null;
+        return { data: null, isFallback: true };
     }
 };
+
+const callAiApi = async <T>(action: string, payload: Record<string, any> = {}): Promise<T | null> =>
+    (await callAiApiEnvelope<T>(action, payload)).data;
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -124,6 +127,7 @@ const TITLE_RULES: Array<{ regex: RegExp, template: string }> = [
     { regex: /reunião deliberativa/i, template: "Reunião Deliberativa" },
     { regex: /sessão deliberativa/i, template: "Sessão Deliberativa" },
     { regex: /seminário/i, template: "Seminário Legislativo" },
+    { regex: /n[aã]o aprovado o requerimento de urgência/i, template: "Urgência Não Aprovada" },
     { regex: /aprovado o requerimento de urgência/i, template: "Urgência Aprovada" },
     { regex: /mantido o texto/i, template: "Texto Mantido" },
     { regex: /rejeitado o texto/i, template: "Texto Rejeitado" },
@@ -237,6 +241,8 @@ function generateJournalisticTitle(rawText: string, type: 'voto' | 'evento' | 'p
     return cleaned || "Nova Proposta Legislativa";
 }
 
+const isApproved = (lowerText: string) => /\baprovad[oa]\b/.test(lowerText) && !/\bn[aã]o\s+aprovad[oa]\b/.test(lowerText);
+
 function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'proposicao' = 'voto'): { context: string, main: string } {
     const defaultResponse = {
         context: type === 'evento' ? "Agenda Oficial" : type === 'proposicao' ? "Novo Projeto" : "Tramitação",
@@ -291,7 +297,7 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
 
     if (lowerText.includes('urgência')) {
         context = "Regime de Urgência";
-        if (/\baprovad[oa]\b/.test(lowerText)) {
+        if (isApproved(lowerText)) {
             explanation = `Aprovação para acelerar o projeto, pulando etapas de comissões.`;
         }
     } else if (lowerText.includes('medida provisória')) {
@@ -300,7 +306,7 @@ function generateStructuredSummary(rawText: string, type: 'voto' | 'evento' | 'p
     } else if (/\bpec\b/.test(lowerText)) {
         context = "Proposta de Emenda à Constituição";
         explanation = `PEC: exige 3/5 dos votos em dois turnos em cada Casa.`;
-    } else if (/\baprovad[oa]\b/.test(lowerText)) {
+    } else if (isApproved(lowerText)) {
         context = "Aprovado";
     }
 
@@ -520,8 +526,8 @@ export const generateEducationalContent = async (): Promise<EducationalContentRe
 
     educationalContentInFlight = (async () => {
         try {
-            const data = await callAiApi<unknown[]>('generateEducationalContent');
-            const articles = Array.isArray(data) ? data.filter(isValidArticle) : [];
+            const { data, isFallback } = await callAiApiEnvelope<unknown[]>('generateEducationalContent');
+            const articles = !isFallback && Array.isArray(data) ? data.filter(isValidArticle) : [];
             if (articles.length > 0) {
                 setCachedEducationalContent(articles);
                 return { articles, isFallback: false };

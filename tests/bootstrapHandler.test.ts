@@ -109,6 +109,10 @@ describe('/api/bootstrap', () => {
                 <DescricaoParticipacao>Titular</DescricaoParticipacao>
                 <DataInicio>2023-02-01</DataInicio>
                 <DataFim>2031-01-31</DataFim>
+                <Exercicios>
+                  <Exercicio><DataInicio>2023-02-01</DataInicio><DataFim>2024-06-30</DataFim></Exercicio>
+                  <Exercicio><DataInicio>2025-03-10</DataInicio></Exercicio>
+                </Exercicios>
                 <Suplente>
                   <DescricaoParticipacao>1º Suplente</DescricaoParticipacao>
                   <NomeParlamentar>SUPLENTE TESTE</NomeParlamentar>
@@ -150,6 +154,8 @@ describe('/api/bootstrap', () => {
     expect(senator.parliamentaryBlock).toBe('BLOCO TESTE');
     expect(senator.isBoardMember).toBe(true);
     expect(senator.suplentes).toEqual(['1º Suplente - SUPLENTE TESTE']);
+    expect(senator.exerciseStart).toBe('2025-03-10');
+    expect(senator.exerciseEnd).toBe('');
     expect(payload.data.parties).toHaveLength(1);
     expect(payload.data.feedItems[0].sourceUrl).toMatch(/^https:\/\/www\.camara\.leg\.br\//);
     expect(payload.data.articles[0]).toMatchObject({ id: 1000, sourceUrl: payload.data.feedItems[0].sourceUrl });
@@ -364,6 +370,21 @@ describe('/api/bootstrap', () => {
     expect(payload.data.partial).toBe(true);
     expect(payload.warnings).toContain('senado_senadores_unavailable');
     expect(payload.warnings).toContain('camara_feed_unavailable');
+  });
+
+  it('não usa o proxy da Câmara quando a fonte responde erro 4xx definitivo', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/votacoes?')) return new Response('', { status: 404 });
+      if (url.includes('/deputados?')) return jsonResponse({ dados: [{ id: 1, nome: 'MARIA', siglaPartido: 'PT', siglaUf: 'RS', sexo: 'F' }] });
+      return jsonResponse({ dados: [] });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, createJsonResponse().res as any);
+
+    const requested = fetchMock.mock.calls.map(call => String(call[0]));
+    expect(requested.some(url => url.includes('/votacoes?'))).toBe(true);
+    expect(requested.filter(url => url.includes('/api/camara?url=') && url.includes('votacoes'))).toEqual([]);
   });
 
   it('does not return success when no politicians are available', async () => {

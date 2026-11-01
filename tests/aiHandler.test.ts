@@ -14,6 +14,7 @@ vi.mock('@google/genai', () => ({
 const jsonHeaders = (extra: Record<string, string> = {}) => ({
   'content-type': 'application/json',
   host: 'papo-reto-beige.vercel.app',
+  origin: 'https://papo-reto-beige.vercel.app',
   ...extra,
 });
 
@@ -86,6 +87,13 @@ describe('/api/ai', () => {
       expect(response.statusCode).toBe(403);
     });
 
+    it('rejects POST without Origin', async () => {
+      const { origin: _origin, ...withoutOrigin } = jsonHeaders();
+      const response = await call({ action: 'generateEducationalContent' }, withoutOrigin);
+
+      expect(response.statusCode).toBe(403);
+    });
+
     it('accepts same-origin browser requests', async () => {
       const response = await call(
         { action: 'generateEducationalContent' },
@@ -124,7 +132,9 @@ describe('/api/ai', () => {
       const response = await call({ action: 'generateEducationalContent' });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json<{ data: { title: string }[] }>().data.map((item) => item.title)).toContain('O Papel do STF');
+      const body = response.json<{ data: { title: string }[]; isFallback?: boolean }>();
+      expect(body.data.map((item) => item.title)).toContain('O Papel do STF');
+      expect(body.isFallback).toBe(true);
     });
 
     it('keeps only well-formed model articles and drops unverifiable legislation', async () => {
@@ -136,7 +146,7 @@ describe('/api/ai', () => {
 
       const response = await call({ action: 'generateEducationalContent' });
 
-      expect(response.json<{ data: unknown[] }>().data).toEqual([{ title: 'Voto', text: 'Como funciona o voto.', topic: 'Eleições' }]);
+      expect(response.json<{ data: unknown[]; isFallback?: boolean }>()).toEqual({ ok: true, data: [{ title: 'Voto', text: 'Como funciona o voto.', topic: 'Eleições' }] });
     });
 
     it('does not log the request body when a call fails', async () => {

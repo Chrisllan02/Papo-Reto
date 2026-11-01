@@ -107,12 +107,6 @@ const LoadingScreen: React.FC = () => {
              color: #EDF5FA; 
         }
 
-        @media (prefers-color-scheme: dark) {
-            .loading-text-wrapper {
-                color: #EDF5FA; 
-               }
-        }
-
         .text-ghost { opacity: 0; visibility: hidden; }
         .text-visible {
             position: absolute;

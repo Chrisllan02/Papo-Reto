@@ -59,6 +59,7 @@ interface AppActions {
   // Navigation Helpers
   resetNavigation: () => void;
   goToExplore: (state: string) => void;
+  reloadData: () => void;
 }
 
 const AppContext = createContext<{ state: AppState; actions: AppActions } | null>(null);
@@ -69,7 +70,7 @@ const LOCATION_AUTO_PROMPT_TTL = 1000 * 60 * 60 * 24 * 7;
 // --- Provider ---
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Use Custom Hook for Data Loading
-    const { politicians, feedItems, parties, articles, isLoading, error, setPoliticians, loadEducationalContent } = useInitialData();
+    const { politicians, feedItems, parties, articles, isLoading, error, reload, setPoliticians, loadEducationalContent } = useInitialData();
 
   const [activeTab, setActiveTab] = useState('feed');
   
@@ -348,7 +349,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateUserLocation,
         detectLocation,
         resetNavigation,
-        goToExplore
+        goToExplore,
+        reloadData: reload
     }
   }), [
     activeTab, politicians, feedItems, articles, parties, isLoading, error,
@@ -357,7 +359,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showDataModal, showOnboarding, readArticleIds,
     userLocation, isLocating,
     handleSetActiveTab, toggleDarkMode, toggleHighContrast, increaseFontSize, decreaseFontSize,
-    markArticleAsRead, updatePolitician, updateUserLocation, detectLocation, resetNavigation, goToExplore
+    markArticleAsRead, updatePolitician, updateUserLocation, detectLocation, resetNavigation, goToExplore, reload
   ]);
 
   return (
