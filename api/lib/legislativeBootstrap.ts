@@ -15,6 +15,8 @@ const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
 const DEPUTY_SEX_ENRICHMENT_CONCURRENCY = 24;
 const DEPUTY_SEX_ENRICHMENT_BUDGET_MS = 9000;
 const DEPUTY_SEX_CACHE_KEY = 'deputy-sex-cache-v1';
+const DEPUTY_SEX_BULK_FILE_URL = 'https://dadosabertos.camara.leg.br/arquivos/deputados/json/deputados.json';
+const DEPUTY_SEX_BULK_FILE_TIMEOUT_MS = 10000;
 
 const PARTY_FALLBACK: Record<string, { nome: string; ideology: 'Esquerda' | 'Centro' | 'Direita' }> = {
   PT: { nome: 'Partido dos Trabalhadores', ideology: 'Esquerda' },
@@ -412,6 +414,22 @@ const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   return normalizeSex(data?.dados?.sexo);
 };
 
+const fetchDeputySexFromBulkFile = async (): Promise<Map<number, SexCode>> => {
+  const data = await fetchJson<{ dados?: { uri?: string; siglaSexo?: string | null }[] }>(
+    DEPUTY_SEX_BULK_FILE_URL,
+    DEPUTY_SEX_BULK_FILE_TIMEOUT_MS,
+    1,
+    false
+  );
+  const sexById = new Map<number, SexCode>();
+  (data?.dados || []).forEach((entry) => {
+    const id = Number(String(entry.uri || '').split('/').pop());
+    const sex = normalizeSex(entry.siglaSexo);
+    if (Number.isInteger(id) && id > 0 && sex) sexById.set(id, sex);
+  });
+  return sexById;
+};
+
 const fetchLegislatureMandate = async (legislatureId: unknown) => {
   const id = Number(legislatureId);
   if (!Number.isInteger(id) || id <= 0) return { start: '', end: '' };
@@ -438,10 +456,17 @@ const enrichDeputiesSexMetadata = async (deputies: Politician[]): Promise<Politi
     };
   });
 
-  const missing = withCachedSex.filter((deputy) => !normalizeSex(deputy.sex));
-  if (missing.length === 0) return withCachedSex;
+  const missingAfterCache = withCachedSex.filter((deputy) => !normalizeSex(deputy.sex));
+  if (missingAfterCache.length === 0) return withCachedSex;
 
   const updates = new Map<number, SexCode>();
+  const bulkSex = await fetchDeputySexFromBulkFile();
+  missingAfterCache.forEach((deputy) => {
+    const sex = bulkSex.get(deputy.id);
+    if (sex) updates.set(deputy.id, sex);
+  });
+
+  const missing = missingAfterCache.filter((deputy) => !updates.has(deputy.id));
   const startedAt = Date.now();
   let cursor = 0;
 

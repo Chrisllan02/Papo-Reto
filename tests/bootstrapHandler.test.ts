@@ -299,6 +299,54 @@ describe('/api/bootstrap', () => {
     expect(cachedDeputy.role).toBe('Deputada Federal');
   });
 
+  it('fills deputy sex from the official bulk file when the per-deputy endpoint fails', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/deputados?')) {
+        return jsonResponse({
+          dados: [
+            { id: 51, nome: 'ANA LOTE', siglaPartido: 'PSB', siglaUf: 'BA' },
+            { id: 52, nome: 'BRUNO LOTE', siglaPartido: 'PSB', siglaUf: 'BA' },
+          ],
+        });
+      }
+
+      if (url.includes('/arquivos/deputados/json/deputados.json')) {
+        return jsonResponse({
+          dados: [
+            { uri: 'https://dadosabertos.camara.leg.br/api/v2/deputados/51', siglaSexo: 'F' },
+            { uri: 'https://dadosabertos.camara.leg.br/api/v2/deputados/52', siglaSexo: 'M' },
+          ],
+        });
+      }
+
+      if (url.includes('/deputados/5')) return new Response('{}', { status: 404 });
+
+      if (url.includes('/partidos?')) {
+        return jsonResponse({ dados: [{ id: 10, sigla: 'PSB', nome: 'Partido Socialista Brasileiro', uri: 'x' }] });
+      }
+
+      if (url.includes('legis.senado.leg.br')) {
+        return senateResponse(simpleSenator());
+      }
+
+      return jsonResponse({ dados: [] });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: {}, query: { refresh: '1' } } as any, response.res as any);
+
+    const payload = response.json<{ ok: boolean; data: { politicians: any[] } }>();
+    const ana = payload.data.politicians.find((politician) => politician.id === 51);
+    const bruno = payload.data.politicians.find((politician) => politician.id === 52);
+    expect(response.statusCode).toBe(200);
+    expect(ana.sex).toBe('F');
+    expect(ana.role).toBe('Deputada Federal');
+    expect(bruno.sex).toBe('M');
+    expect(bruno.role).toBe('Deputado Federal');
+  });
+
   it('marks bootstrap as partial when a legislative source is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url.includes('/deputados?')) {
