@@ -24,13 +24,53 @@ class RequestError extends Error {
 
 const ALLOWED_UPSTREAMS = new Map([
   ['dadosabertos.camara.leg.br', { pathPrefix: '/api/v2/', accept: 'application/json' }],
-  ['legis.senado.leg.br', { pathPrefix: '/dadosabertos/', accept: 'text/xml' }],
+  ['legis.senado.leg.br', { pathPrefix: '/dadosabertos/', accept: 'application/json' }],
 ]);
 const MAX_UPSTREAM_BYTES = 2_000_000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 600;
 const isRateLimited = createRateLimiter(RATE_WINDOW_MS);
+const FRESH_CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400';
+const STALE_CACHE_CONTROL = 'public, s-maxage=60';
+const STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const STALE_MAX_BYTES = 20_000_000;
+
+type StaleEntry = { body: Buffer; contentType: string; storedAt: number };
+const lastGoodResponses = new Map<string, StaleEntry>();
+let lastGoodBytes = 0;
+
+const forgetLastGood = (key: string) => {
+  const entry = lastGoodResponses.get(key);
+  if (!entry) return;
+  lastGoodBytes -= entry.body.byteLength;
+  lastGoodResponses.delete(key);
+};
+
+const rememberLastGood = (key: string, body: Buffer, contentType: string) => {
+  forgetLastGood(key);
+  if (body.byteLength > STALE_MAX_BYTES) return;
+  while (lastGoodBytes + body.byteLength > STALE_MAX_BYTES && lastGoodResponses.size > 0) {
+    forgetLastGood(lastGoodResponses.keys().next().value as string);
+  }
+  lastGoodResponses.set(key, { body, contentType, storedAt: Date.now() });
+  lastGoodBytes += body.byteLength;
+};
+
+const readLastGood = (key: string) => {
+  const entry = lastGoodResponses.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.storedAt > STALE_MAX_AGE_MS) {
+    forgetLastGood(key);
+    return null;
+  }
+  return entry;
+};
+
+export const clearProxyStaleCacheForTests = () => {
+  lastGoodResponses.clear();
+  lastGoodBytes = 0;
+};
 
 const resolveContentType = (upstreamContentType: string | null) => {
   const [mime, ...params] = (upstreamContentType || '').split(';');
@@ -41,6 +81,25 @@ const resolveContentType = (upstreamContentType: string | null) => {
   if (type === 'application/xml' || type === 'text/xml') return `application/xml${suffix}`;
   return null;
 };
+
+const sendBody = (res: VercelResponse, status: number, contentType: string, body: Buffer, cacheControl: string) => {
+  res.status?.(status);
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+  res.setHeader('Cache-Control', cacheControl);
+  res.end(body);
+};
+
+const sendLastGood = (res: VercelResponse, key: string) => {
+  const entry = readLastGood(key);
+  if (!entry) return false;
+  res.setHeader('X-Upstream-Stale', '1');
+  sendBody(res, 200, entry.contentType, entry.body, STALE_CACHE_CONTROL);
+  return true;
+};
+
+const isUpstreamFailure = (status: number) => status >= 500 || status === 429;
 
 const getQueryValue = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 
@@ -123,8 +182,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonResponse(res, 400, { error: 'Unsupported path.' });
   }
 
+  const cacheKey = target.toString();
   try {
-    const upstream = await fetch(target.toString(), {
+    const upstream = await fetch(cacheKey, {
       headers: {
         Accept: upstreamRule.accept,
         'User-Agent': 'PapoReto/1.0 (+https://papo-reto-beige.vercel.app)',
@@ -132,6 +192,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       redirect: 'manual',
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
+
+    if (isUpstreamFailure(upstream.status) && sendLastGood(res, cacheKey)) {
+      upstream.body?.cancel().catch(() => undefined);
+      return;
+    }
 
     if (upstream.status >= 300 && upstream.status < 400) {
       return jsonResponse(res, 502, { error: 'Unexpected upstream response.' });
@@ -143,17 +208,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const body = await readLimitedBody(upstream);
-
-    res.status?.(upstream.status);
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-    res.setHeader('Cache-Control', upstream.ok ? 'public, s-maxage=300, stale-while-revalidate=3600' : 'no-store');
-    res.end(body);
+    if (upstream.ok) rememberLastGood(cacheKey, body, contentType);
+    sendBody(res, upstream.status, contentType, body, upstream.ok ? FRESH_CACHE_CONTROL : 'no-store');
   } catch (error: any) {
     if (error instanceof RequestError) {
       return jsonResponse(res, error.statusCode, { error: error.message });
     }
+    if (sendLastGood(res, cacheKey)) return;
     const aborted = error?.name === 'AbortError' || error?.name === 'TimeoutError';
     return jsonResponse(res, aborted ? 504 : 502, { error: aborted ? 'Upstream timeout.' : 'Upstream request failed.' });
   }

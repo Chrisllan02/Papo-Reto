@@ -2,12 +2,13 @@ import type { EducationalArticle, FeedCategory, FeedItem, Party, Politician } fr
 import { detectLegislativeCategory } from '../../domain/legislative/classification.js';
 import { cleanText, deputyRole, formatBrazilianDate, formatPersonName, normalizeSex, stableNegativeId } from '../../domain/legislative/text.js';
 import type { SexCode } from '../../domain/legislative/text.js';
+import { createCircuitBreaker, hostOf, jitteredDelay } from '../../domain/legislative/upstream.js';
+import { parseSenadoresList, SENADO_SENADORES_URL } from '../../domain/legislative/senado.js';
 import { readServerCache, writeServerCache } from './serverCache.js';
 
 const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 const APP_ORIGIN = (process.env.APP_PUBLIC_URL || 'https://papo-reto-beige.vercel.app').replace(/\/+$/, '');
 const CAMARA_PROXY_BASE_URL = `${APP_ORIGIN}/api/camara`;
-const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
 const UPSTREAM_TIMEOUT_MS = 15000;
 const SENADO_TIMEOUT_MS = 12000;
 const DEPUTY_DETAIL_TIMEOUT_MS = 2500;
@@ -357,7 +358,18 @@ const getCamaraProxyUrl = (url: string) => {
   }
 };
 
+const upstreamBreaker = createCircuitBreaker(3, 60_000);
+const RETRY_BASE_DELAY_MS = 500;
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retries = 1, allowProxyFallback = true): Promise<T | null> => {
+  const host = hostOf(url);
+  const fallback = () => {
+    const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
+    return proxyUrl ? fetchJson<T>(proxyUrl, timeoutMs, 0, false) : Promise.resolve(null);
+  };
+  if (!upstreamBreaker.canRequest(host)) return null;
   try {
     const res = await fetch(url, {
       headers: {
@@ -370,48 +382,27 @@ const fetchJson = async <T>(url: string, timeoutMs = UPSTREAM_TIMEOUT_MS, retrie
       const recoverable = res.status >= 500 || res.status === 429;
       if (!recoverable) return null;
       if (retries > 0) {
+        await wait(jitteredDelay(RETRY_BASE_DELAY_MS));
         return fetchJson<T>(url, timeoutMs, retries - 1, allowProxyFallback);
       }
-      const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
-      if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
-      return null;
+      upstreamBreaker.recordFailure(host);
+      return fallback();
     }
+    upstreamBreaker.recordSuccess(host);
     return await res.json() as T;
   } catch {
     if (retries > 0) {
+      await wait(jitteredDelay(RETRY_BASE_DELAY_MS));
       return fetchJson<T>(url, timeoutMs, retries - 1, allowProxyFallback);
     }
-    const proxyUrl = allowProxyFallback ? getCamaraProxyUrl(url) : null;
-    if (proxyUrl) return fetchJson<T>(proxyUrl, timeoutMs, 0, false);
-    return null;
+    upstreamBreaker.recordFailure(host);
+    return fallback();
   }
 };
 
-const fetchText = async (url: string, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<string | null> => {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Accept: 'text/xml, application/xml;q=0.9, */*;q=0.8',
-        'User-Agent': `PapoReto/1.0 (+${APP_ORIGIN})`,
-      },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-};
+export const resetUpstreamBreaker = () => upstreamBreaker.reset();
 
 type DeputySexCache = Record<string, SexCode>;
-
-const getXmlTag = (source: string, tag: string) => {
-  const match = source.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
-  return match?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
-};
-
-const getXmlBlocks = (source: string, tag: string) =>
-  source.match(new RegExp(`<${tag}>[\\s\\S]*?<\\/${tag}>`, 'gi')) || [];
 
 const fetchDeputySex = async (id: number): Promise<SexCode | undefined> => {
   const data = await fetchJson<{ dados?: { sexo?: string | null } }>(
@@ -523,70 +514,8 @@ const fetchDeputados = async (): Promise<Politician[]> => {
   return enrichDeputiesSexMetadata(deputies);
 };
 
-const fetchSenadores = async (): Promise<Politician[]> => {
-  const xml = await fetchText(SENADO_URL, SENADO_TIMEOUT_MS);
-  if (!xml) return [];
-
-  const blocks = xml.match(/<Parlamentar>[\s\S]*?<\/Parlamentar>/g) || [];
-  return blocks.flatMap((block) => {
-    const id = Number(getXmlTag(block, 'CodigoParlamentar') || getXmlTag(block, 'IdParlamentar'));
-    if (!Number.isInteger(id) || id <= 0) return [];
-    const name = getXmlTag(block, 'NomeParlamentar') || getXmlTag(block, 'NomeCompletoParlamentar');
-    const party = getXmlTag(block, 'SiglaPartidoParlamentar');
-    const state = getXmlTag(block, 'SiglaUfParlamentar') || getXmlTag(block, 'UfParlamentar');
-    const sex = normalizeSex(getXmlTag(block, 'SexoParlamentar'));
-    const mandateBlock = getXmlBlocks(block, 'Mandato')[0] || '';
-    const currentExercise = getXmlBlocks(block, 'Exercicio')
-      .sort((a, b) => getXmlTag(b, 'DataInicio').localeCompare(getXmlTag(a, 'DataInicio')))[0] || '';
-    const mandateStarts = getXmlBlocks(mandateBlock, 'DataInicio').map(item => getXmlTag(item, 'DataInicio')).filter(Boolean).sort();
-    const mandateEnds = getXmlBlocks(mandateBlock, 'DataFim').map(item => getXmlTag(item, 'DataFim')).filter(Boolean).sort();
-    const suplentes = getXmlBlocks(mandateBlock, 'Suplente').map((item) => {
-      const participation = getXmlTag(item, 'DescricaoParticipacao');
-      const suplenteName = getXmlTag(item, 'NomeParlamentar');
-      return [participation, suplenteName].filter(Boolean).join(' - ');
-    }).filter(Boolean);
-
-    return [{
-      id,
-      name: formatPersonName(name),
-      party,
-      partyShort: party,
-      state,
-      photo: getXmlTag(block, 'UrlFotoParlamentar'),
-      role: sex === 'F' ? 'Senadora' : sex === 'M' ? 'Senador' : 'Senador(a)',
-      sex,
-      civilName: formatPersonName(getXmlTag(block, 'NomeCompletoParlamentar')),
-      email: getXmlTag(block, 'EmailParlamentar'),
-      cabinet: { phone: getXmlTag(block, 'NumeroTelefone') },
-      officialPage: getXmlTag(block, 'UrlPaginaParlamentar'),
-      website: getXmlTag(block, 'UrlPaginaParticular'),
-      parliamentaryBlock: getXmlTag(block, 'NomeBloco'),
-      isBoardMember: getXmlTag(block, 'MembroMesa').toLowerCase() === 'sim',
-      isLeader: getXmlTag(block, 'MembroLideranca').toLowerCase() === 'sim',
-      participation: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
-      exerciseStart: getXmlTag(currentExercise, 'DataInicio'),
-      exerciseEnd: getXmlTag(currentExercise, 'DataFim'),
-      condition: getXmlTag(mandateBlock, 'DescricaoParticipacao'),
-      suplentes,
-      matchScore: 0,
-      bio: '',
-      stats: {
-        attendancePct: 0,
-        totalSessions: 0,
-        presentSessions: 0,
-        absentSessions: 0,
-        plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-        projects: 0,
-        spending: 0,
-        partyFidelity: undefined,
-      },
-      mandate: { start: mandateStarts[0] || '', end: mandateEnds[mandateEnds.length - 1] || '' },
-      hasApiIntegration: false,
-      votes: {},
-    } as Politician];
-  }).filter((p) => p.name && p.party && p.state);
-};
+const fetchSenadores = async (): Promise<Politician[]> =>
+  parseSenadoresList(await fetchJson<unknown>(SENADO_SENADORES_URL, SENADO_TIMEOUT_MS));
 
 const fetchParties = async (): Promise<{ parties: Party[]; fallback: boolean }> => {
   const data = await fetchJson<{ dados?: any[] }>(`${BASE_URL_CAMARA}/partidos?ordem=ASC&ordenarPor=sigla&itens=100`);

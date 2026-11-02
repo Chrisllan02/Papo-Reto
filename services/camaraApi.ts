@@ -6,6 +6,8 @@ import { timeoutSignal } from '../utils/timeoutSignal';
 import { getConfiguredApiOrigin, getLegislativeApiUrl } from '../utils/legislativeApiProxy';
 import { cleanText, deputyRole, formatBrazilianDate, formatPersonName, normalizeSex, stableNegativeId } from '../domain/legislative/text';
 import { safeGetItem, safeSetItem, safeSetItemWithEviction, purgeStaleKeys } from './storage';
+import { createCircuitBreaker, hostOf, jitteredDelay } from '../domain/legislative/upstream';
+import { parseSenadoresList, SENADO_SENADORES_URL } from '../domain/legislative/senado';
 
 export const BASE_URL_CAMARA = 'https://dadosabertos.camara.leg.br/api/v2';
 export const CACHE_PREFIX = 'paporeto_cache_v8_official_';
@@ -178,7 +180,16 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000;
 let rateLimitedUntil = 0;
 export const isApiRateLimited = () => Date.now() < rateLimitedUntil;
 
+export const upstreamBreaker = createCircuitBreaker(3, 30_000);
+
 export const fetchAPI = async (url: string, retries = 3, json = true, delay = 1000, timeoutMs = 15000, accept = 'application/json'): Promise<any> => {
+    const host = hostOf(url);
+    if (!upstreamBreaker.canRequest(host)) {
+        const error = new Error('API temporarily unavailable') as Error & { status?: number; retryable?: boolean };
+        error.status = 503;
+        error.retryable = false;
+        throw error;
+    }
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
@@ -187,20 +198,22 @@ export const fetchAPI = async (url: string, retries = 3, json = true, delay = 10
             signal: controller?.signal
         });
         if (!res.ok) {
-            const error = new Error(`API Error ${res.status}`) as Error & { status?: number; retryable?: boolean };
+            const error = new Error(`API Error ${res.status}`) as Error & { status?: number; retryable?: boolean; upstreamFailure?: boolean };
             error.status = res.status;
             error.retryable = res.status >= 500;
+            error.upstreamFailure = res.status >= 500 || res.status === 429;
             if (res.status === 429) rateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
             throw error;
         }
+        upstreamBreaker.recordSuccess(host);
         return json ? await res.json() : res;
     } catch (error: any) {
         const retryable = error?.retryable !== false;
         if (retries > 0 && retryable) {
-            // Exponential backoff
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise(resolve => setTimeout(resolve, jitteredDelay(delay)));
             return fetchAPI(url, retries - 1, json, delay * 2, timeoutMs, accept);
         }
+        if (retryable || error?.upstreamFailure) upstreamBreaker.recordFailure(host);
         throw error;
     } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -271,6 +284,31 @@ export const calculateProgress = (statusDescription: string): { progress: number
 
 // --- CORE FETCHERS ---
 
+const mapDeputyListItem = (d: any) => ({
+    id: d.id,
+    name: formatPersonName(d.nome),
+    party: d.siglaPartido,
+    state: d.siglaUf,
+    photo: d.urlFoto,
+    role: deputyRole(normalizeSex(d.sexo)),
+    sex: normalizeSex(d.sexo),
+    email: d.email,
+    stats: {
+        attendancePct: 0,
+        totalSessions: 0,
+        presentSessions: 0,
+        absentSessions: 0,
+        plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
+        projects: 0,
+        spending: 0,
+        partyFidelity: undefined
+    },
+    mandate: { start: '', end: '' },
+    hasApiIntegration: true,
+    votes: {}
+} as Politician);
+
 export const fetchDeputados = async (): Promise<Politician[]> => {
     const result = await fetchWithCache('deputados_list', async () => {
         const data = await fetchAPI(`${BASE_URL_CAMARA}/deputados?ordem=ASC&ordenarPor=nome`);
@@ -279,130 +317,38 @@ export const fetchDeputados = async (): Promise<Politician[]> => {
             throw new Error("Invalid data format from API");
         }
 
-        return data.dados.map((d: any) => ({
-            id: d.id,
-            name: formatPersonName(d.nome),
-            party: d.siglaPartido,
-            state: d.siglaUf,
-            photo: d.urlFoto,
-            role: deputyRole(normalizeSex(d.sexo)),
-            sex: normalizeSex(d.sexo),
-            email: d.email,
-            stats: {
-                attendancePct: 0,
-                totalSessions: 0,
-                presentSessions: 0,
-                absentSessions: 0,
-                plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-                commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-                projects: 0,
-                spending: 0,
-                partyFidelity: undefined
-            },
-            mandate: { start: '', end: '' },
-            hasApiIntegration: true,
-            votes: {}
-        }));
+        return data.dados.map(mapDeputyListItem);
     }, TTL_STATIC);
     return result || [];
 };
 
 export const fetchSenadores = async (): Promise<Politician[]> => {
-    const SENADO_URL = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual';
-
-    const parseXmlText = (xmlText: string): Politician[] => {
-        try {
-            if (typeof DOMParser === 'undefined') return [];
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(xmlText, 'text/xml');
-            if (xml.getElementsByTagName('parsererror').length > 0) return [];
-
-            const parlamentares = Array.from(xml.getElementsByTagName('Parlamentar'));
-            return parlamentares.flatMap((parlamentar): Politician[] => {
-                const getText = (tag: string) => {
-                    const el = parlamentar.getElementsByTagName(tag)[0];
-                    return el?.textContent?.trim() || '';
-                };
-
-                const id = Number(getText('CodigoParlamentar') || getText('IdParlamentar'));
-                if (!Number.isFinite(id) || id <= 0) return [];
-                const name = getText('NomeParlamentar') || getText('NomeCompletoParlamentar');
-                const party = getText('SiglaPartidoParlamentar');
-                const state = getText('SiglaUfParlamentar') || getText('UfParlamentar');
-                const photo = getText('UrlFotoParlamentar');
-                const sex = normalizeSex(getText('SexoParlamentar'));
-                const childText = (parent: Element | undefined, tag: string) =>
-                    parent?.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
-                const legislatures = ['PrimeiraLegislaturaDoMandato', 'SegundaLegislaturaDoMandato']
-                    .map(tag => parlamentar.getElementsByTagName(tag)[0])
-                    .filter(Boolean);
-                const mandateStarts = legislatures.map(el => childText(el, 'DataInicio')).filter(Boolean).sort();
-                const mandateEnds = legislatures.map(el => childText(el, 'DataFim')).filter(Boolean).sort();
-                const currentExercise = Array.from(parlamentar.getElementsByTagName('Exercicio'))
-                    .sort((a, b) => childText(b, 'DataInicio').localeCompare(childText(a, 'DataInicio')))[0];
-                const suplentes = Array.from(parlamentar.getElementsByTagName('Suplente'))
-                    .map(suplente => {
-                        const participation = suplente.getElementsByTagName('DescricaoParticipacao')[0]?.textContent?.trim();
-                        const suplenteName = suplente.getElementsByTagName('NomeParlamentar')[0]?.textContent?.trim();
-                        return [participation, suplenteName].filter(Boolean).join(' - ');
-                    })
-                    .filter(Boolean);
-
-                const senator = {
-                    id,
-                    name: formatPersonName(name),
-                    party,
-                    partyShort: party,
-                    state,
-                    photo,
-                    role: sex === 'F' ? 'Senadora' : 'Senador',
-                    sex,
-                    civilName: formatPersonName(getText('NomeCompletoParlamentar')),
-                    email: getText('EmailParlamentar'),
-                    cabinet: { phone: getText('NumeroTelefone') },
-                    officialPage: getText('UrlPaginaParlamentar'),
-                    website: getText('UrlPaginaParticular'),
-                    parliamentaryBlock: getText('NomeBloco'),
-                    isBoardMember: getText('MembroMesa').toLowerCase() === 'sim',
-                    isLeader: getText('MembroLideranca').toLowerCase() === 'sim',
-                    participation: getText('DescricaoParticipacao'),
-                    exerciseStart: childText(currentExercise, 'DataInicio'),
-                    exerciseEnd: childText(currentExercise, 'DataFim'),
-                    condition: getText('DescricaoParticipacao'),
-                    suplentes,
-                    matchScore: 0,
-                    bio: '',
-                    stats: {
-                        attendancePct: 0,
-                        totalSessions: 0,
-                        presentSessions: 0,
-                        absentSessions: 0,
-                        plenary: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-                        commissions: { total: 0, present: 0, justified: 0, unjustified: 0, percentage: 0 },
-                        projects: 0,
-                        spending: 0,
-                        partyFidelity: undefined
-                    },
-                    mandate: { start: mandateStarts[0] || '', end: mandateEnds[mandateEnds.length - 1] || '' },
-                    hasApiIntegration: false,
-                    votes: {}
-                } as Politician;
-                return senator.name && senator.party && senator.state ? [senator] : [];
-            });
-        } catch {
-            return [];
-        }
-    };
-
-    const result = await fetchWithCache('senadores_list', async () => {
-        const res = await fetchAPI(SENADO_URL, 2, false, 1000, 15000, 'text/xml');
-        const xmlText = await (res as Response).text();
-        const senators = parseXmlText(xmlText);
+    const result = await fetchWithCache('senadores_list_json', async () => {
+        const senators = parseSenadoresList(await fetchAPI(SENADO_SENADORES_URL, 2));
         if (senators.length === 0) throw new Error('Lista de senadores vazia');
         return senators;
     }, TTL_STATIC);
 
     return result || [];
+};
+
+export const PARLIAMENT_SNAPSHOT_URL = '/snapshots/parlamentares.json';
+
+export const fetchParliamentSnapshot = async (): Promise<{ politicians: Politician[]; generatedAt: string } | null> => {
+    try {
+        const res = await fetch(PARLIAMENT_SNAPSHOT_URL, { headers: { Accept: 'application/json' }, signal: timeoutSignal(10000) });
+        if (!res.ok) return null;
+        const snapshot = await res.json();
+        const generatedAt = typeof snapshot?.generatedAt === 'string' ? snapshot.generatedAt : '';
+        if (!generatedAt || Number.isNaN(Date.parse(generatedAt))) return null;
+        const deputies = Array.isArray(snapshot?.camara?.dados)
+            ? snapshot.camara.dados.filter((d: any) => Number.isInteger(d?.id) && d.id > 0).map(mapDeputyListItem)
+            : [];
+        const politicians = [...deputies, ...parseSenadoresList(snapshot?.senado)];
+        return politicians.length > 0 ? { politicians, generatedAt } : null;
+    } catch {
+        return null;
+    }
 };
 
 export const fetchPartidos = async (): Promise<Party[]> => {

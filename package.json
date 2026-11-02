@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "readme:widgets": "node scripts/generate-readme-widgets.mjs",
     "readme:preview": "node scripts/capture-readme-preview.mjs",
-    "smoke:prod": "node scripts/production-smoke.mjs"
+    "smoke:prod": "node scripts/production-smoke.mjs",
+    "snapshot:parlamentares": "node scripts/generate-parliament-snapshot.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

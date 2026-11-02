@@ -5,6 +5,7 @@ import {
     BASE_URL_CAMARA,
     fetchDeputados, 
     fetchSenadores, 
+    fetchParliamentSnapshot,
     fetchGlobalVotacoes, 
     fetchPartidos, 
     enrichPoliticianFast, 
@@ -42,12 +43,18 @@ type BootstrapCacheData = {
 };
 
 const SEX_CACHE_KEY = 'paporeto_sex_cache_v1';
-const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v6';
+const BOOTSTRAP_CACHE_KEY = 'paporeto_bootstrap_v7';
 const BOOTSTRAP_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 horas
+const BOOTSTRAP_PARTIAL_CACHE_TTL = 1000 * 60 * 10;
+const MIN_DEPUTIES = 460;
+const MIN_SENATORS = 73;
 const BOOTSTRAP_FETCH_TIMEOUT_MS = 20000;
 
 purgeStaleKeys(/^paporeto_bootstrap_v\d+$/, key => key === BOOTSTRAP_CACHE_KEY);
 purgeStaleKeys(/^paporeto_sex_cache_v\d+$/, key => key === SEX_CACHE_KEY);
+
+const formatSnapshotDate = (iso: string) =>
+    new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
 
 const readSexCache = (): Record<string, SexCode> => {
     try {
@@ -70,7 +77,8 @@ const readBootstrapCache = (): BootstrapCacheData | null => {
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return null;
-        if (Date.now() - Number(parsed.timestamp || 0) > BOOTSTRAP_CACHE_TTL) return null;
+        const ttl = parsed.complete === true ? BOOTSTRAP_CACHE_TTL : BOOTSTRAP_PARTIAL_CACHE_TTL;
+        if (Date.now() - Number(parsed.timestamp || 0) > ttl) return null;
         if (!Array.isArray(parsed.data?.politicians) || parsed.data.politicians.length === 0) {
             safeRemoveItem(BOOTSTRAP_CACHE_KEY);
             return null;
@@ -81,13 +89,22 @@ const readBootstrapCache = (): BootstrapCacheData | null => {
     }
 };
 
+const isCompleteBootstrap = (politicians: Politician[], feedItems: FeedItem[], parties: Party[]) => {
+    const senators = politicians.filter(pol => pol.hasApiIntegration === false).length;
+    return politicians.length - senators >= MIN_DEPUTIES
+        && senators >= MIN_SENATORS
+        && feedItems.length > 0
+        && parties.length > 0;
+};
+
 const writeBootstrapCache = (data: {
     politicians: Politician[];
     feedItems: FeedItem[];
     parties: Party[];
     articles: EducationalArticle[];
-}) => {
-    safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+}, sourcesOk: boolean) => {
+    const complete = sourcesOk && isCompleteBootstrap(data.politicians, data.feedItems, data.parties);
+    safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), complete }));
 };
 
 // Atualiza só os artigos do cache existente, preservando o timestamp (não renova o TTL do bootstrap).
@@ -97,7 +114,7 @@ const updateBootstrapCacheArticles = (articles: EducationalArticle[]) => {
         if (!raw) return;
         const parsed = JSON.parse(raw);
         if (!parsed?.data || typeof parsed.timestamp !== 'number') return;
-        safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ data: { ...parsed.data, articles }, timestamp: parsed.timestamp }));
+        safeSetItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({ ...parsed, data: { ...parsed.data, articles } }));
     } catch {
         // Cache ilegível: será refeito no próximo bootstrap.
     }
@@ -227,14 +244,15 @@ export const useInitialData = () => {
                     setFeedItems(serverBootstrap.feedItems);
                     if (serverBootstrap.parties.length > 0) setParties(serverBootstrap.parties);
                     setArticles(nextArticles);
-                    if (!serverBootstrap.partial && serverBootstrap.feedItems.length > 0 && serverBootstrap.parties.length > 0) {
-                        writeBootstrapCache({
-                            politicians: nextPoliticians,
-                            feedItems: serverBootstrap.feedItems,
-                            parties: serverBootstrap.parties,
-                            articles: nextArticles
-                        });
-                    }
+                    const blockingWarnings = (serverBootstrap.warnings || []).filter(warning =>
+                        warning !== 'education_articles_unavailable'
+                        && !(warning === 'senado_senadores_unavailable' && fallbackSenators.length > 0));
+                    writeBootstrapCache({
+                        politicians: nextPoliticians,
+                        feedItems: serverBootstrap.feedItems,
+                        parties: serverBootstrap.parties,
+                        articles: nextArticles
+                    }, blockingWarnings.length === 0);
                     setIsLoading(false);
                     void hydrateMissingSexMetadata(nextPoliticians, setPoliticians, isCancelled);
                     return;
@@ -257,19 +275,24 @@ export const useInitialData = () => {
                     const nextArticles = EDUCATION_CAROUSEL as EducationalArticle[];
                     setPoliticians(mergedPoliticians);
                     setArticles(nextArticles);
-                    if (feeds && feeds.length > 0 && parts && parts.length > 0) {
-                        writeBootstrapCache({
-                            politicians: mergedPoliticians,
-                            feedItems: feeds,
-                            parties: parts,
-                            articles: nextArticles
-                        });
-                    }
+                    writeBootstrapCache({
+                        politicians: mergedPoliticians,
+                        feedItems: feeds || [],
+                        parties: parts || [],
+                        articles: nextArticles
+                    }, true);
                     void hydrateMissingSexMetadata(mergedPoliticians, setPoliticians, isCancelled);
                 } else {
-                    setPoliticians(POLITICIANS_DB);
+                    const snapshot = await fetchParliamentSnapshot();
+                    if (cancelled) return;
                     setArticles(EDUCATION_CAROUSEL as EducationalArticle[]);
-                    setError("Não foi possível carregar a lista de parlamentares. Tente novamente mais tarde.");
+                    if (snapshot) {
+                        setPoliticians(snapshot.politicians);
+                        setError(`As fontes oficiais não responderam. Mostrando a lista de parlamentares de ${formatSnapshotDate(snapshot.generatedAt)}, copiada dos dados abertos da Câmara e do Senado.`);
+                    } else {
+                        setPoliticians(POLITICIANS_DB);
+                        setError("Não foi possível carregar a lista de parlamentares. Tente novamente mais tarde.");
+                    }
                 }
 
             } catch (err) {

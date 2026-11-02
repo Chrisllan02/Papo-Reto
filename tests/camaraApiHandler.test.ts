@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import handler from '../api/camara';
+import handler, { clearProxyStaleCacheForTests } from '../api/camara';
 import { createJsonResponse } from './testUtils';
 
 describe('/api/camara', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearProxyStaleCacheForTests();
   });
 
   afterEach(() => {
@@ -19,6 +20,29 @@ describe('/api/camara', () => {
 
   const jsonUpstream = (init: ResponseInit = {}, body = '{"dados":[]}') =>
     new Response(body, { status: 200, headers: { 'content-type': 'application/json' }, ...init });
+
+  it('serve a última resposta boa quando o upstream falha com 5xx ou timeout', async () => {
+    const url = 'https://dadosabertos.camara.leg.br/api/v2/partidos?itens=100';
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonUpstream({}, '{"dados":[{"sigla":"PT"}]}'));
+    vi.stubGlobal('fetch', fetchMock);
+    const fresh = await proxy(url);
+    expect(fresh.headers.get('cache-control')).toContain('stale-if-error');
+
+    fetchMock.mockResolvedValueOnce(new Response('{}', { status: 503, headers: { 'content-type': 'application/json' } }));
+    const afterError = await proxy(url);
+    expect(afterError.statusCode).toBe(200);
+    expect(afterError.json()).toEqual({ dados: [{ sigla: 'PT' }] });
+    expect(afterError.headers.get('x-upstream-stale')).toBe('1');
+
+    fetchMock.mockRejectedValueOnce(Object.assign(new Error('timeout'), { name: 'TimeoutError' }));
+    const afterTimeout = await proxy(url);
+    expect(afterTimeout.statusCode).toBe(200);
+    expect(afterTimeout.json()).toEqual({ dados: [{ sigla: 'PT' }] });
+
+    fetchMock.mockRejectedValueOnce(Object.assign(new Error('timeout'), { name: 'TimeoutError' }));
+    const otherUrl = await proxy('https://dadosabertos.camara.leg.br/api/v2/deputados');
+    expect(otherUrl.statusCode).toBe(504);
+  });
 
   it('rejects non-GET requests', async () => {
     const response = createJsonResponse();
@@ -166,7 +190,7 @@ describe('/api/camara', () => {
     await proxy('https://legis.senado.leg.br/dadosabertos/senador/lista/atual', { accept: 'application/json' });
     await proxy('https://dadosabertos.camara.leg.br/api/v2/deputados', { accept: 'text/xml' });
 
-    expect(fetchMock.mock.calls.map(call => call[1].headers.Accept)).toEqual(['text/xml', 'application/json']);
+    expect(fetchMock.mock.calls.map(call => call[1].headers.Accept)).toEqual(['application/json', 'application/json']);
   });
 
   it('normalizes senate XML responses to application/xml', async () => {

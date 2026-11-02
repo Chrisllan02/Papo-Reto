@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler, { mergeWithPreviousBootstrap, refreshLegislativeBootstrap } from '../api/bootstrap';
-import { buildLegislativeBootstrap } from '../api/lib/legislativeBootstrap';
+import { buildLegislativeBootstrap, resetUpstreamBreaker } from '../api/lib/legislativeBootstrap';
 import { clearServerCacheForTests } from '../api/lib/serverCache';
 import { createJsonResponse } from './testUtils';
 
@@ -9,13 +9,17 @@ const jsonResponse = (body: unknown) => new Response(JSON.stringify(body), {
   headers: { 'content-type': 'application/json' },
 });
 
-const xmlResponse = (body: string) => new Response(body, {
-  status: 200,
-  headers: { 'content-type': 'text/xml' },
+const senateResponse = (parlamentar: unknown) => jsonResponse({
+  ListaParlamentarEmExercicio: { Parlamentares: { Parlamentar: parlamentar } },
+});
+
+const simpleSenator = (identity: Record<string, string> = { CodigoParlamentar: '99' }) => ({
+  IdentificacaoParlamentar: { NomeParlamentar: 'JOAO SENADOR', SiglaPartidoParlamentar: 'MDB', UfParlamentar: 'RJ', SexoParlamentar: 'M', ...identity },
 });
 
 describe('/api/bootstrap', () => {
   beforeEach(() => {
+    resetUpstreamBreaker();
     vi.restoreAllMocks();
     clearServerCacheForTests();
     delete process.env.BLOB_READ_WRITE_TOKEN;
@@ -90,37 +94,29 @@ describe('/api/bootstrap', () => {
       }
 
       if (url.includes('legis.senado.leg.br')) {
-        return xmlResponse(`
-          <ListaParlamentarEmExercicio>
-            <Parlamentar>
-              <CodigoParlamentar>99</CodigoParlamentar>
-              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
-              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-              <UfParlamentar>RJ</UfParlamentar>
-              <SexoParlamentar>M</SexoParlamentar>
-              <UrlFotoParlamentar>https://example.com/joao.jpg</UrlFotoParlamentar>
-              <NomeCompletoParlamentar>JOAO DA SILVA</NomeCompletoParlamentar>
-              <EmailParlamentar>joao@senado.leg.br</EmailParlamentar>
-              <NumeroTelefone>3303-0000</NumeroTelefone>
-              <UrlPaginaParlamentar>https://www25.senado.leg.br/web/senadores/senador/-/perfil/99</UrlPaginaParlamentar>
-              <NomeBloco>BLOCO TESTE</NomeBloco>
-              <MembroMesa>Sim</MembroMesa>
-              <Mandato>
-                <DescricaoParticipacao>Titular</DescricaoParticipacao>
-                <DataInicio>2023-02-01</DataInicio>
-                <DataFim>2031-01-31</DataFim>
-                <Exercicios>
-                  <Exercicio><DataInicio>2023-02-01</DataInicio><DataFim>2024-06-30</DataFim></Exercicio>
-                  <Exercicio><DataInicio>2025-03-10</DataInicio></Exercicio>
-                </Exercicios>
-                <Suplente>
-                  <DescricaoParticipacao>1º Suplente</DescricaoParticipacao>
-                  <NomeParlamentar>SUPLENTE TESTE</NomeParlamentar>
-                </Suplente>
-              </Mandato>
-            </Parlamentar>
-          </ListaParlamentarEmExercicio>
-        `);
+        return senateResponse({
+          IdentificacaoParlamentar: {
+            CodigoParlamentar: '99',
+            NomeParlamentar: 'JOAO SENADOR',
+            SiglaPartidoParlamentar: 'MDB',
+            UfParlamentar: 'RJ',
+            SexoParlamentar: 'M',
+            UrlFotoParlamentar: 'https://example.com/joao.jpg',
+            NomeCompletoParlamentar: 'JOAO DA SILVA',
+            EmailParlamentar: 'joao@senado.leg.br',
+            Telefones: { Telefone: { NumeroTelefone: '3303-0000' } },
+            UrlPaginaParlamentar: 'https://www25.senado.leg.br/web/senadores/senador/-/perfil/99',
+            Bloco: { NomeBloco: 'BLOCO TESTE' },
+            MembroMesa: 'Sim',
+          },
+          Mandato: {
+            DescricaoParticipacao: 'Titular',
+            PrimeiraLegislaturaDoMandato: { DataInicio: '2023-02-01', DataFim: '2027-01-31' },
+            SegundaLegislaturaDoMandato: { DataInicio: '2027-02-01', DataFim: '2031-01-31' },
+            Exercicios: { Exercicio: [{ DataInicio: '2023-02-01', DataFim: '2024-06-30' }, { DataInicio: '2025-03-10' }] },
+            Suplentes: { Suplente: { DescricaoParticipacao: '1º Suplente', NomeParlamentar: 'SUPLENTE TESTE' } },
+          },
+        });
       }
 
       return jsonResponse({ dados: [] });
@@ -156,6 +152,8 @@ describe('/api/bootstrap', () => {
     expect(senator.suplentes).toEqual(['1º Suplente - SUPLENTE TESTE']);
     expect(senator.exerciseStart).toBe('2025-03-10');
     expect(senator.exerciseEnd).toBe('');
+    expect(senator.cabinet.phone).toBe('3303-0000');
+    expect(senator.mandate).toEqual({ start: '2023-02-01', end: '2031-01-31' });
     expect(payload.data.parties).toHaveLength(1);
     expect(payload.data.feedItems[0].sourceUrl).toMatch(/^https:\/\/www\.camara\.leg\.br\//);
     expect(payload.data.articles[0]).toMatchObject({ id: 1000, sourceUrl: payload.data.feedItems[0].sourceUrl });
@@ -213,17 +211,7 @@ describe('/api/bootstrap', () => {
       }
 
       if (url.includes('legis.senado.leg.br')) {
-        return xmlResponse(`
-          <ListaParlamentarEmExercicio>
-            <Parlamentar>
-              <CodigoParlamentar>99</CodigoParlamentar>
-              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
-              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-              <UfParlamentar>RJ</UfParlamentar>
-              <SexoParlamentar>M</SexoParlamentar>
-            </Parlamentar>
-          </ListaParlamentarEmExercicio>
-        `);
+        return senateResponse(simpleSenator());
       }
 
       return jsonResponse({ dados: [] });
@@ -276,17 +264,7 @@ describe('/api/bootstrap', () => {
       }
 
       if (url.includes('legis.senado.leg.br')) {
-        return xmlResponse(`
-          <ListaParlamentarEmExercicio>
-            <Parlamentar>
-              <CodigoParlamentar>99</CodigoParlamentar>
-              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
-              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-              <UfParlamentar>RJ</UfParlamentar>
-              <SexoParlamentar>M</SexoParlamentar>
-            </Parlamentar>
-          </ListaParlamentarEmExercicio>
-        `);
+        return senateResponse(simpleSenator());
       }
 
       return jsonResponse({ dados: [] });
@@ -403,17 +381,7 @@ describe('/api/bootstrap', () => {
   it('does not cache a senate-only bootstrap as a healthy response', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url.includes('legis.senado.leg.br') || url.includes('/api/camara?url=')) {
-        return xmlResponse(`
-          <ListaParlamentarEmExercicio>
-            <Parlamentar>
-              <CodigoParlamentar>99</CodigoParlamentar>
-              <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
-              <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-              <UfParlamentar>RJ</UfParlamentar>
-              <SexoParlamentar>M</SexoParlamentar>
-            </Parlamentar>
-          </ListaParlamentarEmExercicio>
-        `);
+        return senateResponse(simpleSenator());
       }
       return jsonResponse({ dados: [] });
     }));
@@ -430,17 +398,7 @@ describe('/api/bootstrap', () => {
   });
 
   describe('refresh authorization and cache safety', () => {
-    const senateXml = (code: string) => xmlResponse(`
-      <ListaParlamentarEmExercicio>
-        <Parlamentar>
-          ${code}
-          <NomeParlamentar>JOAO SENADOR</NomeParlamentar>
-          <SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar>
-          <UfParlamentar>RJ</UfParlamentar>
-          <SexoParlamentar>M</SexoParlamentar>
-        </Parlamentar>
-      </ListaParlamentarEmExercicio>
-    `);
+    const senateFixture = (identity: Record<string, string>) => senateResponse(simpleSenator(identity));
 
     const createUpstream = (options: { senate?: 'ok' | 'down' | 'no-code'; feed?: boolean } = {}) => {
       const { senate = 'ok', feed = true } = options;
@@ -458,7 +416,7 @@ describe('/api/bootstrap', () => {
         }
         if (url.includes('legis.senado.leg.br')) {
           if (senate === 'down') return new Response('', { status: 503 });
-          return senateXml(senate === 'ok' ? '<CodigoParlamentar>99</CodigoParlamentar>' : '');
+          return senateFixture(senate === 'ok' ? { CodigoParlamentar: '99' } : {});
         }
         return jsonResponse({ dados: [] });
       });
@@ -607,7 +565,7 @@ describe('/api/bootstrap', () => {
         if (url.includes('/proposicoes?')) {
           return jsonResponse({ dados: [{ id: 2367475, siglaTipo: 'PL', numero: 1, ano: 2026, ementa: 'Ementa sem data' }] });
         }
-        if (url.includes('legis.senado.leg.br')) return senateXml('<CodigoParlamentar>99</CodigoParlamentar>');
+        if (url.includes('legis.senado.leg.br')) return senateFixture({ CodigoParlamentar: '99' });
         return jsonResponse({ dados: [] });
       });
       vi.stubGlobal('fetch', fetchMock);
@@ -674,7 +632,7 @@ describe('/api/bootstrap', () => {
         if (url.includes('/proposicoes?')) return jsonResponse({ dados: [] });
         if (url.includes('/eventos?')) return new Response('', { status: 500 });
         if (url.includes('legis.senado.leg.br')) {
-          return xmlResponse('<L><Parlamentar><CodigoParlamentar>99</CodigoParlamentar><NomeParlamentar>ANA</NomeParlamentar><SiglaPartidoParlamentar>MDB</SiglaPartidoParlamentar><UfParlamentar>RJ</UfParlamentar></Parlamentar></L>');
+          return senateResponse([{ IdentificacaoParlamentar: { CodigoParlamentar: '99', NomeParlamentar: 'ANA', SiglaPartidoParlamentar: 'MDB', UfParlamentar: 'RJ' } }]);
         }
         return new Response('', { status: 404 });
       });

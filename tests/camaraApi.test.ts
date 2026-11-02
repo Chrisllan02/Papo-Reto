@@ -15,6 +15,7 @@ import {
   fetchSenadores,
   getBrazilDateString,
   getFullProfileCacheKey,
+  upstreamBreaker,
 } from '../services/camaraApi';
 import type { Politician } from '../types';
 
@@ -69,7 +70,10 @@ describe('getBrazilDateString', () => {
 });
 
 describe('camaraApi com fetch simulado', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    upstreamBreaker.reset();
+  });
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -82,16 +86,33 @@ describe('camaraApi com fetch simulado', () => {
   });
 
   it('descarta senador sem código em vez de inventar id', async () => {
-    const xml = `<ListaParlamentarEmExercicio><Parlamentares>
-      <Parlamentar><IdentificacaoParlamentar><CodigoParlamentar>5012</CodigoParlamentar><NomeParlamentar>ANA</NomeParlamentar><SiglaPartidoParlamentar>PT</SiglaPartidoParlamentar><UfParlamentar>BA</UfParlamentar></IdentificacaoParlamentar></Parlamentar>
-      <Parlamentar><IdentificacaoParlamentar><NomeParlamentar>SEM CODIGO</NomeParlamentar><SiglaPartidoParlamentar>PL</SiglaPartidoParlamentar><UfParlamentar>SP</UfParlamentar></IdentificacaoParlamentar></Parlamentar>
-    </Parlamentares></ListaParlamentarEmExercicio>`;
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => xml }));
+    const payload = { ListaParlamentarEmExercicio: { Parlamentares: { Parlamentar: [
+      { IdentificacaoParlamentar: { CodigoParlamentar: '5012', NomeParlamentar: 'ANA', SiglaPartidoParlamentar: 'PT', UfParlamentar: 'BA' } },
+      { IdentificacaoParlamentar: { NomeParlamentar: 'SEM CODIGO', SiglaPartidoParlamentar: 'PL', UfParlamentar: 'SP' } },
+    ] } } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(payload)));
 
     const senators = await fetchSenadores();
     expect(senators.map(s => s.id)).toEqual([5012]);
     expect(senators[0].mandate.end).toBe('');
-    expect((fetch as any).mock.calls[0][1].headers.Accept).toBe('text/xml');
+    expect((fetch as any).mock.calls[0][1].headers.Accept).toBe('application/json');
+  });
+
+  it('abre o disjuntor do host após 3 falhas seguidas e para de chamar a API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    vi.stubGlobal('fetch', fetchMock);
+    const url = 'https://dadosabertos.camara.leg.br/api/v2/deputados';
+
+    for (let i = 0; i < 3; i += 1) {
+      await expect(fetchAPI(url, 0)).rejects.toMatchObject({ status: 503 });
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    await expect(fetchAPI(url, 3, true, 1)).rejects.toMatchObject({ status: 503, retryable: false });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ dados: [] }) });
+    await expect(fetchAPI('https://legis.senado.leg.br/dadosabertos/senador/lista/atual', 0)).resolves.toEqual({ dados: [] });
   });
 
   it('não repete a chamada em 429 e marca o limite da sessão', async () => {
@@ -159,18 +180,15 @@ describe('camaraApi com fetch simulado', () => {
   });
 
   it('senador: exercício em aberto fica sem fim e o mandato termina na última legislatura', async () => {
-    const xml = `<ListaParlamentarEmExercicio><Parlamentares><Parlamentar>
-      <IdentificacaoParlamentar><CodigoParlamentar>6001</CodigoParlamentar><NomeParlamentar>ANA</NomeParlamentar><SiglaPartidoParlamentar>PT</SiglaPartidoParlamentar><UfParlamentar>BA</UfParlamentar></IdentificacaoParlamentar>
-      <Mandato>
-        <PrimeiraLegislaturaDoMandato><DataInicio>2023-02-01</DataInicio><DataFim>2027-01-31</DataFim></PrimeiraLegislaturaDoMandato>
-        <SegundaLegislaturaDoMandato><DataInicio>2027-02-01</DataInicio><DataFim>2031-01-31</DataFim></SegundaLegislaturaDoMandato>
-        <Exercicios>
-          <Exercicio><DataInicio>2023-02-01</DataInicio><DataFim>2023-06-01</DataFim></Exercicio>
-          <Exercicio><DataInicio>2023-10-01</DataInicio></Exercicio>
-        </Exercicios>
-      </Mandato>
-    </Parlamentar></Parlamentares></ListaParlamentarEmExercicio>`;
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => xml }));
+    const payload = { ListaParlamentarEmExercicio: { Parlamentares: { Parlamentar: {
+      IdentificacaoParlamentar: { CodigoParlamentar: '6001', NomeParlamentar: 'ANA', SiglaPartidoParlamentar: 'PT', UfParlamentar: 'BA' },
+      Mandato: {
+        PrimeiraLegislaturaDoMandato: { DataInicio: '2023-02-01', DataFim: '2027-01-31' },
+        SegundaLegislaturaDoMandato: { DataInicio: '2027-02-01', DataFim: '2031-01-31' },
+        Exercicios: { Exercicio: [{ DataInicio: '2023-02-01', DataFim: '2023-06-01' }, { DataInicio: '2023-10-01' }] },
+      },
+    } } } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(payload)));
 
     const [senator] = await fetchSenadores();
 
