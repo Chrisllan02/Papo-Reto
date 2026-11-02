@@ -14,4 +14,5 @@ export const useMediaQuery = (query: string) => {
 };
 
 export const DESKTOP_QUERY = '(min-width: 768px)';
+export const WIDE_QUERY = '(min-width: 1280px)';
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';

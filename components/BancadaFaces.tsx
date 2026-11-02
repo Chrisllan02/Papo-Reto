@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { DESKTOP_QUERY, REDUCED_MOTION_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
+import { DESKTOP_QUERY, REDUCED_MOTION_QUERY, WIDE_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { Politician } from '../types';
 import { nextFacesCursor, pickRotatingFaces } from '../domain/legislative/rotation';
 import { safeGetItem, safeSetItem } from '../services/storage';
@@ -9,8 +9,9 @@ interface BancadaFacesProps {
   politicians: Politician[];
 }
 
-const DESKTOP_FACES = 5;
-const MOBILE_FACES = 3;
+const WIDE_FACES = 9;
+const DESKTOP_FACES = 6;
+const MOBILE_FACES = 8;
 const CURSOR_KEY = 'paporeto_bancada_cursor_';
 const ROTATION_MS = 4500;
 const CASCADE_MS = 120;
@@ -103,7 +104,9 @@ const Face: React.FC<FaceProps> = ({ politician, index, reduceMotion }) => {
 };
 
 const BancadaFaces: React.FC<BancadaFacesProps> = ({ uf, politicians }) => {
-  const faceCount = useMediaQuery(DESKTOP_QUERY) ? DESKTOP_FACES : MOBILE_FACES;
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const isWide = useMediaQuery(WIDE_QUERY);
+  const faceCount = isWide ? WIDE_FACES : isDesktop ? DESKTOP_FACES : MOBILE_FACES;
   const reduceMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const cursorKey = `${CURSOR_KEY}${uf}`;
   const rotationKey = `${cursorKey}|${faceCount}`;
@@ -153,7 +156,7 @@ const BancadaFaces: React.FC<BancadaFacesProps> = ({ uf, politicians }) => {
   if (faces.length === 0) return null;
 
   return (
-    <div className="flex items-center justify-self-end md:shrink-0">
+    <div className="flex items-center md:shrink-0">
       {faces.map((pol, index) => (
         <Face key={index} politician={pol} index={index} reduceMotion={reduceMotion} />
       ))}

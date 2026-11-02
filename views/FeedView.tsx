@@ -124,8 +124,10 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
 
           {userLocation ? (
             <>
-              <BancadaFaces uf={userLocation} politicians={bancada} />
-              <span className="text-sm md:text-base font-bold text-white md:flex-1">
+              <div className="col-span-2 md:flex-1 md:flex md:justify-center">
+                <BancadaFaces uf={userLocation} politicians={bancada} />
+              </div>
+              <span className="text-sm md:text-base font-bold text-white md:shrink-0">
                 {bancada.length === 1 ? '1 parlamentar' : `${bancada.length} parlamentares`}
               </span>
               <button
