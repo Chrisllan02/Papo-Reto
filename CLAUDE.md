@@ -33,3 +33,7 @@ Nunca invente dado. Ausente é ausente. Sempre que possível, mostre o link para
 - [ ] `npm run build`
 - [ ] `npm audit --omit=dev` sem vulnerabilidades
 - [ ] Nenhum dado inventado; fontes oficiais linkadas
+
+## Neutralidade (decisões do dono)
+- Linguagem generalista: nada de "sua bancada"/"seu deputado"; use "Bancada de Goiás".
+- Fotos de parlamentares em destaque seguem rodízio neutro (ordem por id, sem repetir antes de todos aparecerem), nunca por partido ou cargo.
