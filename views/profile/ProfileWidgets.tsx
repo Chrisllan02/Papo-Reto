@@ -138,12 +138,12 @@ const PresenceBar = ({ label, present, justified, unjustified, total }: { label:
         <span className="text-sm font-black text-gray-900 dark:text-white">{Math.round(pctPresent)}% de presença</span>
       </div>
       <div className="w-full h-3 bg-gray-100/50 dark:bg-gray-700/50 rounded-full overflow-hidden flex">
-        <div style={{ width: `${pctPresent}%` }} className="bg-green-500 h-full" title="Presenças" />
+        <div style={{ width: `${pctPresent}%` }} className="bg-[#00804C] h-full" title="Presenças" />
         <div style={{ width: `${pctJustified}%` }} className="bg-yellow-400 h-full" title="Ausências Justificadas" />
         <div style={{ width: `${pctUnjustified}%` }} className="bg-red-500 h-full" title="Ausências Não Justificadas" />
       </div>
       <div className="flex justify-between mt-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-        <div className="flex items-center gap-1"><div aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-green-500" /> {present} presenças</div>
+        <div className="flex items-center gap-1"><div aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[#00804C]" /> {present} presenças</div>
         <div className="flex items-center gap-1"><div aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-yellow-400" /> {justified} justificadas</div>
         <div className="flex items-center gap-1"><div aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-red-500" /> {unjustified} faltas</div>
       </div>
@@ -183,7 +183,7 @@ export const RemunerationWidget = ({ remuneration }: { remuneration: Remuneratio
             <span className="text-xl font-black text-gray-900 dark:text-white">R$ {remuneration.gross.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
 
-          <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex mb-2">
+          <div className="h-4 w-full bg-[#DBE64C] dark:bg-gray-700 rounded-full overflow-hidden flex mb-2">
             <div style={{ width: `${netPct}%` }} className="bg-emerald-500 h-full" title="Salário Líquido" />
             <div style={{ width: `${taxPct}%` }} className="bg-red-400 h-full" title="Impostos/Descontos" />
             <div style={{ width: `${allowPct}%` }} className="bg-blue-400 h-full" title="Auxílios" />
@@ -232,7 +232,7 @@ export const AgendaWidget = ({ agenda }: { agenda: LegislativeEvent[] }) => {
   return (
     <div className="glass-panel rounded-2xl p-6 md:p-8 animate-in fade-in mb-8">
       <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
-        <CalendarDays size={20} className="text-blue-500" /> Agenda legislativa
+        <CalendarDays size={20} className="text-blue-500 dark:text-blue-400" /> Agenda legislativa
       </h3>
 
       <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-6">
@@ -288,7 +288,7 @@ export const VotesSummaryWidget = ({ votes }: { votes: Record<number, string> })
   return (
     <div className="glass-panel rounded-2xl p-6 md:p-8 animate-in fade-in mb-8">
       <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
-        <Vote size={20} className="text-blue-500" /> Mapa de votos
+        <Vote size={20} className="text-blue-500 dark:text-blue-400" /> Mapa de votos
       </h3>
       <div className="flex flex-wrap gap-2">
         {entries.map(([key, value]) => (
@@ -379,7 +379,7 @@ export const DailyExpensesChart = ({ expenses }: { expenses: ExpenseItem[] }) =>
                   <span className="text-xs">{valueLabel}</span>
                   {isWeekend && <span className="block text-orange-200 text-xs mt-0.5">Final de semana</span>}
                 </div>
-                <div className={`w-3 md:w-4 rounded-t-full transition-all duration-500 relative ${isWeekend ? 'bg-orange-500' : 'bg-blue-600 dark:bg-blue-500'}`} style={{ height: `${heightPct}%` }}>
+                <div className={`w-3 md:w-4 rounded-t-full transition-all duration-500 relative ${isWeekend ? 'bg-orange-500' : 'bg-[#153E7A] dark:bg-[#1E488F]'}`} style={{ height: `${heightPct}%` }}>
                 </div>
                 <div className="flex flex-col items-center">
                   <span className={`text-xs font-bold ${isWeekend ? 'text-orange-700 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>{data.dateObj.getDate()}</span>
@@ -415,7 +415,7 @@ export const WordCloudWidget = ({ speeches }: { speeches: Speech[] }) => {
   return (
     <div className="glass-panel rounded-2xl p-6 md:p-10 animate-in fade-in mb-8">
       <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2">
-        <MessageSquare size={20} className="text-blue-500" /> DNA do discurso
+        <MessageSquare size={20} className="text-blue-500 dark:text-blue-400" /> DNA do discurso
       </h3>
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 items-center">
         {words.map((word, i) => {
@@ -497,7 +497,7 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 relative">
         {isLoading && !candidate.email && (
           <div className="absolute inset-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
-            <Loader2 className="animate-spin text-blue-500" size={24} />
+            <Loader2 className="animate-spin text-blue-500 dark:text-blue-400" size={24} />
           </div>
         )}
 
@@ -544,8 +544,8 @@ export const BioCard = ({ candidate, isLoading }: { candidate: Politician; isLoa
           <div className="border-t border-gray-100 dark:border-white/5 pt-4 xl:border-t-0 xl:border-l xl:pl-6">
             <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2"><Award size={12} aria-hidden="true" /> Compatibilidade</p>
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400" style={{ width: `${Math.max(0, Math.min(100, matchScore))}%` }} />
+              <div className="flex-1 h-2 bg-[#DBE64C] dark:bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#1E488F] to-emerald-400" style={{ width: `${Math.max(0, Math.min(100, matchScore))}%` }} />
               </div>
               <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 tabular-nums">{Math.max(0, Math.min(100, matchScore))}%</span>
             </div>
@@ -689,7 +689,7 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
               <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 rounded-full" />
               <div className="absolute inset-0 w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent animate-spin" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <Search size={16} className="text-blue-500" />
+                <Search size={16} className="text-blue-500 dark:text-blue-400" />
               </div>
             </div>
             <div className="text-center">
@@ -717,9 +717,9 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
               </button>
             </div>
             <div className="relative h-14 flex items-center justify-between px-2 mx-1">
-              <div className="absolute left-0 right-0 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full top-1/2 -translate-y-1/2 z-0" />
+              <div className="absolute left-0 right-0 h-1.5 bg-[#DBE64C] dark:bg-gray-700 rounded-full top-1/2 -translate-y-1/2 z-0" />
               <div
-                className="absolute left-0 h-1.5 bg-blue-500 rounded-full top-1/2 -translate-y-1/2 z-0 transition-all duration-1000 ease-out"
+                className="absolute left-0 h-1.5 bg-[#1E488F] rounded-full top-1/2 -translate-y-1/2 z-0 transition-all duration-1000 ease-out"
                 style={{ width: `${Math.max(0, Math.min(100, mandateInfo.percentage))}%` }}
               />
               {sortedYears.map((year) => {
@@ -770,10 +770,10 @@ export const StatsCard = ({ displayStats, selectedYear, setSelectedYear, availab
                 {fidelity! >= 90 ? 'Fiel à bancada' : fidelity! >= 60 ? 'Independente' : 'Rebelde'}
               </span>
             </div>
-            <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
+            <div className="relative h-4 bg-[#DBE64C] dark:bg-gray-700 rounded-full overflow-hidden mb-1">
               <div
                 className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${
-                  fidelity! >= 90 ? 'bg-green-500' : fidelity! >= 60 ? 'bg-blue-500' : 'bg-red-500'
+                  fidelity! >= 90 ? 'bg-[#00804C]' : fidelity! >= 60 ? 'bg-[#1E488F]' : 'bg-red-500'
                 }`}
                 style={{ width: `${fidelity}%` }}
               />

@@ -65,7 +65,7 @@ const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[]
                 <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
                     <svg className="w-full h-full overflow-visible transform -rotate-90" viewBox="0 0 100 100">
                         {/* Track */}
-                        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200 dark:text-gray-700/50" />
+                        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-[#DBE64C] dark:text-gray-700/50" />
                         {/* Progress */}
                         <circle 
                             cx="50" cy="50" r={radius} 
@@ -220,10 +220,10 @@ const IdeologySpectrum = ({ left, center, right }: { left: number, center: numbe
 
 // --- WIDGET MOSAICO DE REGIÕES (Otimizado Mobile) ---
 const REGIONS_STRUCT = [
-    { name: 'Norte', states: REGION_STATES['Norte'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400' },
+    { name: 'Norte', states: REGION_STATES['Norte'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-[#74C365]' },
     { name: 'Nordeste', states: REGION_STATES['Nordeste'], color: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30 text-orange-700 dark:text-orange-400' },
     { name: 'Centro-Oeste', states: REGION_STATES['Centro-Oeste'], color: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
-    { name: 'Sudeste', states: REGION_STATES['Sudeste'], color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-700 dark:text-blue-400' },
+    { name: 'Sudeste', states: REGION_STATES['Sudeste'], color: 'bg-[#F0F4FF] dark:bg-[#001F3F]/10 border-blue-200 dark:border-[#001F3F]/30 text-blue-700 dark:text-blue-400' },
     { name: 'Sul', states: REGION_STATES['Sul'], color: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
 ];
 
@@ -412,14 +412,14 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                                         aria-pressed={isActive}
                                         className={`group min-h-16 rounded-xl border px-3 py-2 text-left transition-all ${
                                             isActive
-                                            ? 'border-blue-600 bg-blue-600 text-white'
+                                            ? 'border-[#153E7A] bg-[#153E7A] text-white'
                                             : 'border-gray-100 bg-gray-50/80 text-gray-600 hover:border-blue-200 hover:bg-white hover:text-blue-700 dark:border-white/5 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:border-blue-400/30 dark:hover:bg-white/[0.07]'
                                         }`}
                                     >
                                         <span className="flex items-center justify-between gap-2">
                                             <span className="text-xs font-black leading-tight">{region.name}</span>
                                             <span className={`h-2 w-2 rounded-full transition-colors ${
-                                                isActive ? 'bg-white' : 'bg-gray-300 group-hover:bg-blue-500 dark:bg-gray-600'
+                                                isActive ? 'bg-white' : 'bg-gray-300 group-hover:bg-[#1E488F] dark:bg-gray-600'
                                             }`} />
                                         </span>
                                         <span className={`mt-2 block text-sm font-black ${
@@ -475,7 +475,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                                         aria-pressed={isActive}
                                         className={`rounded-2xl border p-3 text-left transition-all ${
                                             isActive
-                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            ? 'bg-[#153E7A] text-white border-[#153E7A]'
                                             : 'bg-white/85 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-white/80 dark:border-white/10 hover:bg-white hover:border-blue-200'
                                         }`}
                                     >
@@ -492,7 +492,7 @@ const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) =
                                         }`}>
                                             <span
                                                 className={`block h-full rounded-full transition-all duration-500 ${
-                                                    isActive ? 'bg-white' : 'bg-blue-500/70'
+                                                    isActive ? 'bg-white' : 'bg-[#1E488F]/70'
                                                 }`}
                                                 style={{ width: `${share}%` }}
                                             />
@@ -746,11 +746,11 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                 {/* Main Gauge Graphic */}
                 <div className="relative w-64 h-64 shrink-0 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="2 4" className="text-gray-200 dark:text-gray-800" />
+                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="2 4" className="text-[#DBE64C] dark:text-[#1E488F]" />
                         {/* Background Ghost Arc */}
                         <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="16" strokeDasharray={`2 ${circumference}`} strokeDashoffset={-(circumference * ((overall.average ?? 0) / 100))} className="text-gray-400 dark:text-gray-600 opacity-30" transform={`rotate(0 100 100)`} />
                         {/* Value Arc */}
-                        <circle cx="100" cy="100" r={radius} fill="none" strokeLinecap="round" strokeWidth="12" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayValue >= 90 ? 'text-green-500' : displayValue >= 70 ? 'text-blue-500' : 'text-red-500'}`} stroke="currentColor" />
+                        <circle cx="100" cy="100" r={radius} fill="none" strokeLinecap="round" strokeWidth="12" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayValue >= 90 ? 'text-[#00804C]' : displayValue >= 70 ? 'text-[#1E488F]' : 'text-red-500'}`} stroke="currentColor" />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
@@ -767,7 +767,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                     <h4 className="text-xs font-black text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-3 mb-2">Média da bancada</h4>
                     
                     <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-4 items-center">
-                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#00804C]"></div>
                         <div>
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Alta (+90%)</span>
@@ -775,7 +775,7 @@ const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedP
                             <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
                         </div>
 
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#1E488F]"></div>
                         <div>
                             <div className="flex justify-between items-baseline mb-1">
                                 <span className="text-sm font-bold text-gray-900 dark:text-white">Média (70-90%)</span>
@@ -827,8 +827,8 @@ const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
                 {top.map((p) => (
                     <div key={p.name} className="flex items-center gap-3">
                         <span className="w-14 shrink-0 text-xs font-bold text-gray-700 dark:text-gray-300">{p.name}</span>
-                        <div className="flex-1 h-2 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: `${Math.max(5, (p.avgSpending / max) * 100)}%` }}></div>
+                        <div className="flex-1 h-2 rounded-full bg-[#DBE64C] dark:bg-white/10 overflow-hidden">
+                            <div className="h-full bg-[#00804C]" style={{ width: `${Math.max(5, (p.avgSpending / max) * 100)}%` }}></div>
                         </div>
                         <span className="text-xs font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">
                             R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

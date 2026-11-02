@@ -125,7 +125,7 @@ const ArticlesListView: React.FC<ArticlesListViewProps> = ({ onSelectArticle, on
                             <p className="font-bold text-gray-900 dark:text-white text-sm">Galeria de Notícias</p>
                         </div>
                         <div className="pl-2 hidden md:block">
-                            <ArrowRight size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+                            <ArrowRight size={16} className="text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" aria-hidden="true" />
                         </div>
                         <span className="md:hidden font-bold text-gray-900 dark:text-white text-sm pr-2">Histórico</span>
                     </button>

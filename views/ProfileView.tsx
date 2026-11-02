@@ -35,7 +35,7 @@ const getFrontCategoryStyle = (title: string) => {
     if (t.match(/saúde|médic|hospit|doença/)) return { name: 'Saúde', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-900/50', stroke: '#ef4444' };
     if (t.match(/econo|comércio|indústria|serviços|tribut|invest/)) return { name: 'Economia', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-900/50', stroke: '#3b82f6' };
     if (t.match(/educ|ensino|escola|profess/)) return { name: 'Educação', bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-900/50', stroke: '#eab308' };
-    if (t.match(/seguran|polícia|armas|violência/)) return { name: 'Segurança', bg: 'bg-gray-200 dark:bg-gray-700/30', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600', stroke: '#4b5563' };
+    if (t.match(/seguran|polícia|armas|violência/)) return { name: 'Segurança', bg: 'bg-[#DBE64C] dark:bg-gray-700/30', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600', stroke: '#4b5563' };
     if (t.match(/ambien|verde|clima|sustent|florest/)) return { name: 'Meio ambiente', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', stroke: '#10b981' };
     if (t.match(/mulher|idoso|criança|humanos|minoria|racial/)) return { name: 'Direitos humanos', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', stroke: '#a855f7' };
     if (t.match(/digit|tecno|inov|internet|cyber/)) return { name: 'Tecnologia', bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-900/50', stroke: '#6366f1' };
@@ -112,7 +112,7 @@ const MandateCountdown: React.FC<MandateCountdownProps> = ({ end, percentage, st
                     </div>
                 ))}
             </div>
-            <div className={`relative w-full h-2 rounded-full overflow-hidden mb-2 ${isHero ? 'bg-white/10' : 'bg-gray-200 dark:bg-white/10'}`}><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div>
+            <div className={`relative w-full h-2 rounded-full overflow-hidden mb-2 ${isHero ? 'bg-white/10' : 'bg-[#DBE64C] dark:bg-white/10'}`}><div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-[#DBE64C] rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div>
             <div className={`flex justify-between text-xs font-medium ${isHero ? 'text-white/75' : 'text-gray-600 dark:text-white/75'}`}><span>Início: {startStr}</span><span>Fim: {endStr}</span></div>
         </>
     );
@@ -158,7 +158,7 @@ const DnaDonutChart: React.FC<{ categories: FrontCategory[]; total: number }> = 
     return (
         <div className="relative w-56 h-56 flex items-center justify-center shrink-0">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label={`Distribuição de ${total} frentes parlamentares por tema`}>
-                <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-gray-800" stroke="currentColor" />
+                <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-[#1E488F]" stroke="currentColor" />
                 {visibleCategories.map((cat, i) => {
                     const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
                     const rotation = (startPercents[i] / 100) * 360;
@@ -491,7 +491,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                             {(activityFilter === 'all' || activityFilter === 'speeches') && candidate.speeches && candidate.speeches.length > 0 && <WordCloudWidget speeches={candidate.speeches} />}
 
                             <div className="glass-panel rounded-2xl p-6 md:p-10 animate-in fade-in mb-8">
-                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Flag size={20} className="text-blue-500"/> Frentes parlamentares</h3>
+                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Flag size={20} className="text-blue-500 dark:text-blue-400"/> Frentes parlamentares</h3>
                                 {isLoadingDetails ? <Skeleton className="h-20 w-full rounded-2xl" /> : (candidate.fronts && candidate.fronts.length > 0 ? (
                                     <div className="flex flex-col lg:flex-row gap-10 items-start">
                                         <div className="bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 rounded-2xl border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-8 shrink-0 w-full lg:w-auto">
@@ -548,7 +548,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                             </div>
 
                             <div className="glass-panel rounded-2xl p-6 md:p-10 animate-in fade-in mb-8">
-                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Briefcase size={20} className="text-blue-500"/> Trajetória profissional</h3>
+                                <h3 className="font-semibold text-blue-900 dark:text-white text-lg mb-8 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2"><Briefcase size={20} className="text-blue-500 dark:text-blue-400"/> Trajetória profissional</h3>
                                 {isLoadingDetails && (!candidate.occupations || candidate.occupations.length === 0) ? <div className="space-y-4"><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></div> : (candidate.occupations && candidate.occupations.length > 0 ? (
                                         <div className="space-y-4 relative">
                                             <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
@@ -602,7 +602,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
                                               {candidate.expensesBreakdown.map((exp) => (
                                                   <a key={exp.type} href={`https://www.camara.leg.br/deputados/${candidate.id}/despesas`} target="_blank" rel="noopener noreferrer" title="Ver fonte oficial na Câmara" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10 hover:border-blue-200 dark:hover:border-blue-900 transition-colors group cursor-pointer">
                                                       <div className="flex items-center gap-4 mb-2 sm:mb-0"><div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-gray-700/50 flex items-center justify-center text-blue-600 dark:text-blue-300"><Banknote size={24} aria-hidden="true" /></div><div><span className="text-sm font-semibold text-gray-700 dark:text-gray-200 line-clamp-3 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors block">{exp.type}</span><span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">Fonte oficial <ExternalLink size={12} aria-hidden="true"/></span></div></div>
-                                                      <div className="flex items-center justify-between sm:justify-end gap-6 pl-16 sm:pl-0"><div className="text-right"><span className="text-sm md:text-lg font-black text-blue-700 dark:text-blue-300 whitespace-nowrap">R$ {exp.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full mt-1.5 overflow-hidden" aria-hidden="true"><div className="bg-blue-500 h-full rounded-full" style={{ width: `${exp.percent}%` }}></div></div></div></div>
+                                                      <div className="flex items-center justify-between sm:justify-end gap-6 pl-16 sm:pl-0"><div className="text-right"><span className="text-sm md:text-lg font-black text-blue-700 dark:text-blue-300 whitespace-nowrap">R$ {exp.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><div className="w-full bg-[#DBE64C] dark:bg-gray-700 h-1.5 rounded-full mt-1.5 overflow-hidden" aria-hidden="true"><div className="bg-[#1E488F] h-full rounded-full" style={{ width: `${exp.percent}%` }}></div></div></div></div>
                                                   </a>
                                               ))}
                                           </div>

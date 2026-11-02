@@ -8,8 +8,8 @@
     <title>Papo Reto | Congresso em linguagem simples</title>
     <meta name="description" content="Entenda o que o Congresso decide: deputados, senadores, votações e gastos com dados oficiais da Câmara e do Senado, em linguagem simples." />
     <link rel="canonical" href="https://papo-reto-beige.vercel.app/" />
-    <meta name="theme-color" content="#F6F7ED" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#001F3F" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F5F8FC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#002776" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:type" content="website" />
@@ -50,12 +50,12 @@
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
       .custom-scrollbar::-webkit-scrollbar-thumb { 
-        background-color: rgba(30, 72, 143, 0.4);
+        background-color: rgba(20, 80, 184, 0.4);
         border-radius: 20px; 
         border: 2px solid transparent;
         background-clip: content-box;
       }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 31, 63, 0.6); }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 39, 118, 0.6); }
       
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pt-safe { padding-top: env(safe-area-inset-top); }
@@ -65,8 +65,8 @@
         position: absolute;
         top: -40px;
         left: 0;
-        background: #1E488F;
-        color: #F6F7ED;
+        background: #1450B8;
+        color: #F5F8FC;
         padding: 8px;
         z-index: 1000;
         transition: top 0.3s;
@@ -74,11 +74,11 @@
       .skip-link:focus { top: 0; }
 
       :focus-visible {
-        outline: 3px solid #2563EB; /* Blue-600 */
+        outline: 3px solid #1450B8;
         outline-offset: 2px;
       }
       .dark :focus-visible {
-        outline-color: #3b82f6;
+        outline-color: #7FA8F0;
       }
 
       @keyframes slideUp {
@@ -91,12 +91,12 @@
         font-size: 16px;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
-        background-color: #F6F7ED; /* Fallback Solid Color */
+        background-color: #F5F8FC; /* Fallback Solid Color */
         /* Gradient Background with Fixed Attachment */
-        background-image: radial-gradient(circle at top left, #F6F7ED, #E0E7FF);
+        background-image: radial-gradient(circle at top left, #F5F8FC, #E6EEFA);
         background-attachment: fixed;
         background-repeat: no-repeat;
-        color: #001F3F;
+        color: #002776;
       }
       html { font-size: 100%; color-scheme: light; }
       @media (min-width: 1024px) {
@@ -108,7 +108,7 @@
         background-image: radial-gradient(circle at 50% 0%, #111111 0%, #0a0a0a 40%, #000000 100%);
         background-attachment: fixed;
         background-repeat: no-repeat;
-        color: #F6F7ED; 
+        color: #F5F8FC;
       }
 
       .dark .bg-midnight { background-color: #000000 !important; }

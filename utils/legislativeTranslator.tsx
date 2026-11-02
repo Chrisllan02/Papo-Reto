@@ -68,7 +68,7 @@ export const getCategoryIcon = (category: FeedCategory) => {
         case 'work':
             return { icon: Briefcase, label: 'Trabalho', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100/50 dark:bg-orange-900/30' };
         case 'environment':
-            return { icon: Leaf, label: 'Ambiente', color: 'text-mantis dark:text-mantis', bg: 'bg-mantis/20 dark:bg-emerald-900/30' };
+            return { icon: Leaf, label: 'Ambiente', color: 'text-picture dark:text-green-400', bg: 'bg-mantis/20 dark:bg-emerald-900/30' };
         case 'justice':
             return { icon: Gavel, label: 'Legislação', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100/50 dark:bg-purple-900/30' };
         default:

@@ -514,7 +514,7 @@ const FeedDetailModal: React.FC<FeedDetailModalProps> = ({ item, politician, onC
                                     <p className="text-base font-black text-midnight dark:text-white truncate">{politician.name}</p>
                                     <p className="text-xs font-medium text-subtle">{politician.party} - {politician.state}</p>
                                 </div>
-                                <div className="w-11 h-11 flex items-center justify-center bg-white/50 dark:bg-white/10 rounded-full text-subtle shrink-0 group-hover:text-nuit transition-colors">
+                                <div className="w-11 h-11 flex items-center justify-center bg-white/50 dark:bg-white/10 rounded-full text-subtle shrink-0 group-hover:text-nuit dark:group-hover:text-blue-300 transition-colors">
                                     <ArrowRight size={20} aria-hidden="true" />
                                 </div>
                             </button>

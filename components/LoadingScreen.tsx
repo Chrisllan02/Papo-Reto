@@ -96,7 +96,7 @@ const LoadingScreen: React.FC = () => {
             font-weight: 700;
             font-size: 1.25rem;
             letter-spacing: 0.05em;
-            color: #00457F; /* Azul Profundo da Paleta do App */
+            color: #002776;
             animation: textMotion 5s ease-in-out infinite;
             z-index: 10;
             transition: color 0.3s ease; 
@@ -104,7 +104,7 @@ const LoadingScreen: React.FC = () => {
 
         /* Dark mode support */
         .dark .loading-text-wrapper {
-             color: #EDF5FA; 
+             color: #F5F8FC; 
         }
 
         .text-ghost { opacity: 0; visibility: hidden; }
@@ -113,7 +113,7 @@ const LoadingScreen: React.FC = () => {
             top: 0; left: 0; width: 0;
             overflow: hidden;
             white-space: nowrap;
-            border-right: 4px solid #EC6206; /* Cursor Laranja */
+            border-right: 4px solid #009C3B;
             animation: typing 5s steps(13) infinite, blinkCaret 0.75s step-end infinite;
         }
 
@@ -126,7 +126,7 @@ const LoadingScreen: React.FC = () => {
         }
         @keyframes blinkCaret {
             from, to { border-color: transparent; }
-            50% { border-color: #EC6206; }
+            50% { border-color: #009C3B; }
         }
         @keyframes textMotion {
             0%, 40% { transform: translateY(-65px); opacity: 0.8; }

@@ -159,7 +159,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, politicians, onClick }) => {
 
                 {showSnippet && !item.summary && !item.whyItMatters && !isExpense && (
                     <div className="flex items-start gap-2 mb-4 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                        <Sparkles size={14} className="text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
+                        <Sparkles size={14} className="text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" aria-hidden="true" />
                         <p className="line-clamp-2">{didactic.text}</p>
                     </div>
                 )}

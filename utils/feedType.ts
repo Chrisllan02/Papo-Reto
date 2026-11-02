@@ -18,7 +18,7 @@ const FEED_TYPE_META: Record<FeedItem['type'], FeedTypeMeta> = {
     Icon: Landmark,
     chipClass: 'bg-nuit/10 text-nuit dark:bg-blue-900/30 dark:text-blue-200',
     headerClass: 'bg-nuit',
-    iconClass: 'text-nuit',
+    iconClass: 'text-nuit dark:text-blue-300',
   },
   proposicao: {
     label: 'Proposição',

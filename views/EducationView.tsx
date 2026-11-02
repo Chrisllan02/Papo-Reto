@@ -175,7 +175,7 @@ const EducationView: React.FC<EducationViewProps> = ({ educationId, articles, on
                         >
                             <div className="glass-panel rounded-xl p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${nextTheme?.text || 'text-nuit'}`}>
+                                    <div className={`w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center dark:text-white ${nextTheme?.text || 'text-nuit'}`}>
                                         {renderIcon(nextItem.icon, 20, "opacity-80")}
                                     </div>
                                     <div>

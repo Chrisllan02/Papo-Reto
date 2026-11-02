@@ -107,7 +107,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                 const canvas = await html2canvas(element, {
                     useCORS: true,
                     scale: 2, // Melhor qualidade
-                    backgroundColor: '#0F172A', // Midnight fallback
+                    backgroundColor: '#002776',
                     logging: false
                 });
 
@@ -285,7 +285,7 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
             
             {/* --- HIDDEN SHARE CARD TEMPLATE --- */}
             {sharingItem && (
-                <div id="share-card-capture" className="fixed top-0 left-[-9999px] w-[1080px] h-[1080px] bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] p-16 flex flex-col justify-between text-white font-sans z-0 pointer-events-none">
+                <div id="share-card-capture" className="fixed top-0 left-[-9999px] w-[1080px] h-[1080px] bg-gradient-to-br from-[#002776] to-[#1450B8] p-16 flex flex-col justify-between text-white font-sans z-0 pointer-events-none">
                     {/* Header */}
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-5">
