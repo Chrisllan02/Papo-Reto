@@ -6,6 +6,7 @@ import { getIdeology, prefetchPoliticianProfile } from '../services/camaraApi';
 import { PARTY_METADATA } from '../constants';
 import { getIdeologyTheme } from '../utils/themeUtils';
 import DataState from '../components/DataState';
+import type { ExploreQuery } from '../contexts/AppContext';
 import * as ReactWindow from 'react-window';
 import * as AutoSizerModule from 'react-virtualized-auto-sizer';
 
@@ -18,6 +19,8 @@ interface ExploreViewProps {
   onSelectCandidate: (pol: Politician) => void;
   followingIds?: number[]; 
   preselectedState?: string;
+  searchRequest?: ExploreQuery | null;
+  onSearchApplied?: () => void;
 }
 
 const ESTADOS_BRASIL = [
@@ -187,15 +190,29 @@ const VirtualRow = ({ index, style, data }: { index: number; style: React.CSSPro
     );
 };
 
-const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], onSelectCandidate, followingIds = [], preselectedState }) => {
-    const [search, setSearch] = useState("");
+const ExploreView: React.FC<ExploreViewProps> = ({ politicians, parties = [], onSelectCandidate, followingIds = [], preselectedState, searchRequest = null, onSearchApplied }) => {
+    const [search, setSearch] = useState(searchRequest?.text ?? "");
+    const [appliedSearchSeq, setAppliedSearchSeq] = useState(searchRequest?.seq);
     const deferredSearch = useDeferredValue(search);
     
-    const [selectedUF, setSelectedUF] = useState(preselectedState || "");
+    const [selectedUF, setSelectedUF] = useState(searchRequest ? "" : preselectedState || "");
     const [isStateSelectorOpen, setIsStateSelectorOpen] = useState(false);
     const [selectedIdeology, setSelectedIdeology] = useState<IdeologyFilter>('Todos');
     const [selectedParty, setSelectedParty] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<ViewMode>('parties');
+    const [viewMode, setViewMode] = useState<ViewMode>(searchRequest ? 'candidates' : 'parties');
+
+    if (searchRequest && searchRequest.seq !== appliedSearchSeq) {
+        setAppliedSearchSeq(searchRequest.seq);
+        setSearch(searchRequest.text);
+        setSelectedUF("");
+        setSelectedIdeology('Todos');
+        setSelectedParty(null);
+        setViewMode('candidates');
+    }
+
+    useEffect(() => {
+        if (searchRequest) onSearchApplied?.();
+    }, [searchRequest, onSearchApplied]);
 
     // Refs para Persistência de Scroll
     const partiesListRef = useRef<HTMLDivElement>(null);

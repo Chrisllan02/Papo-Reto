@@ -6,6 +6,11 @@ import { normalizeLocationUF, reverseGeocodeToUF } from '../utils/location';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '../services/storage';
 
 // --- Types ---
+export interface ExploreQuery {
+  text: string;
+  seq: number;
+}
+
 interface AppState {
   activeTab: string;
   politicians: Politician[];
@@ -26,6 +31,7 @@ interface AppState {
   isFullFeed: boolean;
   isNewsHistory: boolean;
   explorePreselectedState: string;
+  exploreQuery: ExploreQuery | null;
   showDataModal: boolean;
   showOnboarding: boolean;
   readArticleIds: number[];
@@ -59,6 +65,8 @@ interface AppActions {
   // Navigation Helpers
   resetNavigation: () => void;
   goToExplore: (state: string) => void;
+  searchPoliticians: (query: string) => void;
+  clearExploreQuery: () => void;
   reloadData: () => void;
 }
 
@@ -105,6 +113,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isFullFeed, setIsFullFeed] = useState(false);
   const [isNewsHistory, setIsNewsHistory] = useState(false);
   const [explorePreselectedState, setExplorePreselectedState] = useState<string>('');
+  const [exploreQuery, setExploreQuery] = useState<ExploreQuery | null>(null);
+  const exploreQuerySeq = useRef(0);
   const [showDataModal, setShowDataModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [readArticleIds, setReadArticleIds] = useState<number[]>([]);
@@ -305,6 +315,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsFullFeed(false);
       setIsNewsHistory(false);
       setExplorePreselectedState('');
+      setExploreQuery(null);
   }, []);
 
   const handleSetActiveTab = useCallback((tab: string) => {
@@ -317,6 +328,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setActiveTab('explore');
   }, []);
 
+  const searchPoliticians = useCallback((query: string) => {
+      const text = query.trim();
+      if (!text) return;
+      resetNavigation();
+      exploreQuerySeq.current += 1;
+      setExploreQuery({ text, seq: exploreQuerySeq.current });
+      setActiveTab('explore');
+  }, [resetNavigation]);
+
+  const clearExploreQuery = useCallback(() => setExploreQuery(null), []);
+
   useEffect(() => {
       if (activeTab === 'articles') {
           void loadEducationalContent();
@@ -327,7 +349,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     state: {
         activeTab, politicians, feedItems, articles, parties, isLoading, error,
         darkMode, highContrast, fontSizeLevel,
-        selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
+        selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState, exploreQuery,
         showDataModal, showOnboarding, readArticleIds, 
         userLocation, isLocating
     },
@@ -350,16 +372,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         detectLocation,
         resetNavigation,
         goToExplore,
+        searchPoliticians,
+        clearExploreQuery,
         reloadData: reload
     }
   }), [
     activeTab, politicians, feedItems, articles, parties, isLoading, error,
     darkMode, highContrast, fontSizeLevel,
-    selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
+    selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState, exploreQuery,
     showDataModal, showOnboarding, readArticleIds,
     userLocation, isLocating,
     handleSetActiveTab, toggleDarkMode, toggleHighContrast, increaseFontSize, decreaseFontSize,
-    markArticleAsRead, updatePolitician, updateUserLocation, detectLocation, resetNavigation, goToExplore, reload
+    markArticleAsRead, updatePolitician, updateUserLocation, detectLocation, resetNavigation, goToExplore, searchPoliticians, clearExploreQuery, reload
   ]);
 
   return (

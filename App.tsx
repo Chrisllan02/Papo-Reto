@@ -1,6 +1,6 @@
 
 import { Suspense, lazy } from 'react';
-import Sidebar from './components/Sidebar';
+import TopBar from './components/TopBar';
 import MobileNav from './components/MobileNav';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import OnboardingModal from './components/OnboardingModal'; 
@@ -34,7 +34,7 @@ function App() {
   // Extraindo do contexto para facilitar leitura
   const { 
       activeTab, politicians, feedItems, articles, parties, isLoading,
-      selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState,
+      selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState, exploreQuery,
       showDataModal, showOnboarding, readArticleIds, error
   } = state;
 
@@ -78,7 +78,7 @@ function App() {
               content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
               break;
           case 'explore':
-              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} />;
+              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} searchRequest={exploreQuery} onSearchApplied={actions.clearExploreQuery} />;
               break;
           case 'parties':
               content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} />;
@@ -92,19 +92,17 @@ function App() {
   }
 
   return (
-    <div className={`flex h-[100dvh] w-full overflow-hidden font-sans transition-colors duration-500`}>
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden font-sans">
         {showOnboarding && <OnboardingModal onFinish={() => actions.setShowOnboarding(false)} />}
-        {error && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-md">
-                <DataState variant="error" title="Não foi possível carregar os dados" description={error} actionLabel="Tentar de novo" onAction={actions.reloadData} />
-            </div>
-        )}
 
-           <aside className="hidden md:flex w-[88px] xl:w-[264px] flex-col h-[95%] my-auto ml-4 glass-surface rounded-[2.5rem] p-4 xl:p-6 z-50 shrink-0 transition-all duration-300">
-             <Sidebar />
-        </aside>
+        <TopBar />
 
-        <main id="main-content" tabIndex={-1} className="flex-1 h-full relative overflow-hidden focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-500/40">
+        <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 relative overflow-hidden focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-500/40">
+             {error && (
+                 <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-md">
+                     <DataState variant="error" title="Não foi possível carregar os dados" description={error} actionLabel="Tentar de novo" onAction={actions.reloadData} />
+                 </div>
+             )}
              {showDataModal && <DataTransparencyModal onClose={() => actions.setShowDataModal(false)} />}
              <Suspense fallback={<ViewFallback />}>
                {content}

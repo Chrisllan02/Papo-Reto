@@ -126,7 +126,7 @@ const FeedView: React.FC<FeedViewProps> = ({ politicians, feedItems, onSelectCan
                 />
             )}
 
-            <div className="pt-safe px-4 md:px-8 py-8 md:py-10 max-w-[2000px] mx-auto">
+            <div className="px-4 md:px-8 py-8 md:py-10 max-w-[2000px] mx-auto">
                 
                 {/* Header */}
                 <header className="mb-8 flex items-center justify-between">

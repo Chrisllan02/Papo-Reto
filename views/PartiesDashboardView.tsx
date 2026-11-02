@@ -960,7 +960,7 @@ const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians
   return (
     <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12">
         <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-8 relative z-10 px-safe">
-            <div className="pt-safe">
+            <div>
                 <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
                 <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400 mt-1.5">Raio-X das forças do Congresso Nacional</p>
             </div>

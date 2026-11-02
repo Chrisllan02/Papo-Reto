@@ -402,7 +402,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ candidate: initialCandidate, 
               <div className="absolute inset-0 opacity-50 mix-blend-overlay" aria-hidden="true"><svg viewBox="0 0 20 14" preserveAspectRatio="xMidYMid slice" className="w-full h-full brightness-75"><rect width="20" height="14" fill="#009C3B" /><path d="M10 1.7 18.3 7 10 12.3 1.7 7z" fill="#FFDF00" /><circle cx="10" cy="7" r="3.5" fill="#002776" /></svg></div>
               <div className="absolute inset-0 opacity-20 texture-overlay mix-blend-overlay z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent z-20"></div>
-              <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pt-safe">
+              <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between">
                 <button type="button" onClick={onBack} aria-label="Voltar para a lista" className="p-3 md:p-4 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white backdrop-blur-md active:scale-[0.98] border border-white/10 focus-visible:ring-4 focus-visible:ring-white/50"><ChevronLeft size={24} aria-hidden="true" /></button>
               </div>
               <div className="relative z-30 w-full max-w-7xl mx-auto pb-8 px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 pt-24 animate-in slide-in-from-bottom-8 duration-700">

@@ -55,6 +55,15 @@ html.high-contrast a:hover * {
     fill: #000000 !important;
 }
 
+html.high-contrast [aria-current="page"] {
+    background-color: #FFFF00 !important;
+    color: #000000 !important;
+}
+html.high-contrast [aria-current="page"] * {
+    color: #000000 !important;
+    stroke: #000000 !important;
+}
+
 /* Ícones SVG */
 html.high-contrast svg {
     stroke: #FFFF00 !important;
