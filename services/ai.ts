@@ -114,7 +114,7 @@ interface EducationalContentResult {
 
 export class AiUnavailableError extends Error {
     constructor() {
-        super('Assistente indisponível');
+        super('IA indisponível');
         this.name = 'AiUnavailableError';
     }
 }
@@ -474,24 +474,10 @@ export const speakContent = async (text: string): Promise<Uint8Array | null> => 
     }
 };
 
-export const chatWithGemini = async (message: string, mode: 'fast' | 'standard' | 'search' | 'location' | 'thinking', history: { role: string; parts: { text: string }[] }[] = []): Promise<{ text: string; searchSources?: any[]; mapSources?: any[] }> => {
-    const data = await callAiApi<{ text: string; searchSources?: any[]; mapSources?: any[] }>('chatWithGemini', { message, mode, history });
+export const chatWithGemini = async (message: string, mode: 'fast' | 'standard'): Promise<{ text: string }> => {
+    const data = await callAiApi<{ text: string }>('chatWithGemini', { message, mode });
     if (!data || typeof data.text !== 'string') throw new AiUnavailableError();
-    return data;
-};
-
-export const generateCampaignImage = async (prompt: string, aspectRatio: string): Promise<string | null> => {
-    try {
-        const data = await callAiApi<{ imageDataUrl: string | null }>('generateCampaignImage', { prompt, aspectRatio });
-        return data?.imageDataUrl || null;
-    } catch { return null; }
-};
-
-export const transcribeAudio = async (base64Audio: string, mimeType: string = 'audio/webm'): Promise<string> => {
-    try {
-        const data = await callAiApi<{ text: string }>('transcribeAudio', { base64Audio, mimeType });
-        return data?.text || "";
-    } catch { return ""; }
+    return { text: data.text };
 };
 
 export const generateEducationalContent = async (): Promise<EducationalContentResult> => {

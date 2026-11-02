@@ -17,7 +17,6 @@ const FullFeedView = lazy(() => import('./views/FullFeedView'));
 const EducationView = lazy(() => import('./views/EducationView'));
 const ArticlesListView = lazy(() => import('./views/ArticlesListView'));
 const NewsHistoryView = lazy(() => import('./views/NewsHistoryView'));
-const ChatView = lazy(() => import('./views/ChatView'));
 
 const ViewFallback = () => (
   <div role="status" aria-live="polite" className="w-full h-full overflow-hidden p-6 md:p-10 space-y-6">
@@ -86,9 +85,6 @@ function App() {
               break;
           case 'articles':
               content = <ArticlesListView articles={articles} onSelectArticle={actions.markArticleAsRead} readArticleIds={readArticleIds} onOpenNewsHistory={() => actions.setNewsHistory(true)} />;
-              break;
-          case 'chat':
-              content = <ChatView onBack={() => actions.setActiveTab('feed')} />;
               break;
           default:
               content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;

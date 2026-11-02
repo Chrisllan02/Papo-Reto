@@ -370,23 +370,6 @@ export interface EducationalArticle {
   generatedAt?: string;
 }
 
-// --- AI Chat Types ---
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text?: string;
-  image?: string; // Base64 url
-  isThinking?: boolean;
-  isError?: boolean;
-  groundingMetadata?: {
-    search?: { uri: string; title: string }[];
-    maps?: { uri: string; title: string; source: string }[];
-  };
-  timestamp: number;
-}
-
-export type ChatMode = 'fast' | 'standard' | 'search' | 'location' | 'thinking';
-
 export interface NewsArticle {
   id?: string;
   title: string;

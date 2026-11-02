@@ -21,9 +21,7 @@ type EducationalArticle = {
 type ApiAction =
   | 'generateEducationalContent'
   | 'speakContent'
-  | 'chatWithGemini'
-  | 'generateCampaignImage'
-  | 'transcribeAudio';
+  | 'chatWithGemini';
 
 class RequestError extends Error {
   statusCode: number;
@@ -34,26 +32,18 @@ class RequestError extends Error {
   }
 }
 
-const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_BODY_BYTES = 64 * 1024;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
 const isRateLimited = createRateLimiter(RATE_WINDOW_MS);
 const MAX_TEXT_CHARS = 2000;
-const MAX_HISTORY_ITEMS = 10;
-const MAX_PROMPT_CHARS = 500;
 const MAX_SPEECH_CHARS = 3000;
-const MAX_AUDIO_BASE64_CHARS = 1_500_000;
-const CHAT_MODES = ['fast', 'standard', 'search', 'location', 'thinking'] as const;
+const CHAT_MODES = ['fast', 'standard'] as const;
 type ChatMode = typeof CHAT_MODES[number];
-const ASPECT_RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
-const AUDIO_MIME_PATTERN = /^audio\/(webm|ogg|mp4|mpeg|wav)( *;[\w ="'.,+-]*)?$/i;
-const BASE64_PATTERN = /^[A-Za-z0-9+/=\s]+$/;
 const SUPPORTED_ACTIONS: ApiAction[] = [
   'generateEducationalContent',
   'speakContent',
-  'chatWithGemini',
-  'generateCampaignImage',
-  'transcribeAudio'
+  'chatWithGemini'
 ];
 
 const isApiAction = (value: unknown): value is ApiAction =>
@@ -133,22 +123,6 @@ const parseEducationalArticles = (raw: string): EducationalArticle[] => {
     const topic = typeof item?.topic === 'string' ? item.topic.trim() : '';
     const impact = typeof item?.impact === 'string' ? item.impact.trim() : '';
     return [{ title, text, topic, ...(impact ? { impact } : {}) }];
-  });
-};
-
-const normalizeHistory = (history: unknown) => {
-  if (!Array.isArray(history)) return [];
-  return history.slice(-MAX_HISTORY_ITEMS).flatMap((item) => {
-    const parts = Array.isArray(item?.parts) ? item.parts : [];
-    const text = parts
-      .map((part: any) => (typeof part?.text === 'string' ? part.text : ''))
-      .filter(Boolean)
-      .join('\n')
-      .trim()
-      .slice(0, MAX_TEXT_CHARS);
-    if (!text) return [];
-    if (item?.role !== 'user' && item?.role !== 'model') return [];
-    return [{ role: item.role, parts: [{ text }] }];
   });
 };
 
@@ -251,17 +225,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'generateEducationalContent') {
       return jsonResponse(res, 200, { ok: true, data: staticEducationalContent, isFallback: true });
     }
-    if (action === 'generateCampaignImage') {
-      return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
-    }
     if (action === 'speakContent') {
       return jsonResponse(res, 200, { ok: true, data: { audioBase64: null } });
     }
-    if (action === 'transcribeAudio') {
-      return jsonResponse(res, 200, { ok: true, data: { text: '' } });
-    }
     if (action === 'chatWithGemini') {
-      return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT, searchSources: [], mapSources: [] } });
+      return jsonResponse(res, 200, { ok: true, data: { text: AI_UNAVAILABLE_TEXT } });
     }
     return jsonResponse(res, 200, { ok: true, data: null });
   }
@@ -327,57 +295,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'chatWithGemini': {
         const message = cleanText(body?.message, MAX_TEXT_CHARS);
         const mode: ChatMode = CHAT_MODES.includes(body?.mode) ? body.mode : 'standard';
-        const history = normalizeHistory(body?.history);
         if (!message) return jsonResponse(res, 400, { error: 'Missing message.' });
 
-        let model = 'gemini-3-pro-preview';
-        let tools: any[] = [];
-        let config: any = { maxOutputTokens: 2048 };
-        switch (mode) {
-          case 'fast': model = 'gemini-flash-lite-latest'; break;
-          case 'search': model = 'gemini-3-flash-preview'; tools = [{ googleSearch: {} }]; break;
-          case 'location': model = 'gemini-flash-latest'; tools = [{ googleMaps: {} }]; break;
-          case 'thinking': model = 'gemini-3-pro-preview'; config = { maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 4096 } }; break;
-        }
-        const contents = [...history, { role: 'user', parts: [{ text: message }] }];
-        const response = await ai.models.generateContent({ model, contents, config: { ...config, systemInstruction: CHAT_SYSTEM_INSTRUCTION, tools: tools.length > 0 ? tools : undefined } });
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const searchSources = groundingChunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
-        const mapSources = groundingChunks.filter((c: any) => c.maps).map((c: any) => ({ uri: c.maps.uri, title: c.maps.title, source: c.maps.placeAnswerSources?.[0]?.reviewSnippets?.[0]?.snippet || 'Localização' }));
-        return jsonResponse(res, 200, { ok: true, data: { text: response.text || 'Sem resposta.', searchSources, mapSources } });
-      }
-
-      case 'generateCampaignImage': {
-        const prompt = cleanText(body?.prompt, MAX_PROMPT_CHARS).replace(/["\r\n]+/g, ' ');
-        const aspectRatio = ASPECT_RATIOS.includes(body?.aspectRatio) ? body.aspectRatio : '1:1';
-        if (!prompt) return jsonResponse(res, 400, { error: 'Missing prompt.' });
+        const model = mode === 'fast' ? 'gemini-flash-lite-latest' : 'gemini-3-pro-preview';
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: { parts: [{ text: `Create an abstract, minimalist editorial illustration for a civic education campaign about: "${prompt}". Use symbolic objects and shapes only (e.g. documents, scales, buildings, charts). Mandatory constraints: NO TEXT, NO LETTERS, NO NUMBERS, NO HUMAN FACES, NO REAL OR IDENTIFIABLE PEOPLE, NO CROWDS, NO POLITICAL PARTY LOGOS, SYMBOLS OR SLOGANS, NO BRAND LOGOS. Colors: professional palette inspired by Brazil (deep green, navy blue, golden yellow, white, grey).` }] },
-          config: { imageConfig: { aspectRatio: aspectRatio as any } }
+          model,
+          contents: [{ role: 'user', parts: [{ text: message }] }],
+          config: { maxOutputTokens: 2048, systemInstruction: CHAT_SYSTEM_INSTRUCTION }
         });
-        const parts = response.candidates?.[0]?.content?.parts || [];
-        for (const part of parts) {
-          if (part.inlineData?.data) {
-            return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: `data:image/png;base64,${part.inlineData.data}` } });
-          }
-        }
-        return jsonResponse(res, 200, { ok: true, data: { imageDataUrl: null } });
-      }
-
-      case 'transcribeAudio': {
-        const base64Audio = typeof body?.base64Audio === 'string' ? body.base64Audio.trim() : '';
-        const mimeType = typeof body?.mimeType === 'string' ? body.mimeType.trim() : 'audio/webm';
-        if (!base64Audio) return jsonResponse(res, 400, { error: 'Missing audio.' });
-        if (base64Audio.length > MAX_AUDIO_BASE64_CHARS) return jsonResponse(res, 413, { error: 'Audio too large.' });
-        if (!AUDIO_MIME_PATTERN.test(mimeType) || !BASE64_PATTERN.test(base64Audio)) {
-          return jsonResponse(res, 400, { error: 'Unsupported audio.' });
-        }
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: { parts: [{ inlineData: { mimeType, data: base64Audio } }, { text: 'Transcreva o áudio.' }] }
-        });
-        return jsonResponse(res, 200, { ok: true, data: { text: response.text || '' } });
+        return jsonResponse(res, 200, { ok: true, data: { text: response.text || 'Sem resposta.' } });
       }
 
       default:
