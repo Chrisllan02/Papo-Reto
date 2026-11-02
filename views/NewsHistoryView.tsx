@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { ChevronLeft, Newspaper, ExternalLink, Calendar, Search, X, Sparkles, Share2, ImageOff, RefreshCw, Loader2, LayoutGrid, AlignLeft, Download } from 'lucide-react';
-import { getNewsHistory, chatWithGemini } from '../services/ai';
+import { fetchDailyNews, getNewsHistory, chatWithGemini } from '../services/ai';
 import { NewsArticle } from '../types';
 import Modal from '../components/Modal';
 import DataState from '../components/DataState';
@@ -58,7 +58,20 @@ const ImageWithFallback = ({ src, alt, className }: { src?: string, alt: string,
 // --- MAIN COMPONENT ---
 
 const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
-    const [history] = useState<NewsArticle[]>(getNewsHistory);
+    const [history, setHistory] = useState<NewsArticle[]>(getNewsHistory);
+    const [isRefreshing, setIsRefreshing] = useState(true);
+    const dailyNewsRequest = useRef<Promise<unknown> | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        dailyNewsRequest.current ??= fetchDailyNews().catch(() => null);
+        dailyNewsRequest.current.then(() => {
+            if (cancelled) return;
+            setHistory(getNewsHistory());
+            setIsRefreshing(false);
+        });
+        return () => { cancelled = true; };
+    }, []);
     const [query, setQuery] = useState('');
     
     // Performance: Aguarda 350ms após a última digitação para atualizar o filtro
@@ -378,7 +391,15 @@ const NewsHistoryView: React.FC<NewsHistoryViewProps> = ({ onBack }) => {
                                 <h1 className="text-lg md:text-xl font-black text-midnight dark:text-white leading-tight flex items-center gap-2">
                                     <Newspaper size={20} className="text-blue-700 dark:text-blue-300" aria-hidden="true" /> Galeria
                                 </h1>
-                                <p className="text-xs font-medium text-subtle">Acervo ({history.length})</p>
+                                <p className="text-xs font-medium text-subtle flex items-center gap-1.5" aria-live="polite">
+                                    Acervo ({history.length})
+                                    {isRefreshing && (
+                                        <>
+                                            <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                                            <span>Atualizando</span>
+                                        </>
+                                    )}
+                                </p>
                             </div>
                         </div>
 

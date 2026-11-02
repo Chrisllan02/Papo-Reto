@@ -1,35 +1,36 @@
 import { ESTADOS_BRASIL } from '../constants';
 import { timeoutSignal } from './timeoutSignal';
 
-const STATE_NAME_TO_UF: Record<string, string> = {
-  acre: 'AC',
-  alagoas: 'AL',
-  amapa: 'AP',
-  amazonas: 'AM',
-  bahia: 'BA',
-  ceara: 'CE',
-  'distrito federal': 'DF',
-  'espirito santo': 'ES',
-  goias: 'GO',
-  maranhao: 'MA',
-  'mato grosso': 'MT',
-  'mato grosso do sul': 'MS',
-  'minas gerais': 'MG',
-  para: 'PA',
-  paraiba: 'PB',
-  parana: 'PR',
-  pernambuco: 'PE',
-  piaui: 'PI',
-  'rio de janeiro': 'RJ',
-  'rio grande do norte': 'RN',
-  'rio grande do sul': 'RS',
-  rondonia: 'RO',
-  roraima: 'RR',
-  'santa catarina': 'SC',
-  'sao paulo': 'SP',
-  sergipe: 'SE',
-  tocantins: 'TO',
+export const STATE_NAMES: Record<string, string> = {
+  AC: 'Acre',
+  AL: 'Alagoas',
+  AP: 'Amapá',
+  AM: 'Amazonas',
+  BA: 'Bahia',
+  CE: 'Ceará',
+  DF: 'Distrito Federal',
+  ES: 'Espírito Santo',
+  GO: 'Goiás',
+  MA: 'Maranhão',
+  MT: 'Mato Grosso',
+  MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais',
+  PA: 'Pará',
+  PB: 'Paraíba',
+  PR: 'Paraná',
+  PE: 'Pernambuco',
+  PI: 'Piauí',
+  RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte',
+  RS: 'Rio Grande do Sul',
+  RO: 'Rondônia',
+  RR: 'Roraima',
+  SC: 'Santa Catarina',
+  SP: 'São Paulo',
+  SE: 'Sergipe',
+  TO: 'Tocantins',
 };
+
 
 export const normalizeLocationUF = (value?: string | null) => {
   if (!value) return '';
@@ -42,6 +43,10 @@ const normalizeText = (value?: string | null) => (value || '')
   .replace(/[\u0300-\u036f]/g, '')
   .trim()
   .toLowerCase();
+
+const STATE_NAME_TO_UF: Record<string, string> = Object.fromEntries(
+  Object.entries(STATE_NAMES).map(([uf, name]) => [normalizeText(name), uf]),
+);
 
 const extractUFToken = (value?: string | null) => {
   if (!value) return '';

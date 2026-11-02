@@ -351,10 +351,8 @@ export const getNewsHistory = (): NewsArticle[] => {
     return raw.filter(item => item && typeof item.title === 'string');
 };
 
-export const getBestAvailableNews = (): NewsArticle[] | null => getCache(NEWS_CACHE_KEY, 0);
-
 // Sem notícia verificável não exibimos nada: a UI trata a lista vazia.
-export function getEmergencyNews(): NewsArticle[] {
+function getEmergencyNews(): NewsArticle[] {
     return [];
 }
 

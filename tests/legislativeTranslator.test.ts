@@ -9,11 +9,6 @@ describe('legislativeTranslator', () => {
     expect(detectCategory('Pauta administrativa sem tema conhecido')).toBe('activity');
   });
 
-  it('turns bureaucratic titles into short user-facing titles', () => {
-    expect(formatCardTitle('Aprovado o Requerimento de Urgência nº 123/2024', 'voto')).toBe('Urgência Aprovada');
-    expect(formatCardTitle('Institui o Programa Nacional de Educação Digital', 'proposicao')).toBe('Programa Nacional de Educação Digital');
-  });
-
   it('adds didactic context and constitution references', () => {
     const context = getDidacticContext(
       'PL 123 sobre saúde',
@@ -73,5 +68,13 @@ describe('legislativeTranslator: falsos positivos por substring', () => {
     expect(getDidacticContext('REQ 1', 'Deferido o Requerimento n. 10/2024', 'voto').text).toContain('Pedido aceito');
     expect(getDidacticContext('PL 1', 'Desarquivado nos termos do Artigo 105 do RICD', 'voto').text).toContain('desarquivado');
     expect(getDidacticContext('PL 1', 'Arquivado nos termos do Artigo 105 do RICD', 'voto').text).toContain('encerrado/arquivado');
+  });
+});
+
+
+describe('formatCardTitle', () => {
+  it('traduz andamento para linguagem simples', () => {
+    expect(formatCardTitle('Aprovado o Requerimento de Urgência nº 123/2024', 'voto')).toBe('Urgência Aprovada');
+    expect(formatCardTitle('Institui o Programa Nacional de Educação Digital', 'proposicao')).toBe('Programa Nacional de Educação Digital');
   });
 });

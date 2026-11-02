@@ -76,36 +76,6 @@ export const getCategoryIcon = (category: FeedCategory) => {
     }
 };
 
-export const formatCardTitle = (title: string, type: string) => {
-    if (type === 'despesa') return title;
-
-    let clean = title.trim();
-
-    if (clean.match(/^Retirado o Requerimento/i)) return "Requerimento Retirado da Pauta";
-    if (clean.match(/^Aprovado o Requerimento de Urgência/i)) return "Urgência Aprovada";
-    if (clean.match(/^Indeferido o Requerimento/i)) return "Pedido Negado";
-    if (clean.match(/^Deferido o Requerimento/i)) return "Pedido Aceito";
-    if (clean.match(/^Aprovada a Redação Final/i)) return "Texto Final Aprovado";
-    if (clean.match(/^Encaminhada à publicação/i)) return "Projeto Publicado";
-    if (clean.match(/^Designado Relator/i)) return "Relator Escolhido";
-    if (clean.match(/^Parecer.*aprovado/i)) return "Parecer Aprovado";
-    if (clean.match(/^Novo Despacho/i)) return "Atualização de Tramitação";
-    if (clean.match(/^Rejeitado o Requerimento/i)) return "Pedido Rejeitado";
-
-    clean = clean
-        .replace(/^Institui a /i, '')
-        .replace(/^Institui o /i, '')
-        .replace(/^Dispõe sobre a /i, '')
-        .replace(/^Dispõe sobre o /i, '')
-        .replace(/^Altera a Lei /i, 'Alteração na Lei ')
-        .replace(/\bn[.º]{1,2}\s?(?=\d)/gi, '')
-        .replace(/\/\d{4}/, '');
-
-    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
-
-    return clean;
-};
-
 export const getDidacticContext = (title: string, description: string | undefined, type: string) => {
     if (type === 'despesa') {
         const desc = description || '';
@@ -211,4 +181,34 @@ export const renderWithGlossary = (text: string) => {
         if (typeof part === 'string') return part;
         return <Glossary key={i} term={part.term}>{part.value}</Glossary>;
     });
+};
+
+export const formatCardTitle = (title: string, type: string) => {
+    if (type === 'despesa') return title;
+
+    let clean = title.trim();
+
+    if (clean.match(/^Retirado o Requerimento/i)) return "Requerimento Retirado da Pauta";
+    if (clean.match(/^Aprovado o Requerimento de Urgência/i)) return "Urgência Aprovada";
+    if (clean.match(/^Indeferido o Requerimento/i)) return "Pedido Negado";
+    if (clean.match(/^Deferido o Requerimento/i)) return "Pedido Aceito";
+    if (clean.match(/^Aprovada a Redação Final/i)) return "Texto Final Aprovado";
+    if (clean.match(/^Encaminhada à publicação/i)) return "Projeto Publicado";
+    if (clean.match(/^Designado Relator/i)) return "Relator Escolhido";
+    if (clean.match(/^Parecer.*aprovado/i)) return "Parecer Aprovado";
+    if (clean.match(/^Novo Despacho/i)) return "Atualização de Tramitação";
+    if (clean.match(/^Rejeitado o Requerimento/i)) return "Pedido Rejeitado";
+
+    clean = clean
+        .replace(/^Institui a /i, '')
+        .replace(/^Institui o /i, '')
+        .replace(/^Dispõe sobre a /i, '')
+        .replace(/^Dispõe sobre o /i, '')
+        .replace(/^Altera a Lei /i, 'Alteração na Lei ')
+        .replace(/\bn[.º]{1,2}\s?(?=\d)/gi, '')
+        .replace(/\/\d{4}/, '');
+
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+
+    return clean;
 };

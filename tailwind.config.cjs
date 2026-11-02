@@ -20,6 +20,16 @@ module.exports = {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
+      keyframes: {
+        'face-in': {
+          '0%': { opacity: '0', transform: 'translateY(10px) scale(.8)' },
+          '60%': { opacity: '1', transform: 'translateY(-3px) scale(1.06)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+      },
+      animation: {
+        'face-in': 'face-in .6s cubic-bezier(.2,.8,.2,1) both',
+      },
       colors: {
         praxeti: '#F5F8FC',
         spring: '#FFDF00',
