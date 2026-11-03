@@ -20,6 +20,7 @@ Nunca invente dado. Ausente é ausente. Sempre que possível, mostre o link para
 - Regras de domínio em `domain/legislative`, não nas views.
 - Segredos só em `api/` (variáveis em `docs/operations/vercel-environment.md`).
 - Textos em pt-BR simples; acessibilidade WCAG AA (contraste 4.5:1, foco visível, teclado, sem bloquear zoom).
+- Público de todas as idades, inclusive idosos: tudo extremamente fácil e visual. Texto mínimo 14px (corrido 16px), alvo de clique mínimo 44px, gráfico sem escala cortada, termo técnico sempre traduzido em palavras simples.
 
 ## Comandos
 - `npm run dev` | `npm run build` | `npm run preview`
