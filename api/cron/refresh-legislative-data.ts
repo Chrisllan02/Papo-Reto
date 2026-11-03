@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { isCronAuthorized } from '../lib/auth.js';
 import { refreshLegislativeBootstrap } from '../bootstrap.js';
+import { refreshCongressNumbers } from '../lib/congressNumbers.js';
 
 type VercelRequest = IncomingMessage & { method?: string; headers: IncomingMessage['headers'] };
 
@@ -33,8 +34,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return jsonResponse(res, 502, { ok: false, error: 'Refresh failed.' });
     }
 
+    let numbers: { ok: boolean; generatedAt?: string } = { ok: false };
+    try {
+      const refreshedNumbers = await refreshCongressNumbers();
+      numbers = refreshedNumbers.skipped ? { ok: false } : { ok: true, generatedAt: refreshedNumbers.numbers.generatedAt };
+    } catch (error: any) {
+      console.error('[api/cron/refresh-legislative-data] numbers failed', { name: error?.name, message: String(error?.message || '').slice(0, 200) });
+    }
+
     return jsonResponse(res, 200, {
       ok: true,
+      numbers,
       durationMs: Date.now() - startedAt,
       source: cache.persisted ? 'refresh:blob' : 'refresh:memory',
       partial: data.partial,

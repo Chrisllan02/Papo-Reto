@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '../api/cron/refresh-legislative-data';
 import { createJsonResponse } from './testUtils';
 
-const { refreshMock } = vi.hoisted(() => ({ refreshMock: vi.fn() }));
+const { refreshMock, numbersMock } = vi.hoisted(() => ({ refreshMock: vi.fn(), numbersMock: vi.fn() }));
+
+vi.mock('../api/lib/congressNumbers', () => ({
+  refreshCongressNumbers: numbersMock,
+}));
 
 vi.mock('../api/bootstrap', () => ({
   refreshLegislativeBootstrap: refreshMock,
@@ -24,6 +28,8 @@ describe('/api/cron/refresh-legislative-data', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     refreshMock.mockReset();
+    numbersMock.mockReset();
+    numbersMock.mockResolvedValue({ numbers: { generatedAt: '2026-06-03T00:00:01.000Z' }, persisted: true, skipped: false });
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL;
     process.env.NODE_ENV = 'test';
@@ -69,6 +75,7 @@ describe('/api/cron/refresh-legislative-data', () => {
       ok: true,
       source: 'refresh:blob',
       counts: { politicians: 2, feedItems: 1, parties: 1 },
+      numbers: { ok: true, generatedAt: '2026-06-03T00:00:01.000Z' },
       generatedAt: '2026-06-03T00:00:00.000Z',
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -93,5 +100,18 @@ describe('/api/cron/refresh-legislative-data', () => {
     await handler({ method: 'GET', headers: { authorization: 'Bearer secret-123' } } as any, response.res as any);
 
     expect(response.statusCode).toBe(502);
+  });
+
+  it('keeps the bootstrap result when the congress numbers refresh throws', async () => {
+    process.env.CRON_SECRET = 'secret-123';
+    refreshMock.mockResolvedValue(refreshed);
+    numbersMock.mockRejectedValue(new Error('upstream down'));
+    const response = createJsonResponse();
+
+    await handler({ method: 'GET', headers: { authorization: 'Bearer secret-123' } } as any, response.res as any);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ ok: true, numbers: { ok: false } });
+    expect(response.body).not.toContain('upstream down');
   });
 });
