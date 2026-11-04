@@ -1,846 +1,22 @@
-
-import React, { useMemo, useState } from 'react';
-import { Users, Compass, Trophy, UserCheck, Scale, MapPin, ShieldCheck, Info, TrendingUp, Globe, X, MousePointerClick, ChevronDown, ChevronUp, Building2, Landmark, ArrowDown } from 'lucide-react';
-import { Politician, FeedItem, Party } from '../types';
-import { formatPartyName, getIdeology, normalizeSex } from '../services/camaraApi';
-import { getIdeologyTheme } from '../utils/themeUtils';
-import { computePartyStats, summarizeAttendance, PartyStats } from '../utils/partyStats';
-import { REGION_STATES } from '../utils/regions';
+import React, { useMemo } from 'react';
+import { Users, Scale, ShieldCheck, Info, Globe, Building2, Landmark, ArrowDown } from 'lucide-react';
+import { Politician, Party } from '../types';
+import { computePartyStats } from '../utils/partyStats';
+import { useCongressNumbers } from '../hooks/useCongressNumbers';
+import { formatInteger, formatNumbersDate, formatPercent, seatsByRegion, womenShare, isSenator } from '../utils/numbersStats';
+import SeatsByParty from '../components/numbers/SeatsByParty';
+import IdeologyCard from '../components/numbers/IdeologyCard';
+import WomenCard from '../components/numbers/WomenCard';
+import RegionSeatsCard from '../components/numbers/RegionSeatsCard';
+import PresenceCard from '../components/numbers/PresenceCard';
+import QuotaCard from '../components/numbers/QuotaCard';
+import { CARD_SURFACE, LINK_FOCUS, MUTED } from '../components/numbers/NumCard';
 
 interface PartiesDashboardViewProps {
   politicians: Politician[];
   parties?: Party[];
-  feedItems?: FeedItem[];
   onSelectCandidate?: (pol: Politician) => void;
 }
-
-// --- WIDGET DE REPRESENTAÇÃO FEMININA ---
-const FemaleRepresentationWidget = ({ politicians }: { politicians: Politician[] }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    const stats = useMemo(() => {
-        const total = Math.max(politicians.length, 1);
-        const knownPoliticians = politicians.filter(p => normalizeSex(p.sex));
-        const knownTotal = knownPoliticians.length;
-        const unknownSexCount = Math.max(politicians.length - knownTotal, 0);
-        const women = knownPoliticians.filter(p => normalizeSex(p.sex) === 'F');
-        const womenCount = women.length;
-        const percentage = knownTotal > 0 ? ((womenCount / knownTotal) * 100).toFixed(1) : null;
-
-        // Agrupamento por partido
-        const partyWomenCounts: Record<string, number> = {};
-        const knownParties = new Set<string>();
-        
-        knownPoliticians.forEach(p => {
-            const pName = p.party || 'S/P';
-            knownParties.add(pName);
-            if (normalizeSex(p.sex) === 'F') {
-                partyWomenCounts[pName] = (partyWomenCounts[pName] || 0) + 1;
-            }
-        });
-
-        const withWomen = Object.entries(partyWomenCounts)
-            .sort((a, b) => b[1] - a[1]); // Ordenar por quem tem mais mulheres
-
-        const withoutWomen = Array.from(knownParties)
-            .filter(p => !partyWomenCounts[p])
-            .sort();
-
-        return { total, knownTotal, unknownSexCount, womenCount, percentage, withWomen, withoutWomen };
-    }, [politicians]);
-
-    // Configuração do SVG Donut
-    const radius = 42;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (stats.percentage ? parseFloat(stats.percentage) / 100 : 0) * circumference;
-
-    const visibleWithWomen = isExpanded ? stats.withWomen : stats.withWomen.slice(0, 6);
-    const visibleWithoutWomen = isExpanded ? stats.withoutWomen : stats.withoutWomen.slice(0, 8);
-
-    return (
-        <div className="glass-panel rounded-2xl p-6 md:p-10 xl:p-12 flex flex-col lg:flex-row items-center gap-8 xl:gap-12 h-full w-full relative overflow-hidden group min-h-[360px]">
-            
-            {/* Left: Chart & Main Stat */}
-            <div className="flex flex-col items-center justify-center shrink-0 relative">
-                <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
-                    <svg className="w-full h-full overflow-visible transform -rotate-90" viewBox="0 0 100 100">
-                        {/* Track */}
-                        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-[#DBE64C] dark:text-gray-700/50" />
-                        {/* Progress */}
-                        <circle 
-                            cx="50" cy="50" r={radius} 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="8" 
-                            strokeDasharray={circumference}
-                            strokeDashoffset={offset}
-                            strokeLinecap="round"
-                            className="text-orange-500 transition-all duration-1000 ease-out"
-                        />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        {stats.percentage !== null ? (
-                            <>
-                                <span className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.percentage}%</span>
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400">mulheres</span>
-                            </>
-                        ) : (
-                            <span className="text-base font-black text-gray-900 dark:text-white">Sem dados</span>
-                        )}
-                    </div>
-                </div>
-                <div className="mt-2 text-center">
-                    <p className="text-sm font-bold text-gray-600 dark:text-gray-400">Total: {stats.womenCount}</p>
-                    <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-400">
-                        Base: {stats.knownTotal}/{stats.total} confirmados
-                    </p>
-                </div>
-            </div>
-
-            {/* Right: Breakdown Lists */}
-            <div className="flex-1 w-full flex flex-col gap-3 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-xl">
-                            <Users size={18} />
-                        </div>
-                        <h4 className="text-lg md:text-xl font-black text-gray-800 dark:text-white tracking-tight">Representatividade</h4>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {stats.unknownSexCount > 0 && (
-                            <span className="hidden sm:inline-flex rounded-lg bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-700 dark:text-amber-300">
-                                atualizando {stats.unknownSexCount}
-                            </span>
-                        )}
-                        <button 
-                            onClick={() => setIsExpanded(!isExpanded)}
-                            className="min-h-11 text-sm font-bold text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
-                        >
-                            {isExpanded ? 'Ver menos' : 'Ver todos'}
-                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                        </button>
-                    </div>
-                </div>
-                {stats.unknownSexCount > 0 && (
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2">
-                        O gráfico está usando apenas parlamentares com sexo confirmado enquanto a base completa é atualizada em segundo plano.
-                    </p>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 xl:gap-8">
-                    {/* Column 1: Parties WITH Women */}
-                    <div className="flex flex-col gap-3">
-                        <p className="text-sm font-black text-green-700 dark:text-green-400 border-b border-gray-100/50 dark:border-white/10 pb-2">
-                            Com mulheres ({stats.withWomen.length})
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {visibleWithWomen.map(([party, count]) => (
-                                <div key={party} className="flex min-h-9 items-center gap-2 bg-orange-50/70 dark:bg-white/5 border border-orange-100 dark:border-white/10 px-3 py-2 rounded-xl">
-                                    <span className="text-sm font-black text-gray-700 dark:text-gray-200">{party}</span>
-                                    <span className="text-xs font-black text-orange-700 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full">{count}</span>
-                                </div>
-                            ))}
-                            {!isExpanded && stats.withWomen.length > 6 && (
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 self-center">+{stats.withWomen.length - 6}</span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Column 2: Parties WITHOUT Women */}
-                    <div className="flex flex-col gap-3">
-                        <p className="text-sm font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100/50 dark:border-white/10 pb-2">
-                            Sem mulheres ({stats.withoutWomen.length})
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {visibleWithoutWomen.map((party) => (
-                                <span key={party} className="min-h-9 text-sm font-black text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 px-3 py-2 rounded-xl flex items-center">
-                                    {party}
-                                </span>
-                            ))}
-                             {!isExpanded && stats.withoutWomen.length > 8 && (
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 self-center">+{stats.withoutWomen.length - 8}</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const IdeologySpectrum = ({ left, center, right }: { left: number, center: number, right: number }) => {
-    const total = Math.max(left + center + right, 1);
-    const maxVal = Math.max(left, center, right, 1); 
-
-    const leftTheme = getIdeologyTheme('Esquerda');
-    const centerTheme = getIdeologyTheme('Centro');
-    const rightTheme = getIdeologyTheme('Direita');
-
-    const data = [
-        { label: 'Esq.', fullLabel: 'Esquerda', count: left, color: leftTheme.fillColorClass, track: leftTheme.trackBg, text: leftTheme.textColorClass },
-        { label: 'Cent.', fullLabel: 'Centro', count: center, color: centerTheme.fillColorClass, track: centerTheme.trackBg, text: centerTheme.textColorClass },
-        { label: 'Dir.', fullLabel: 'Direita', count: right, color: rightTheme.fillColorClass, track: rightTheme.trackBg, text: rightTheme.textColorClass }
-    ];
-
-    return (
-        <div className="w-full flex flex-row items-end justify-between gap-3 h-full px-2 pb-2 overflow-x-auto" role="img" aria-label={`Espectro Político: Esquerda ${left}, Centro ${center}, Direita ${right}`}>
-            {data.map((item) => {
-                const heightPct = ((item.count as number) / (maxVal as number)) * 100;
-                const realPct = Math.round((item.count / total) * 100);
-
-                return (
-                    <div key={item.label} className="flex-1 min-w-[80px] flex flex-col items-center justify-end h-full group cursor-default">
-                        <div className="mb-2 text-center transition-transform group-hover:-translate-y-1 duration-300">
-                            <span className="block text-2xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">
-                                {realPct}%
-                            </span>
-                            <span className={`text-xs font-bold ${item.text}`}>
-                                {item.count} cadeiras
-                            </span>
-                        </div>
-
-                        <div className={`w-full max-w-[60px] h-64 md:h-80 rounded-full ${item.track} relative overflow-hidden border border-white/20`}>
-                            <div 
-                                className={`absolute bottom-0 left-0 right-0 w-full rounded-full ${item.color} transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
-                                style={{ height: `${Math.max(heightPct, 5)}%` }} 
-                            ></div>
-                        </div>
-
-                        <div className={`mt-3 px-3 py-1 rounded-lg ${item.track} border border-white/10`}>
-                            <span className={`text-xs font-black ${item.text}`}>
-                                {item.fullLabel}
-                            </span>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
-
-// --- WIDGET MOSAICO DE REGIÕES (Otimizado Mobile) ---
-const REGIONS_STRUCT = [
-    { name: 'Norte', states: REGION_STATES['Norte'], color: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-[#74C365]' },
-    { name: 'Nordeste', states: REGION_STATES['Nordeste'], color: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30 text-orange-700 dark:text-orange-400' },
-    { name: 'Centro-Oeste', states: REGION_STATES['Centro-Oeste'], color: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
-    { name: 'Sudeste', states: REGION_STATES['Sudeste'], color: 'bg-[#F0F4FF] dark:bg-[#001F3F]/10 border-blue-200 dark:border-[#001F3F]/30 text-blue-700 dark:text-blue-400' },
-    { name: 'Sul', states: REGION_STATES['Sul'], color: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
-];
-
-// --- NOVO COMPONENTE: PIE CHART DE PARTIDOS ---
-const PartyPieChart = ({ data, total }: { data: { name: string, value: number, percent: number, color: string }[], total: number }) => {
-    const size = 200;
-    const strokeWidth = 40;
-    const center = size / 2;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-    
-    const startPercents = data.map((_, i) => data.slice(0, i).reduce((sum, item) => sum + item.percent, 0));
-
-    return (
-        <div className="flex flex-col items-center justify-center w-full h-full py-4 animate-in fade-in zoom-in duration-300">
-            <div className="relative w-48 h-48 flex items-center justify-center shrink-0 mb-4">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90" role="img" aria-label={`${total} representantes: ${data.map(item => `${item.name} ${item.value} (${Math.round(item.percent)}%)`).join(', ')}`}>
-                    {/* Fundo */}
-                    <circle cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="none" className="text-gray-100 dark:text-white/5" stroke="currentColor" />
-                    
-                    {data.map((item, i) => {
-                        const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
-                        const rotation = (startPercents[i] / 100) * 360;
-                        const offset = 0; 
-
-                        return (
-                            <circle
-                                key={item.name}
-                                cx={center}
-                                cy={center}
-                                r={radius}
-                                strokeWidth={strokeWidth}
-                                fill="none"
-                                stroke={item.color}
-                                strokeDasharray={strokeDasharray}
-                                strokeDashoffset={offset}
-                                strokeLinecap="round" 
-                                transform={`rotate(${rotation} ${center} ${center})`}
-                                className="transition-all duration-1000 ease-out hover:opacity-90 cursor-pointer"
-                            >
-                                <title>{item.name}: {item.value} ({Math.round(item.percent)}%)</title>
-                            </circle>
-                        );
-                    })}
-                </svg>
-                {/* Texto Central */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{total}</span>
-                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-1">representantes</span>
-                </div>
-            </div>
-
-            {/* Legenda */}
-            <div className="w-full grid grid-cols-2 gap-2 px-2">
-                {data.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between bg-white/50 dark:bg-white/5 px-2 py-1.5 rounded-lg border border-gray-100 dark:border-white/5">
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
-                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 line-clamp-1">{item.name}</span>
-                        </div>
-                        <span className="text-xs font-black text-gray-600 dark:text-gray-400">{Math.round(item.percent)}%</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const GeoDistributionWidget = ({ politicians }: { politicians: Politician[] }) => {
-    const [selectedState, setSelectedState] = useState<string | null>(null);
-    const [selectedRegion, setSelectedRegion] = useState<string>('Sudeste');
-
-    const stateCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        politicians.forEach(p => {
-            if (p.state) counts[p.state] = (counts[p.state] || 0) + 1;
-        });
-        return counts;
-    }, [politicians]);
-
-    // Prepara dados para o Gráfico de Pizza
-    const pieChartData = useMemo(() => {
-        const sourcePoliticians = selectedState 
-            ? politicians.filter(p => p.state === selectedState) 
-            : politicians;
-        
-        const total = Math.max(sourcePoliticians.length, 1);
-        const partyCounts: Record<string, number> = {};
-        
-        sourcePoliticians.forEach(p => {
-            const pName = p.party || 'S/P';
-            partyCounts[pName] = (partyCounts[pName] || 0) + 1;
-        });
-
-        const getPartyColor = (name: string) => {
-            if (name === 'OUTROS') return '#94a3b8'; // Neutral gray
-            const ide = getIdeology(name);
-            return getIdeologyTheme(ide).baseColor;
-        };
-
-        const sorted = Object.entries(partyCounts)
-            .sort((a, b) => b[1] - a[1]);
-
-        // Pega Top 5 e agrupa o resto em "Outros"
-        const top5 = sorted.slice(0, 5);
-        const othersCount = sorted.slice(5).reduce((acc, curr) => acc + curr[1], 0);
-        
-        const finalData = top5.map(([name, val]) => ({
-            name,
-            value: val,
-            percent: (val / total) * 100,
-            color: getPartyColor(name)
-        }));
-
-        if (othersCount > 0) {
-            finalData.push({
-                name: 'OUTROS',
-                value: othersCount,
-                percent: (othersCount / total) * 100,
-                color: '#64748b' // Slate 500
-            });
-        }
-
-        return {
-            title: selectedState ? `Partidos em ${selectedState}` : 'Cenário partidário nacional',
-            subtitle: selectedState ? 'Distribuição estadual' : 'Distribuição no Congresso',
-            data: finalData,
-            total
-        };
-    }, [politicians, selectedState]);
-
-    const activeRegionData = REGIONS_STRUCT.find(r => r.name === selectedRegion) || REGIONS_STRUCT[3];
-    const regionsWithTotals = useMemo(() => REGIONS_STRUCT.map(region => ({
-        ...region,
-        total: region.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0)
-    })), [stateCounts]);
-    const activeRegionTotal = activeRegionData.states.reduce((acc, uf) => acc + (stateCounts[uf] || 0), 0);
-    const activeRegionMaxStateCount = Math.max(...activeRegionData.states.map(uf => stateCounts[uf] || 0), 1);
-
-    return (
-        <section className="glass-panel rounded-2xl p-4 md:p-6 min-h-[550px] w-full relative overflow-hidden flex flex-col">
-            
-            <div className="flex items-center justify-between mb-6 relative z-10 shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-100/50 dark:bg-blue-900/30 rounded-xl text-blue-600">
-                        <Globe size={18} aria-hidden="true" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Força regional</h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Distribuição nos estados</p>
-                    </div>
-                </div>
-                {selectedState && (
-                    <button 
-                        onClick={() => setSelectedState(null)}
-                        className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                    >
-                        <X size={12} /> Limpar
-                    </button>
-                )}
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-8 items-stretch flex-1 relative z-10">
-                {/* Seletor de Estados */}
-                <div className="w-full lg:w-3/5 flex flex-col gap-4">
-                    
-                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] p-2">
-                        <div className="flex items-center justify-between gap-3 px-2 pb-2">
-                            <div>
-                                <p className="text-xs font-black text-gray-600 dark:text-gray-400">Região</p>
-                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Filtre os estados por bloco geográfico</p>
-                            </div>
-                            <span className="hidden sm:inline-flex rounded-lg bg-blue-50 dark:bg-blue-500/10 px-3 py-1 text-xs font-black text-blue-700 dark:text-blue-300">
-                                {activeRegionTotal} representantes
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-                            {regionsWithTotals.map(region => {
-                                const isActive = selectedRegion === region.name;
-
-                                return (
-                                    <button
-                                        key={region.name}
-                                        type="button"
-                                        onClick={() => { setSelectedRegion(region.name); setSelectedState(null); }}
-                                        aria-pressed={isActive}
-                                        className={`group min-h-16 rounded-xl border px-3 py-2 text-left transition-all ${
-                                            isActive
-                                            ? 'border-[#153E7A] bg-[#153E7A] text-white'
-                                            : 'border-gray-100 bg-gray-50/80 text-gray-600 hover:border-blue-200 hover:bg-white hover:text-blue-700 dark:border-white/5 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:border-blue-400/30 dark:hover:bg-white/[0.07]'
-                                        }`}
-                                    >
-                                        <span className="flex items-center justify-between gap-2">
-                                            <span className="text-xs font-black leading-tight">{region.name}</span>
-                                            <span className={`h-2 w-2 rounded-full transition-colors ${
-                                                isActive ? 'bg-white' : 'bg-gray-300 group-hover:bg-[#1E488F] dark:bg-gray-600'
-                                            }`} />
-                                        </span>
-                                        <span className={`mt-2 block text-sm font-black ${
-                                            isActive ? 'text-blue-100' : 'text-gray-900 dark:text-white'
-                                        }`}>
-                                            {region.total}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* States Grid for Active Region */}
-                    <div className={`p-4 rounded-2xl border flex-1 ${activeRegionData.color} flex flex-col relative transition-colors duration-300`}>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                            <div>
-                                <span className="font-black text-sm flex items-center gap-2">
-                                    <MapPin size={14} aria-hidden="true" /> {activeRegionData.name}
-                                </span>
-                                <p className="text-xs font-semibold mt-1">
-                                    {selectedState ? `Estado selecionado: ${selectedState}` : 'Escolha um estado para detalhar o cenário partidário'}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-black bg-white/65 dark:bg-black/20 px-2.5 py-1.5 rounded-full">
-                                    {activeRegionTotal} representantes
-                                </span>
-                                {selectedState && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedState(null)}
-                                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70 dark:bg-black/20 transition-colors hover:bg-white dark:hover:bg-black/30"
-                                        aria-label="Limpar estado selecionado"
-                                    >
-                                        <X size={12} aria-hidden="true" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 content-start">
-                            {activeRegionData.states.map(uf => {
-                                const isActive = selectedState === uf;
-                                const count = stateCounts[uf] || 0;
-                                const share = Math.max((count / activeRegionMaxStateCount) * 100, 6);
-
-                                return (
-                                    <button
-                                        key={uf}
-                                        type="button"
-                                        onClick={() => setSelectedState(prev => prev === uf ? null : uf)}
-                                        aria-pressed={isActive}
-                                        className={`rounded-2xl border p-3 text-left transition-all ${
-                                            isActive
-                                            ? 'bg-[#153E7A] text-white border-[#153E7A]'
-                                            : 'bg-white/85 dark:bg-black/20 text-gray-700 dark:text-gray-300 border-white/80 dark:border-white/10 hover:bg-white hover:border-blue-200'
-                                        }`}
-                                    >
-                                        <span className="flex items-center justify-between gap-2">
-                                            <span className="text-sm font-black">{uf}</span>
-                                            <span className={`text-xs font-black ${
-                                                isActive ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'
-                                            }`}>
-                                                {count}
-                                            </span>
-                                        </span>
-                                        <span className={`mt-3 block h-1.5 overflow-hidden rounded-full ${
-                                            isActive ? 'bg-white/20' : 'bg-gray-100 dark:bg-white/10'
-                                        }`}>
-                                            <span
-                                                className={`block h-full rounded-full transition-all duration-500 ${
-                                                    isActive ? 'bg-white' : 'bg-[#1E488F]/70'
-                                                }`}
-                                                style={{ width: `${share}%` }}
-                                            />
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        
-                        {!selectedState && (
-                            <div className="mt-4 rounded-2xl bg-white/45 dark:bg-black/10 px-3 py-2 text-center">
-                                <p className="text-xs font-bold flex items-center justify-center gap-1">
-                                    <MousePointerClick size={12} aria-hidden="true" /> Toque em um estado para filtrar o gráfico
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Pie Chart Card */}
-                <div className="w-full lg:w-2/5 animate-in slide-in-from-right-4 fade-in duration-300 bg-gray-50/50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex flex-col" key={selectedState || 'br'}>
-                    <div className="mb-2 text-center">
-                        <h4 className="font-black text-gray-900 dark:text-white text-sm">{pieChartData.title}</h4>
-                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400">{pieChartData.subtitle}</p>
-                    </div>
-                    
-                    <div className="flex-1 flex items-center justify-center">
-                        <PartyPieChart data={pieChartData.data} total={pieChartData.total} />
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
-
-// --- SVG MATH HELPERS ---
-const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-  const angleInRadians = (angleInDegrees - 180) * Math.PI / 180.0;
-  return {
-    x: centerX + (radius * Math.cos(angleInRadians)),
-    y: centerY + (radius * Math.sin(angleInRadians))
-  };
-}
-
-const describeArc = (x: number, y: number, radius: number, startAngle: number, endAngle: number) => {
-    const start = polarToCartesian(x, y, radius, endAngle);
-    const end = polarToCartesian(x, y, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return [
-        "M", start.x, start.y, 
-        "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-    ].join(" ");
-}
-
-const ParliamentHemicycle = ({ data, onClick, activeParty }: { data: PartyStats[], onClick: (name: string) => void, activeParty: string | null }) => {
-    const [hoveredParty, setHoveredParty] = useState<string | null>(null);
-    const totalSeats = data.reduce((acc, p) => acc + p.totalMembers, 0);
-    
-    // Sort logic
-    const sortedParties = useMemo(() => {
-        const orderMap: Record<string, number> = { 'Esquerda': 1, 'Centro': 2, 'Direita': 3 };
-        return [...data].sort((a, b) => {
-            const ideA = getIdeology(a.name);
-            const ideB = getIdeology(b.name);
-            
-            // Explicitly typed as number to avoid arithmetic errors
-            const valA: number = (ideA && orderMap[ideA]) || 4;
-            const valB: number = (ideB && orderMap[ideB]) || 4;
-            
-            if (valA !== valB) return valA - valB;
-            return b.totalMembers - a.totalMembers;
-        });
-    }, [data]);
-
-    const getPartyColor = (name: string) => {
-        const ideology = getIdeology(name);
-        return getIdeologyTheme(ideology).baseColor;
-    };
-
-    const centerX = 200;
-    const centerY = 200;
-    const radius = 130; 
-    const strokeWidth = 50; // Slightly thinner to show separation
-    const totalAngle = 180; 
-    const sliceAngle = (seats: number) => (seats / totalSeats) * totalAngle;
-    const startAngles = sortedParties.map((_, i) => sortedParties.slice(0, i).reduce((sum, party) => sum + sliceAngle(party.totalMembers), 0));
-
-    // Handle interaction bridging
-    const effectiveActive = hoveredParty || activeParty;
-
-    return (
-        <section className="glass-panel rounded-2xl  p-6 md:p-8 flex flex-col items-center justify-between relative overflow-hidden h-auto" aria-labelledby="hemicycle-title">
-            
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full mb-4 z-10 gap-4">
-                 <div className="flex items-center gap-3">
-                     <div className="p-3 bg-blue-100/50 dark:bg-blue-900/30 rounded-2xl text-blue-600">
-                         <Trophy size={24} className="md:w-6 md:h-6" aria-hidden="true" />
-                     </div>
-                     <div>
-                        <h3 id="hemicycle-title" className="font-bold text-gray-900 dark:text-white text-lg md:text-xl leading-tight">Distribuição de cadeiras</h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Câmara e Senado juntos</p>
-                     </div>
-                 </div>
-                 <div className="flex gap-2 text-xs font-black bg-gray-50/50 dark:bg-white/5 p-2 rounded-xl border border-gray-100/50 dark:border-white/10">
-                     <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Esq.</span>
-                     <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Cent.</span>
-                     <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-600"></span> Dir.</span>
-                 </div>
-            </div>
-
-            {/* Graphic Container */}
-            <div className="relative w-full max-w-[650px] aspect-[1.8/1] min-h-[220px] flex items-end justify-center mb-6 md:mb-10">
-                <svg viewBox="0 0 400 230" className="w-full h-full overflow-visible" role="img" aria-label={`Distribuição de ${totalSeats} cadeiras por partido: ${sortedParties.map(p => `${p.name} ${p.totalMembers}`).join(', ')}`}>
-                    {/* Background Track */}
-                    <path 
-                        d={describeArc(centerX, centerY, radius, 0, 180)}
-                        fill="none"
-                        stroke="rgba(0,0,0,0.03)"
-                        strokeWidth={strokeWidth}
-                        strokeLinecap="round"
-                        className="dark:stroke-white/5"
-                    />
-
-                    {sortedParties.map((party, i) => {
-                        const seats = party.totalMembers;
-                        const sliceDegrees = sliceAngle(seats);
-                        
-                        // Dynamic gap: smaller gap for small parties to prevent disappearance
-                        const gap = seats > 3 ? 1.5 : (seats > 1 ? 0.8 : 0.2);
-                        
-                        const start = startAngles[i];
-                        const end = start + sliceDegrees - (sliceDegrees > gap ? gap : 0);
-
-                        if (seats === 0) return null;
-
-                        const pathData = describeArc(centerX, centerY, radius, start, end);
-                        const isHighlighted = effectiveActive === party.name;
-                        const isDimmed = effectiveActive && !isHighlighted;
-                        const color = getPartyColor(party.name);
-
-                        return (
-                            <g 
-                                key={party.name} 
-                                className="group cursor-pointer"
-                                onClick={() => onClick(party.name)}
-                                onMouseEnter={() => setHoveredParty(party.name)}
-                                onMouseLeave={() => setHoveredParty(null)}
-                            >
-                                <path
-                                    d={pathData}
-                                    fill="none"
-                                    stroke={color}
-                                    strokeWidth={strokeWidth}
-                                    strokeLinecap={seats > 2 ? "round" : "butt"} 
-                                    className={`transition-all duration-300 ease-out 
-                                        ${isHighlighted ? 'opacity-100 stroke-[58px]' : isDimmed ? 'opacity-20' : 'opacity-90'}
-                                    `}
-                                />
-                                <title>{party.name}: {party.totalMembers} cadeiras</title>
-                            </g>
-                        );
-                    })}
-
-                    {/* Center Text */}
-                    <g className="transition-all duration-300 transform translate-y-2 pointer-events-none">
-                        <text x="200" y="175" textAnchor="middle" className="text-4xl md:text-6xl font-black fill-gray-900 dark:fill-white tracking-tighter">
-                            {effectiveActive ? data.find(p => p.name === effectiveActive)?.totalMembers : totalSeats}
-                        </text>
-                        <text x="200" y="200" textAnchor="middle" className="text-xs font-bold fill-gray-600 dark:fill-gray-400">
-                            {effectiveActive ? formatPartyName(effectiveActive) : 'Total de cadeiras'}
-                        </text>
-                    </g>
-                </svg>
-            </div>
-
-            {/* List of Parties (Interactive Legend) */}
-            <div className="w-full flex flex-wrap gap-1.5 md:gap-2 justify-center content-start pb-3">
-                {sortedParties.map(p => (
-                    <button
-                        key={p.name}
-                        onClick={() => onClick(p.name)}
-                        onMouseEnter={() => setHoveredParty(p.name)}
-                        onMouseLeave={() => setHoveredParty(null)}
-                        aria-pressed={activeParty === p.name}
-                        className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors active:scale-[0.98] flex items-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 ${
-                            activeParty === p.name || hoveredParty === p.name
-                            ? 'bg-blue-600 text-white border-blue-600 transform'
-                            : 'bg-gray-50/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-transparent hover:bg-white/60 dark:hover:bg-white/10'
-                        }`}
-                    >
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getPartyColor(p.name) }}></span>
-                        {p.name} 
-                        <span className="ml-0.5 pl-1 border-l border-current">({p.totalMembers})</span>
-                    </button>
-                ))}
-            </div>
-        </section>
-    );
-};
-
-// --- DATA INTEGRITY FIX: Attendance Card (Substitutes Fake Cohesion) ---
-const AttendanceCard = ({ data, selectedParty }: { data: PartyStats[], selectedParty?: string | null }) => {
-    // Apenas presença real: quem não tem dado não entra na média nem é estimado
-    const overall = summarizeAttendance(data);
-    const stats = selectedParty ? data.find(p => p.name === selectedParty) : null;
-    const value = stats ? stats.avgAttendance : overall.average;
-    const sampleCount = stats ? stats.attendanceSampleCount : overall.sample;
-    const totalCount = stats ? stats.deputyCount : overall.total;
-    const hasData = value !== null && sampleCount > 0;
-    const displayValue = hasData ? value : 0;
-    const coverageLabel = hasData
-        ? `Presença real de ${sampleCount} de ${totalCount} deputados`
-        : 'Dados insuficientes';
-
-    // Configurações do Visual
-    const radius = 80;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (displayValue / 100) * circumference;
-    
-    const getStatus = (score: number) => {
-        if (!hasData) return { label: 'Dados insuficientes', color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100/50 dark:bg-white/5' };
-        if (score >= 90) return { label: 'Assiduidade alta', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-100/50 dark:bg-green-900/20' };
-        if (score >= 70) return { label: 'Assiduidade média', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/50 dark:bg-blue-900/20' }; 
-        return { label: 'Assiduidade baixa', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-100/50 dark:bg-red-900/20' };
-    };
-
-    const status = getStatus(displayValue);
-
-    return (
-        <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden min-h-[400px] group w-full">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 relative z-10">
-                <div className="flex items-center gap-4">
-                    <div className={`p-3 bg-green-100/50 dark:bg-green-900/30 rounded-2xl text-green-600`}>
-                        <UserCheck size={28} aria-hidden="true" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-xl md:text-2xl leading-tight">Assiduidade média</h3>
-                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-bold flex items-center gap-1">
-                            Presença em sessões 
-                        </p>
-                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">{coverageLabel}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-10 flex-1 relative z-10 py-4">
-                
-                {/* Main Gauge Graphic */}
-                <div className="relative w-64 h-64 shrink-0 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="2 4" className="text-[#DBE64C] dark:text-[#1E488F]" />
-                        {/* Background Ghost Arc */}
-                        <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="16" strokeDasharray={`2 ${circumference}`} strokeDashoffset={-(circumference * ((overall.average ?? 0) / 100))} className="text-gray-400 dark:text-gray-600 opacity-30" transform={`rotate(0 100 100)`} />
-                        {/* Value Arc */}
-                        <circle cx="100" cy="100" r={radius} fill="none" strokeLinecap="round" strokeWidth="12" strokeDasharray={circumference} strokeDashoffset={offset} className={`transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayValue >= 90 ? 'text-[#00804C]' : displayValue >= 70 ? 'text-[#1E488F]' : 'text-red-500'}`} stroke="currentColor" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
-                            {hasData ? <>{displayValue.toFixed(0)}<span className="text-2xl align-top">%</span></> : <span className="text-base">Sem dados</span>}
-                        </span>
-                        <div className={`mt-2 px-4 py-1.5 rounded-full text-sm font-black border border-white/10 ${status.bg} ${status.color}`}>
-                            {status.label}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Explanatory Table */}
-                <div className="flex-1 w-full space-y-4 bg-gray-50/50 dark:bg-white/5 p-6 rounded-2xl border border-gray-100/50 dark:border-white/5">
-                    <h4 className="text-xs font-black text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-3 mb-2">Média da bancada</h4>
-                    
-                    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-4 items-center">
-                        <div className="w-3 h-3 rounded-full bg-[#00804C]"></div>
-                        <div>
-                            <div className="flex justify-between items-baseline mb-1">
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">Alta (+90%)</span>
-                            </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada em 90% ou mais das sessões.</p>
-                        </div>
-
-                        <div className="w-3 h-3 rounded-full bg-[#1E488F]"></div>
-                        <div>
-                            <div className="flex justify-between items-baseline mb-1">
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">Média (70-90%)</span>
-                            </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada entre 70% e 90% das sessões.</p>
-                        </div>
-
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <div>
-                            <div className="flex justify-between items-baseline mb-1">
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">Baixa (-70%)</span>
-                            </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Presença registrada abaixo de 70% das sessões.</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    );
-};
-
-const SpendingByPartyWidget = ({ data }: { data: PartyStats[] }) => {
-    const top = useMemo(() => {
-        return [...data]
-            .filter(p => p.avgSpending > 0)
-            .sort((a, b) => b.avgSpending - a.avgSpending)
-            .slice(0, 6);
-    }, [data]);
-
-    if (top.length === 0) return null;
-    const max = Math.max(...top.map(p => p.avgSpending));
-
-    return (
-        <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-4 min-h-[320px]">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-green-100/50 dark:bg-green-900/30 rounded-xl text-green-600">
-                        <TrendingUp size={18} />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Gastos médios por partido</h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-bold">Top 6 com maior média</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-3">
-                {top.map((p) => (
-                    <div key={p.name} className="flex items-center gap-3">
-                        <span className="w-14 shrink-0 text-xs font-bold text-gray-700 dark:text-gray-300">{p.name}</span>
-                        <div className="flex-1 h-2 rounded-full bg-[#DBE64C] dark:bg-white/10 overflow-hidden">
-                            <div className="h-full bg-[#00804C]" style={{ width: `${Math.max(5, (p.avgSpending / max) * 100)}%` }}></div>
-                        </div>
-                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                            R$ {p.avgSpending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            <span className="ml-1 font-bold text-gray-600 dark:text-gray-400">(n={p.spendingSampleCount})</span>
-                        </span>
-                    </div>
-                ))}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Média por parlamentar do partido; n = parlamentares considerados</p>
-        </div>
-    );
-};
 
 const GovernmentStructureFlow = () => {
     const powers = [
@@ -877,7 +53,7 @@ const GovernmentStructureFlow = () => {
         <section className="glass-panel rounded-2xl p-6 md:p-8 overflow-hidden" aria-labelledby="government-structure-title">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
-                    <p className="text-xs font-black text-blue-600 dark:text-blue-300 mb-2">Mapa do Estado brasileiro</p>
+                    <p className="text-sm font-black text-blue-600 dark:text-blue-300 mb-2">Mapa do Estado brasileiro</p>
                     <h2 id="government-structure-title" className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
                         Como o Brasil funciona
                     </h2>
@@ -885,7 +61,7 @@ const GovernmentStructureFlow = () => {
                         O poder político parte do povo e é exercido por instituições com responsabilidades diferentes.
                     </p>
                 </div>
-                <div className="flex max-w-md items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-xs font-bold leading-relaxed text-blue-900 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-100">
+                <div className="flex max-w-md items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-bold leading-relaxed text-blue-900 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-100">
                     <Info size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                     <span>O presidente lidera o Executivo, mas não é chefe dos outros poderes.</span>
                 </div>
@@ -896,7 +72,7 @@ const GovernmentStructureFlow = () => {
                     <Users size={22} aria-hidden="true" />
                     <div>
                         <p className="text-base font-black leading-none">Povo</p>
-                        <p className="mt-1 text-xs font-bold text-blue-100">Origem do poder político</p>
+                        <p className="mt-1 text-sm font-bold text-blue-100">Origem do poder político</p>
                     </div>
                 </div>
 
@@ -915,7 +91,7 @@ const GovernmentStructureFlow = () => {
                                 <div>
                                     <h3 className={`text-sm font-black ${accent}`}>{title}</h3>
                                     <p className="mt-1 text-base font-black text-gray-900 dark:text-white">{lead}</p>
-                                    <p className="mt-2 text-xs font-medium leading-relaxed text-gray-600 dark:text-gray-300">{description}</p>
+                                    <p className="mt-2 text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-300">{description}</p>
                                 </div>
                             </div>
                         </article>
@@ -924,14 +100,14 @@ const GovernmentStructureFlow = () => {
 
                 <div className="mt-5 flex w-full items-start gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-emerald-950 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-100">
                     <ShieldCheck size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
-                    <p className="text-xs font-bold leading-relaxed">
+                    <p className="text-sm font-bold leading-relaxed">
                         Os três poderes são independentes e se fiscalizam por meio de freios e contrapesos.
                     </p>
                 </div>
             </div>
 
             <div className="mt-6 border-t border-gray-200/70 pt-5 dark:border-white/10">
-                <div className="flex items-center gap-2 text-xs font-black text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-2 text-sm font-black text-gray-600 dark:text-gray-300">
                     <Globe size={15} aria-hidden="true" />
                     Onde as decisões chegam
                 </div>
@@ -942,8 +118,8 @@ const GovernmentStructureFlow = () => {
                         ['Municípios', 'Serviços locais'],
                     ].map(([title, description]) => (
                         <div key={title} className="rounded-xl bg-gray-100/80 px-4 py-3 dark:bg-white/5">
-                            <p className="text-xs font-black text-gray-900 dark:text-white">{title}</p>
-                            <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-400">{description}</p>
+                            <p className="text-sm font-black text-gray-900 dark:text-white">{title}</p>
+                            <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">{description}</p>
                         </div>
                     ))}
                 </div>
@@ -952,52 +128,62 @@ const GovernmentStructureFlow = () => {
     );
 };
 
-const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians }) => {
-  const [expandedPartyName, setExpandedPartyName] = useState<string | null>(null);
+const StatCard: React.FC<{ value: string; label: string; detail: string; highlight?: boolean }> = ({ value, label, detail, highlight }) => (
+  <div className={`flex min-w-0 flex-col gap-0.5 rounded-3xl px-4 py-3.5 md:px-[18px] md:py-4 ${highlight ? 'border border-midnight bg-midnight text-white shadow-[0_1px_2px_rgba(0,39,118,0.12),0_10px_30px_rgba(0,39,118,0.25)]' : `${CARD_SURFACE} text-midnight dark:text-white`}`}>
+    <span className="text-[26px] font-black leading-tight tracking-tight md:text-[30px]">{value}</span>
+    <span className="text-sm font-extrabold">{label}</span>
+    <span className={`text-sm font-semibold ${highlight ? 'text-white/80' : MUTED}`}>{detail}</span>
+  </div>
+);
 
+const PartiesDashboardView: React.FC<PartiesDashboardViewProps> = ({ politicians }) => {
+  const numbers = useCongressNumbers();
   const { partyStats, ideologyStats } = useMemo(() => computePartyStats(politicians), [politicians]);
+  const women = useMemo(() => womenShare(politicians), [politicians]);
+  const units = useMemo(() => seatsByRegion(politicians).states.length, [politicians]);
+  const senators = useMemo(() => politicians.filter(isSenator).length, [politicians]);
+  const date = numbers.data ? formatNumbersDate(numbers.data.generatedAt) : '';
 
   return (
-    <div className="w-full h-full bg-transparent font-sans overflow-y-auto pb-24 md:pb-12">
-        <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-6 space-y-8 relative z-10 px-safe">
-            <div>
-                <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Cenário Político</h1>
-                <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400 mt-1.5">Raio-X das forças do Congresso Nacional</p>
-            </div>
-
-            <GovernmentStructureFlow />
-
-            <div className="grid grid-cols-1 gap-4">
-                <FemaleRepresentationWidget politicians={politicians} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-                <SpendingByPartyWidget data={partyStats} />
-            </div>
-
-            {/* Layout Flex para controle vertical */}
-            <div className="flex flex-col gap-8">
-                <ParliamentHemicycle data={partyStats} onClick={(name) => setExpandedPartyName(name === expandedPartyName ? null : name)} activeParty={expandedPartyName} />
-                
-                <div className="w-full pb-4">
-                    <GeoDistributionWidget politicians={politicians} />
-                </div>
-                
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-2">
-                    <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-center min-h-[400px]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2.5 bg-yellow-100/50 dark:bg-yellow-900/30 rounded-xl text-yellow-600">
-                                <Compass size={18} aria-hidden="true" />
-                            </div>
-                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Espectro político</h3>
-                        </div>
-                        <IdeologySpectrum left={ideologyStats['Esquerda']} center={ideologyStats['Centro']} right={ideologyStats['Direita']} />
-                    </div>
-
-                    <AttendanceCard data={partyStats} selectedParty={expandedPartyName} />
-                </div>
-            </div>
+    <div className="w-full h-full bg-gradient-to-b from-praxeti via-[#EEF3FA] to-[#E6F3EA] dark:bg-none dark:bg-transparent font-sans overflow-y-auto pb-24 md:pb-12">
+      <div className="px-4 md:px-8 py-6 md:py-10 max-w-[1800px] mx-auto flex flex-col gap-4 md:gap-5 px-safe">
+        <div>
+          <h1 className="text-[26px] md:text-4xl font-black tracking-tight text-midnight dark:text-white">Números do Congresso</h1>
+          <p className={`text-sm md:text-base font-semibold ${MUTED}`}>Quem ocupa as cadeiras hoje</p>
         </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard highlight value={formatInteger(politicians.length)} label="parlamentares" detail={`${formatInteger(politicians.length - senators)} Câmara · ${formatInteger(senators)} Senado`} />
+          <StatCard value={formatInteger(partyStats.length)} label="partidos" detail="no Congresso" />
+          <StatCard value={formatInteger(women.women)} label="mulheres" detail={women.pct === null ? 'sem dados' : formatPercent(women.pct)} />
+          <StatCard value={formatInteger(units)} label="unidades" detail="estados e DF" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.55fr_1fr] lg:items-stretch">
+          <SeatsByParty politicians={politicians} />
+          <div className="flex flex-col gap-4">
+            <IdeologyCard counts={{ Esquerda: ideologyStats.Esquerda, Centro: ideologyStats.Centro, Direita: ideologyStats.Direita }} total={politicians.length} />
+            <WomenCard politicians={politicians} />
+          </div>
+        </div>
+
+        <RegionSeatsCard politicians={politicians} />
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+          <PresenceCard numbers={numbers} />
+          <QuotaCard numbers={numbers} />
+        </div>
+
+        <p className={`text-sm font-semibold ${MUTED}`}>
+          Fonte:{' '}
+          <a href="https://dadosabertos.camara.leg.br" target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 items-center rounded-lg font-bold underline underline-offset-4 ${LINK_FOCUS}`}>Câmara</a>
+          {' '}e{' '}
+          <a href="https://www12.senado.leg.br/dados-abertos" target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 items-center rounded-lg font-bold underline underline-offset-4 ${LINK_FOCUS}`}>Senado</a>
+          {date && ` · ${date}`}
+        </p>
+
+        <GovernmentStructureFlow />
+      </div>
     </div>
   );
 };
