@@ -34,7 +34,7 @@ function App() {
   // Extraindo do contexto para facilitar leitura
   const { 
       activeTab, politicians, feedItems, articles, parties, isLoading,
-      selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState, exploreQuery,
+      selectedCandidate, selectedEducationId, isFullFeed, isNewsHistory, explorePreselectedState, exploreQuery, userLocation,
       showDataModal, showOnboarding, readArticleIds, error
   } = state;
 
@@ -78,7 +78,7 @@ function App() {
               content = <FeedView politicians={politicians} feedItems={feedItems} onSelectCandidate={actions.selectCandidate} onSeeMore={() => actions.setFullFeed(true)} onGoToExplore={actions.goToExplore} />;
               break;
           case 'explore':
-              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} searchRequest={exploreQuery} onSearchApplied={actions.clearExploreQuery} />;
+              content = <ExploreView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} preselectedState={explorePreselectedState} defaultState={userLocation} searchRequest={exploreQuery} onSearchApplied={actions.clearExploreQuery} />;
               break;
           case 'parties':
               content = <PartiesDashboardView politicians={politicians} parties={parties} onSelectCandidate={actions.selectCandidate} />;

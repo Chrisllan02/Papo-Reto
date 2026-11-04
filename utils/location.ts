@@ -115,3 +115,13 @@ export const reverseGeocodeToUF = async (latitude: number, longitude: number) =>
   if (!response.ok) return '';
   return extractBrazilianStateUF(await response.json());
 };
+
+const MASCULINE_STATES = new Set(['AC', 'AP', 'AM', 'CE', 'DF', 'ES', 'MA', 'MT', 'MS', 'PA', 'PR', 'PI', 'RJ', 'RN', 'RS', 'TO']);
+const FEMININE_STATES = new Set(['BA', 'PB']);
+
+export const stateWithPreposition = (uf: string) => {
+  const name = STATE_NAMES[uf] ?? uf;
+  if (MASCULINE_STATES.has(uf)) return `do ${name}`;
+  if (FEMININE_STATES.has(uf)) return `da ${name}`;
+  return `de ${name}`;
+};

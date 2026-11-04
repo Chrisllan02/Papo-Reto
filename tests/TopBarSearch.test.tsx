@@ -35,7 +35,7 @@ const Shell = () => {
 
 const desktopSearch = () => screen.getAllByRole('searchbox')[0];
 
-const localSearch = () => screen.getByRole('textbox', { name: /^Buscar (parlamentar|partido)/ });
+const appliedSearch = () => screen.queryByText(/^Busca: /);
 
 const submitTop = (value: string) => {
   fireEvent.change(desktopSearch(), { target: { value } });
@@ -51,19 +51,19 @@ describe('busca do menu superior', () => {
 
     const tab = screen.getAllByRole('button', { name: 'Políticos' }).find(el => el.textContent === 'Políticos')!;
     expect(tab).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('textbox', { name: 'Buscar parlamentar por nome ou estado' })).toHaveValue('Tabata Amaral');
+    expect(appliedSearch()).toHaveTextContent('Busca: Tabata Amaral');
   });
 
   it('a busca do topo é consumida: não volta ao remontar a tela, mas repetir o mesmo texto reaplica', () => {
     render(<AppProvider><Shell /></AppProvider>);
 
     submitTop('Lula');
-    fireEvent.change(localSearch(), { target: { value: '' } });
+    expect(appliedSearch()).toHaveTextContent('Busca: Lula');
     fireEvent.click(screen.getByRole('button', { name: 'Remontar' }));
-    expect(localSearch()).toHaveValue('');
+    expect(appliedSearch()).not.toBeInTheDocument();
 
     submitTop('Lula');
-    expect(localSearch()).toHaveValue('Lula');
+    expect(appliedSearch()).toHaveTextContent('Busca: Lula');
   });
 
   it('com texto vazio ou só espaços, não sai da tela atual', () => {
@@ -73,6 +73,6 @@ describe('busca do menu superior', () => {
     fireEvent.submit(desktopSearch().closest('form')!);
 
     expect(screen.getAllByRole('button', { name: 'Hoje no Congresso' })[0]).toHaveAttribute('aria-current', 'page');
-    expect(screen.queryByRole('textbox', { name: 'Buscar parlamentar por nome ou estado' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Políticos' })).not.toBeInTheDocument();
   });
 });
